@@ -6,6 +6,8 @@
 
 ### 📆 日历视图
 - 每月日历展示，支持上下月切换
+- 每日显示农历（初一显示月名，其他显示日名）
+- 月份标题显示天干地支+生肖年+农历月名
 - 每日状态标记：上班、休息、出差
 - 8 种颜色标记，自定义标签（最多 8 个）
 - 备注记录，每日待办事项
@@ -21,12 +23,20 @@
 
 ### 🔔 通知推送
 - **桌面端**：Electron 原生通知，点击即可确认打卡
-- **安卓端**：本地通知推送，支持后台提醒
+- **安卓端**：Capacitor 本地通知推送，支持后台提醒
+- **通知渠道**：Android 8+ 创建高优先级通知渠道，确保提醒可见
+- **权限引导**：通知权限被拒时提示用户前往系统设置开启
 
 ### ✅ 待办管理
-- 指定日期待办
+- 指定日期待办（支持公历/农历选择）
 - 每周重复待办（按星期几）
 - 待办完成状态追踪
+- ⏰ **待办提醒**：为待办设置提醒时间，支持以下选项：
+  - 不提醒
+  - 准时提醒
+  - 提前 5/10/15/30/60 分钟提醒
+  - 自定义提醒时间点（如 09:00）
+- 待办列表显示提醒标识（⏰）
 
 ### 📊 月度统计
 - 上班/休息/出差天数统计
@@ -246,6 +256,7 @@ CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_i
 | 数据存储 | localStorage (本地) / Supabase (云端同步) |
 | 通知 | Electron Notification API / Capacitor LocalNotifications |
 | 好友圈后端 | Supabase (PostgreSQL + Auth) |
+| 农历 | 寿星万年历算法 (1900-2100) |
 
 ## 📦 安装运行
 
@@ -288,6 +299,7 @@ JAVA_HOME="C:/Program Files/Java/jdk-21" ./gradlew assembleDebug
 │   ├── social.css          # 好友圈样式
 │   ├── social.js           # 好友圈逻辑
 │   ├── supabase.js         # Supabase API 封装
+│   ├── lunar.js            # 农历转换库（寿星万年历）
 │   ├── holidays.js         # 节假日数据
 │   └── web-api.js          # Web/Capacitor API 层
 ├── lib/
@@ -306,7 +318,7 @@ JAVA_HOME="C:/Program Files/Java/jdk-21" ./gradlew assembleDebug
 | 权限 | 用途 |
 |------|------|
 | `INTERNET` | 网络访问（好友圈同步） |
-| `POST_NOTIFICATIONS` | 发送通知 |
+| `POST_NOTIFICATIONS` | 发送通知（打卡提醒、待办提醒） |
 | `SCHEDULE_EXACT_ALARM` | 精确定时提醒 |
 | `RECEIVE_BOOT_COMPLETED` | 开机启动提醒 |
 
@@ -317,6 +329,17 @@ MIT
 ---
 
 ## 📌 更新日志
+
+### v1.5 (2026-06-05)
+- ⏰ 待办事项支持设置提醒时间：准时提醒、提前5/10/15/30/60分钟
+- 🔔 待办提醒通知推送（Electron 原生通知 + Android 本地通知）
+- 🔧 修复打卡通知不提醒的问题：
+  - 改进 Capacitor 平台检测逻辑
+  - Android 8+ 创建高优先级通知渠道
+  - 通知权限被拒时提示用户开启
+  - 增加通知调度日志便于排查
+- 📋 待办列表显示提醒标识（⏰）
+- 🌙 农历显示：日历格子显示农历，月份标题显示天干地支+生肖
 
 ### v1.4 (2026-06-05)
 - 📷 好友圈支持发布图片+文字动态

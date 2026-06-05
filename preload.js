@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('calendarAPI', {
   addTodo: (todo) => ipcRenderer.invoke('add-todo', todo),
   updateTodo: (id, updates) => ipcRenderer.invoke('update-todo', id, updates),
   deleteTodo: (id) => ipcRenderer.invoke('delete-todo', id),
+  // Todo notification
+  notifyTodo: (text, time) => ipcRenderer.send('notify-todo', text, time),
   // Reminders
   getReminders: () => ipcRenderer.invoke('get-reminders'),
   saveReminders: (reminders) => ipcRenderer.invoke('save-reminders', reminders),

@@ -190,6 +190,15 @@ body {
 .calendar-type-btn.active {
   background: var(--accent); color: #fff; border-color: var(--accent);
 }
+.todo-remind-picker {
+  display: flex; gap: 8px; align-items: center; flex: 1;
+}
+.todo-remind-picker .lunar-select {
+  flex: 1;
+}
+.todo-remind-picker .modal-date-input {
+  width: 90px; flex: none;
+}
 
 /* Detail panel */
 .detail-panel {

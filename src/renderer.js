@@ -95,11 +95,12 @@ function renderTodoList(dateStr) {
   }
   for (const todo of todos) {
     const done = isTodoDone(todo, dateStr);
+    const remindIcon = todo.remind ? ' ⏰' : '';
     const item = document.createElement('div');
     item.className = 'todo-item' + (done ? ' done' : '');
     item.innerHTML = `
       <span class="todo-check" data-id="${todo.id}">${done ? '✓' : ''}</span>
-      <span class="todo-text">${todo.text}</span>
+      <span class="todo-text">${todo.text}${remindIcon}</span>
       <span class="todo-del" data-id="${todo.id}">&times;</span>
     `;
     container.appendChild(item);
@@ -186,6 +187,9 @@ function openTodoModal() {
   document.querySelector('.calendar-type-btn[data-caltype="solar"]').classList.add('active');
   document.getElementById('todo-once-row').style.display = '';
   document.getElementById('todo-lunar-row').style.display = 'none';
+  // Reset remind fields
+  document.getElementById('todo-remind-select').value = '';
+  document.getElementById('todo-remind-time').value = '09:00';
   // Show lunar hint for selected date
   updateLunarHint();
   modal.style.display = 'flex';
@@ -272,11 +276,20 @@ function setupTodoModal() {
       todo.weekdays = days;
       todo.weeklyDone = {};
     }
+    // Save remind settings
+    const remindSelect = document.getElementById('todo-remind-select').value;
+    const remindTime = document.getElementById('todo-remind-time').value;
+    if (remindSelect) {
+      todo.remind = remindSelect; // '' | 'same' | '5' | '10' | '15' | '30' | '60'
+      todo.remindTime = remindTime; // e.g. '09:00'
+      todo.reminded = false; // track if already notified
+    }
     const saved = await window.calendarAPI.addTodo(todo);
     allTodos.push(saved);
     closeTodoModal();
     if (selectedDate) renderTodoList(selectedDate);
     renderCalendar();
+    scheduleTodoReminders();
     showToast('待办已添加');
   });
 }
@@ -316,11 +329,12 @@ function renderTodoView() {
         const lunar = Lunar.solar2lunar(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
         dateDisplay = `${todo.date} ${lunar.full}`;
       }
+      const remindLabel = todo.remind ? (todo.remind === 'same' ? ` ⏰${todo.remindTime}准时` : ` ⏰提前${todo.remind}分钟`) : '';
       html += `<div class="todo-view-item${done ? ' done' : ''}" data-id="${todo.id}">
         <span class="todo-view-check" data-id="${todo.id}">${done ? '✓' : ''}</span>
         <div class="todo-view-info">
           <span class="todo-view-text">${todo.text}</span>
-          <span class="todo-view-date">${dateDisplay}</span>
+          <span class="todo-view-date">${dateDisplay}${remindLabel}</span>
         </div>
         <span class="todo-view-del" data-id="${todo.id}">&times;</span>
       </div>`;
@@ -586,6 +600,7 @@ async function saveReminderSettings() {
   closeReminderSettings();
   renderClockinView();
   scheduleReminderNotifications();
+  scheduleTodoReminders();
   showToast('提醒设置已保存');
 }
 
@@ -605,24 +620,59 @@ async function scheduleReminderNotifications() {
   if (enabled.length === 0) return;
 
   // Capacitor Android local notifications
-  if (window.Capacitor) {
+  const isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  if (isCapacitor) {
     try {
       const { LocalNotifications } = window.Capacitor.Plugins;
-      if (!LocalNotifications) return;
+      if (!LocalNotifications) {
+        console.warn('[Notifications] Capacitor LocalNotifications plugin not found. Run: npx cap sync android');
+        return;
+      }
 
       // Request permissions
-      const perm = await LocalNotifications.requestPermissions();
-      if (perm.display !== 'granted') return;
+      let perm;
+      try {
+        perm = await LocalNotifications.requestPermissions();
+      } catch (permErr) {
+        console.warn('[Notifications] Permission request failed:', permErr.message);
+        showToast('请在系统设置中允许通知权限');
+        return;
+      }
+      if (perm.display !== 'granted') {
+        console.warn('[Notifications] Permission denied:', perm.display);
+        showToast('请在系统设置中开启通知权限，否则无法收到打卡提醒');
+        return;
+      }
 
       // Cancel all existing scheduled notifications
-      const pending = await LocalNotifications.getPending();
-      if (pending.notifications.length > 0) {
-        await LocalNotifications.cancel({ notifications: pending.notifications });
+      try {
+        const pending = await LocalNotifications.getPending();
+        if (pending.notifications && pending.notifications.length > 0) {
+          await LocalNotifications.cancel({ notifications: pending.notifications });
+        }
+      } catch (cancelErr) {
+        console.warn('[Notifications] Cancel pending error:', cancelErr.message);
+      }
+
+      // Create notification channel (Android 8+)
+      try {
+        await LocalNotifications.createChannel({
+          id: 'clockin-reminders',
+          name: '打卡提醒',
+          description: '上班日历的打卡签到提醒',
+          importance: 5, // High
+          visibility: 1, // Public
+          sound: 'default',
+          vibration: true,
+          light: true
+        });
+      } catch (channelErr) {
+        console.warn('[Notifications] Create channel error:', channelErr.message);
       }
 
       // Schedule notifications for the next 7 days
       const notifications = [];
-      let notifId = 1;
+      let notifId = Date.now() % 10000; // Use timestamp to avoid ID conflicts
       const today = new Date();
 
       for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
@@ -649,26 +699,40 @@ async function scheduleReminderNotifications() {
             smallIcon: 'ic_launcher',
             largeIcon: 'ic_launcher_round',
             extra: { reminderId: r.id, date: dateStr },
-            channelId: 'clockin-reminders'
+            channelId: 'clockin-reminders',
+            actionTypeId: 'clockin-action'
           });
         }
       }
 
       if (notifications.length > 0) {
         await LocalNotifications.schedule({ notifications });
+        console.log('[Notifications] Scheduled', notifications.length, 'notifications for next 7 days');
+      } else {
+        console.log('[Notifications] All reminders already confirmed or past, nothing to schedule');
       }
     } catch (e) {
-      console.log('Capacitor notification scheduling error:', e);
+      console.error('[Notifications] Capacitor scheduling error:', e);
+      showToast('通知设置失败: ' + (e.message || '未知错误'));
     }
     return;
   }
 
-  // Web browser notifications
+  // Web browser notifications (Electron renderer / browser)
   if (!('Notification' in window)) return;
 
   if (Notification.permission === 'default') {
     Notification.requestPermission();
   }
+
+  // Also notify main process to schedule Electron native notifications
+  if (typeof window.calendarAPI?.saveReminders === 'function') {
+    // Reminders are already saved in Electron main process which handles notifications
+    return;
+  }
+
+  // Fallback: use Web Notification in browser
+  if (Notification.permission !== 'granted') return;
 
   reminderNotifTimer = setInterval(() => {
     if (Notification.permission !== 'granted') return;
@@ -682,17 +746,123 @@ async function scheduleReminderNotifications() {
       if (r.time !== currentTime) continue;
       if (isReminderConfirmed(r.id, todayStr)) continue;
 
-      const notif = new Notification('上班日历 · 打卡提醒', {
-        body: `⏰ ${r.label} (${r.time})`,
-        icon: 'assets/icon.png',
-        tag: 'reminder-' + r.id,
-        requireInteraction: true
-      });
+      try {
+        const notif = new Notification('上班日历 · 打卡提醒', {
+          body: `⏰ ${r.label} (${r.time})`,
+          icon: 'assets/icon.png',
+          tag: 'reminder-' + r.id,
+          requireInteraction: true
+        });
 
-      notif.onclick = () => {
-        window.focus();
-        switchView('clockin');
-      };
+        notif.onclick = () => {
+          window.focus();
+          switchView('clockin');
+        };
+      } catch (notifErr) {
+        console.warn('[Notifications] Web notification error:', notifErr.message);
+      }
+    }
+  }, 30000);
+}
+
+// --- Todo Reminders ---
+
+let todoRemindTimer = null;
+
+function scheduleTodoReminders() {
+  if (todoRemindTimer) clearInterval(todoRemindTimer);
+
+  const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
+  if (todosWithRemind.length === 0) return;
+
+  // Check every 30 seconds
+  todoRemindTimer = setInterval(() => {
+    const now = new Date();
+    const todayStr = getTodayStr();
+    const currentHh = String(now.getHours()).padStart(2, '0');
+    const currentMm = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${currentHh}:${currentMm}`;
+
+    for (const todo of todosWithRemind) {
+      if (todo.done) continue;
+
+      // Determine the target date and time for this todo
+      let targetDate = null;
+      let targetTime = todo.remindTime || '09:00';
+
+      if (todo.type === 'once') {
+        targetDate = todo.date;
+      } else if (todo.type === 'weekly') {
+        const weekday = now.getDay();
+        if ((todo.weekdays || []).includes(weekday)) {
+          targetDate = todayStr;
+        }
+      }
+
+      if (!targetDate || targetDate !== todayStr) continue;
+
+      // Calculate the remind time
+      const [th, tm] = targetTime.split(':').map(Number);
+      let remindMinutes = th * 60 + tm;
+      if (todo.remind !== 'same') {
+        remindMinutes -= parseInt(todo.remind) || 0;
+      }
+      if (remindMinutes < 0) remindMinutes = 0;
+
+      const remindH = Math.floor(remindMinutes / 60);
+      const remindM = remindMinutes % 60;
+      const remindTimeStr = `${String(remindH).padStart(2, '0')}:${String(remindM).padStart(2, '0')}`;
+
+      if (remindTimeStr !== currentTime) continue;
+
+      // Check if already reminded for this date
+      const remindKey = `todo-reminded-${todo.id}-${todayStr}`;
+      if (localStorage.getItem(remindKey)) continue;
+
+      // Mark as reminded
+      localStorage.setItem(remindKey, '1');
+
+      // Send notification
+      const isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+      if (isCapacitor) {
+        try {
+          const { LocalNotifications } = window.Capacitor.Plugins;
+          if (LocalNotifications) {
+            LocalNotifications.schedule({
+              notifications: [{
+                id: Date.now() % 100000,
+                title: '上班日历 · 待办提醒',
+                body: `📋 ${todo.text} (${targetTime})`,
+                schedule: { at: new Date() },
+                smallIcon: 'ic_launcher',
+                channelId: 'clockin-reminders'
+              }]
+            });
+          }
+        } catch (e) {
+          console.warn('[TodoRemind] Capacitor notification error:', e);
+        }
+      } else if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          const notif = new Notification('上班日历 · 待办提醒', {
+            body: `📋 ${todo.text} (${targetTime})`,
+            icon: 'assets/icon.png',
+            tag: 'todo-' + todo.id,
+            requireInteraction: true
+          });
+          notif.onclick = () => {
+            window.focus();
+            switchView('clockin');
+          };
+        } catch (e) {
+          console.warn('[TodoRemind] Web notification error:', e);
+        }
+      }
+
+      // Also notify Electron main process
+      if (window.calendarAPI?.notifyTodo) {
+        window.calendarAPI.notifyTodo(todo.text, targetTime);
+      }
     }
   }, 30000);
 }
@@ -1422,6 +1592,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderCalendar();
   setupEventListeners();
   scheduleReminderNotifications();
+  scheduleTodoReminders();
 
   // Init social (Supabase)
   if (typeof initSocial === 'function') initSocial();

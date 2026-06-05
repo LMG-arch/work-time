@@ -1,5 +1,15 @@
 {
   "appId": "com.workcalendar.app",
   "appName": "上班日历",
-  "webDir": "src"
+  "webDir": "src",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_launcher",
+      "iconColor": "#333333",
+      "sound": "default"
+    }
+  }
 }

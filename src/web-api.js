@@ -84,6 +84,11 @@
       return { success: true };
     },
 
+    // Todo notification (no-op on web, handled by renderer)
+    notifyTodo(text, time) {
+      // Web/Capacitor: notifications are handled directly in renderer.js
+    },
+
     // --- Export ---
     async exportData() {
       const store = getStore();

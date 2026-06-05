@@ -179,6 +179,21 @@
             <span class="wd-btn" data-wd="0">日</span>
           </div>
         </div>
+        <div id="todo-remind-row" class="modal-row">
+          <span class="modal-label">提醒</span>
+          <div class="todo-remind-picker">
+            <select id="todo-remind-select" class="lunar-select">
+              <option value="">不提醒</option>
+              <option value="same">准时提醒</option>
+              <option value="5">提前5分钟</option>
+              <option value="10">提前10分钟</option>
+              <option value="15">提前15分钟</option>
+              <option value="30">提前30分钟</option>
+              <option value="60">提前1小时</option>
+            </select>
+            <input id="todo-remind-time" type="time" class="modal-date-input" value="09:00">
+          </div>
+        </div>
         <div class="modal-actions">
           <button id="todo-modal-cancel" class="modal-btn cancel">取消</button>
           <button id="todo-modal-confirm" class="modal-btn confirm">确定</button>

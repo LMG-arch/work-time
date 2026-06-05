@@ -212,6 +212,26 @@ function registerIPC() {
     saveStore();
     return { success: true };
   });
+
+  // Todo notification from renderer
+  ipcMain.on('notify-todo', (_, text, time) => {
+    try {
+      const iconPath = path.join(__dirname, 'assets', 'icon.png');
+      const iconOpts = fs.existsSync(iconPath) ? { icon: iconPath } : {};
+      const notification = new Notification({
+        title: '上班日历 · 待办提醒',
+        body: `📋 ${text} (${time})`,
+        ...iconOpts
+      });
+      notification.on('click', () => {
+        if (win) { win.show(); win.focus(); }
+      });
+      notification.show();
+      console.log('[Main] Todo notification shown:', text, time);
+    } catch (e) {
+      console.error('[Main] Todo notification error:', e.message);
+    }
+  });
 }
 
 // --- Reminder notifications ---
@@ -223,10 +243,15 @@ function scheduleReminders() {
 
   const reminders = store.reminders || getDefaultReminders();
   const enabledReminders = reminders.filter(r => r.enabled);
-  if (enabledReminders.length === 0) return;
+  if (enabledReminders.length === 0) {
+    console.log('[Main] No enabled reminders');
+    return;
+  }
 
-  // Check every 30 seconds
-  const timer = setInterval(() => {
+  console.log('[Main] Scheduling reminders:', enabledReminders.map(r => r.label + '@' + r.time).join(', '));
+
+  // Also schedule immediately for current minute
+  function checkReminders() {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
@@ -239,26 +264,41 @@ function scheduleReminders() {
       const records = store.reminderRecords?.[todayStr]?.[r.id];
       if (records && records.confirmed) continue;
 
-      const notification = new Notification({
-        title: '上班日历 · 打卡提醒',
-        body: `⏰ ${r.label} (${r.time})\n点击确认打卡`,
-        icon: path.join(__dirname, 'assets', 'icon.png')
-      });
+      const iconPath = path.join(__dirname, 'assets', 'icon.png');
+      const iconOpts = fs.existsSync(iconPath) ? { icon: iconPath } : {};
 
-      notification.on('click', () => {
-        if (!store.reminderRecords) store.reminderRecords = {};
-        if (!store.reminderRecords[todayStr]) store.reminderRecords[todayStr] = {};
-        store.reminderRecords[todayStr][r.id] = { confirmed: true, at: new Date().toISOString() };
-        saveStore();
-        win.webContents.send('reminder-confirmed', { date: todayStr, reminderId: r.id });
-        win.show();
-        win.focus();
-      });
+      try {
+        const notification = new Notification({
+          title: '上班日历 · 打卡提醒',
+          body: `⏰ ${r.label} (${r.time})\n点击确认打卡`,
+          ...iconOpts
+        });
 
-      notification.show();
+        notification.on('click', () => {
+          if (!store.reminderRecords) store.reminderRecords = {};
+          if (!store.reminderRecords[todayStr]) store.reminderRecords[todayStr] = {};
+          store.reminderRecords[todayStr][r.id] = { confirmed: true, at: new Date().toISOString() };
+          saveStore();
+          if (win) {
+            win.webContents.send('reminder-confirmed', { date: todayStr, reminderId: r.id });
+            win.show();
+            win.focus();
+          }
+        });
+
+        notification.show();
+        console.log('[Main] Notification shown:', r.label, r.time);
+      } catch (notifErr) {
+        console.error('[Main] Notification error:', notifErr.message);
+      }
     }
-  }, 30000);
+  }
 
+  // Check now
+  checkReminders();
+
+  // Check every 30 seconds
+  const timer = setInterval(checkReminders, 30000);
   reminderTimers.push(timer);
 }
 
