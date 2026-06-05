@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>上班日历</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="social.css">
 </head>
 <body>
   <div class="app">
@@ -108,6 +109,23 @@
       </div>
     </div>
 
+    <!-- Social View -->
+    <div id="social-view" class="page-view" style="display:none;">
+      <div id="social-content" class="social-content"></div>
+    </div>
+
+    <!-- Post Modal -->
+    <div id="post-modal" class="modal">
+      <div class="post-modal-content">
+        <div class="modal-title">发布动态</div>
+        <textarea id="post-text-input" placeholder="分享你的心情..." rows="4"></textarea>
+        <div class="modal-actions">
+          <button id="post-modal-cancel" class="modal-btn cancel">取消</button>
+          <button id="post-modal-submit" class="modal-btn confirm">发布</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Todo Modal -->
     <div id="todo-modal" class="modal">
       <div class="modal-content">
@@ -168,13 +186,17 @@
     <div class="toolbar">
       <button id="todo-btn" class="tool-btn primary-btn" title="待办管理">📋 待办</button>
       <button id="clockin-btn" class="tool-btn primary-btn" title="打卡提醒">⏰ 打卡</button>
+      <button id="social-btn" class="tool-btn" title="好友圈">🌐 好友</button>
       <button id="stats-btn" class="tool-btn" title="月度统计">📊 统计</button>
       <button id="settings-btn" class="tool-btn" title="设置">⚙ 设置</button>
     </div>
   </div>
 
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="holidays.js"></script>
   <script src="web-api.js"></script>
+  <script src="supabase.js"></script>
+  <script src="social.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
