@@ -1589,20 +1589,79 @@ function setupEventListeners() {
     document.getElementById('diag-close').addEventListener('click', () => panel.remove());
   }
 
-  // Clear Supabase data (admin only - resets ALL users' data)
+  // Clear Supabase data (admin only - moves ALL data to recycle bin)
   (async () => {
     const clearBtn = document.getElementById('supabase-clear-btn');
     const clearHint = clearBtn?.nextElementSibling;
     if (await isAdmin()) {
       clearBtn.addEventListener('click', async () => {
-        if (!confirm('⚠️ 即将清除服务器上所有用户的云端数据！\n\n包括：所有帖子、点赞、评论、好友关系、个人资料\n\n此操作不可恢复！')) return;
+        if (!confirm('⚠️ 即将重置服务器上所有用户的云端数据！\n\n数据会移入回收站，可从回收站恢复。\n\n继续吗？')) return;
         if (!confirm('再次确认：真的要重置全部数据吗？')) return;
-        showToast('正在清除...');
+        showToast('正在重置...');
         const result = await clearAllSocialData();
         if (result.error) {
-          showToast('清除失败: ' + result.error);
+          showToast('重置失败: ' + result.error);
         } else {
-          showToast('全部数据已重置 ✓');
+          showToast('全部数据已移入回收站 ✓');
+          updateTrashStats();
+        }
+      });
+
+      // Add recycle bin section
+      const container = clearBtn.parentElement;
+      const trashSection = document.createElement('div');
+      trashSection.id = 'trash-section';
+      trashSection.style.cssText = 'margin-top:12px;border-top:1px solid var(--border);padding-top:12px;';
+      trashSection.innerHTML = `
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🗑️ 回收站</div>
+        <div id="trash-stats" class="settings-hint" style="margin-bottom:8px;">加载中...</div>
+        <div style="display:flex;gap:8px;">
+          <button id="trash-restore-btn" class="settings-action-btn" style="flex:1;">恢复全部数据</button>
+          <button id="trash-empty-btn" class="settings-action-btn" style="flex:1;color:#e53935;border-color:#e53935;">清空回收站</button>
+        </div>
+      `;
+      container.appendChild(trashSection);
+
+      async function updateTrashStats() {
+        const statsEl = document.getElementById('trash-stats');
+        if (!statsEl) return;
+        const stats = await getTrashStats();
+        if (!stats || stats.total === 0) {
+          statsEl.textContent = '回收站为空';
+          return;
+        }
+        const parts = [];
+        if (stats.profiles) parts.push(`${stats.profiles} 个用户`);
+        if (stats.posts) parts.push(`${stats.posts} 条动态`);
+        if (stats.comments) parts.push(`${stats.comments} 条评论`);
+        if (stats.likes) parts.push(`${stats.likes} 个点赞`);
+        if (stats.friendships) parts.push(`${stats.friendships} 条好友关系`);
+        statsEl.textContent = `共 ${stats.total} 条数据：${parts.join('、')}`;
+      }
+      updateTrashStats();
+
+      document.getElementById('trash-restore-btn').addEventListener('click', async () => {
+        if (!confirm('确定从回收站恢复所有数据？')) return;
+        showToast('正在恢复...');
+        const result = await restoreAllData();
+        if (result.error) {
+          showToast('恢复失败: ' + result.error);
+        } else {
+          showToast('数据已全部恢复 ✓');
+          updateTrashStats();
+        }
+      });
+
+      document.getElementById('trash-empty-btn').addEventListener('click', async () => {
+        if (!confirm('⚠️ 清空回收站后数据将永久删除，无法恢复！\n\n确定继续？')) return;
+        if (!confirm('再次确认：真的要永久删除吗？')) return;
+        showToast('正在清空...');
+        const result = await emptyTrash();
+        if (result.error) {
+          showToast('清空失败: ' + result.error);
+        } else {
+          showToast('回收站已清空');
+          updateTrashStats();
         }
       });
     } else {

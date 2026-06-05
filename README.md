@@ -53,6 +53,7 @@
 - 数据通过 Supabase 免费云服务同步
 - 图片通过 Supabase Storage 存储（免费1GB）
 - **管理员重置**：数字ID为1的用户可重置服务器全部数据（所有用户），其他用户不显示此功能
+- **回收站**：重置的数据移入回收站，管理员可恢复或永久删除
 
 ### 设置
 - 数据导出（JSON 格式）
@@ -117,7 +118,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   display_id SERIAL UNIQUE,
   nickname TEXT NOT NULL DEFAULT '',
   avatar TEXT DEFAULT '',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
 );
 
 -- 动态表
@@ -126,7 +128,8 @@ CREATE TABLE IF NOT EXISTS posts (
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   content TEXT NOT NULL DEFAULT '',
   image_url TEXT DEFAULT '',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
 );
 
 -- 点赞表
@@ -135,6 +138,7 @@ CREATE TABLE IF NOT EXISTS post_likes (
   post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
   UNIQUE(post_id, user_id)
 );
 
@@ -144,7 +148,8 @@ CREATE TABLE IF NOT EXISTS post_comments (
   post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
 );
 
 -- 好友关系表
@@ -154,6 +159,7 @@ CREATE TABLE IF NOT EXISTS friendships (
   friend_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
   UNIQUE(user_id, friend_id)
 );
 
@@ -192,39 +198,85 @@ CREATE POLICY "friendships_update" ON friendships FOR UPDATE USING (auth.uid() =
 CREATE POLICY "friendships_delete" ON friendships FOR DELETE
   USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
--- 创建索引提升查询速度
+-- 管理员重置函数（软删除，保留数据可恢复）
+CREATE OR REPLACE FUNCTION reset_all_data()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1) THEN
+    RAISE EXCEPTION '仅管理员可操作';
+  END IF;
+  UPDATE post_comments SET deleted_at = NOW() WHERE deleted_at IS NULL;
+  UPDATE post_likes SET deleted_at = NOW() WHERE deleted_at IS NULL;
+  UPDATE posts SET deleted_at = NOW() WHERE deleted_at IS NULL;
+  UPDATE friendships SET deleted_at = NOW() WHERE deleted_at IS NULL;
+  UPDATE profiles SET deleted_at = NOW() WHERE deleted_at IS NULL AND display_id != 1;
+END;
+$$;
+
+-- 管理员恢复函数
+CREATE OR REPLACE FUNCTION restore_all_data()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1) THEN
+    RAISE EXCEPTION '仅管理员可操作';
+  END IF;
+  UPDATE post_comments SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
+  UPDATE post_likes SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
+  UPDATE posts SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
+  UPDATE friendships SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
+  UPDATE profiles SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
+END;
+$$;
+
+-- 管理员清空回收站（永久删除）
+CREATE OR REPLACE FUNCTION empty_trash()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1) THEN
+    RAISE EXCEPTION '仅管理员可操作';
+  END IF;
+  DELETE FROM post_comments WHERE deleted_at IS NOT NULL;
+  DELETE FROM post_likes WHERE deleted_at IS NOT NULL;
+  DELETE FROM posts WHERE deleted_at IS NOT NULL;
+  DELETE FROM friendships WHERE deleted_at IS NOT NULL;
+  DELETE FROM profiles WHERE deleted_at IS NOT NULL;
+END;
+$$;
+
+-- 查询回收站统计
+CREATE OR REPLACE FUNCTION get_trash_stats()
+RETURNS TABLE(table_name text, count bigint)
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1) THEN
+    RAISE EXCEPTION '仅管理员可操作';
+  END IF;
+  RETURN QUERY SELECT 'profiles'::text, (SELECT COUNT(*) FROM profiles WHERE deleted_at IS NOT NULL);
+  RETURN QUERY SELECT 'posts'::text, (SELECT COUNT(*) FROM posts WHERE deleted_at IS NOT NULL);
+  RETURN QUERY SELECT 'comments'::text, (SELECT COUNT(*) FROM post_comments WHERE deleted_at IS NOT NULL);
+  RETURN QUERY SELECT 'likes'::text, (SELECT COUNT(*) FROM post_likes WHERE deleted_at IS NOT NULL);
+  RETURN QUERY SELECT 'friendships'::text, (SELECT COUNT(*) FROM friendships WHERE deleted_at IS NOT NULL);
+END;
+$$;
+
+-- 创建索引
 CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_time ON posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_likes_post ON post_likes(post_id);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_deleted ON profiles(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_posts_deleted ON posts(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_likes_deleted ON post_likes(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_comments_deleted ON post_comments(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_friendships_deleted ON friendships(deleted_at);
 
 -- 存储桶（用于帖子图片上传）
 INSERT INTO storage.buckets (id, name, public) VALUES ('post-images', 'post-images', true) ON CONFLICT (id) DO NOTHING;
 CREATE POLICY "post_images_select" ON storage.objects FOR SELECT USING (bucket_id = 'post-images');
 CREATE POLICY "post_images_insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'post-images');
 CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_id = 'post-images');
-
--- 管理员重置函数（绕过 RLS，仅数字ID=1的用户可调用）
-CREATE OR REPLACE FUNCTION reset_all_data()
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1
-  ) THEN
-    RAISE EXCEPTION '仅管理员可操作';
-  END IF;
-  DELETE FROM post_comments;
-  DELETE FROM post_likes;
-  DELETE FROM posts;
-  DELETE FROM friendships;
-  DELETE FROM profiles WHERE display_id != 1;
-END;
-$$;
 ```
 
 4. 点击右下角 **Run** 按钮执行
@@ -352,7 +404,9 @@ MIT
 ### v2.2 (2026-06-06)
 - 「清除云端数据」改为管理员专属功能：仅数字ID为1的用户可见
 - 重置范围从当前用户数据改为服务器全部数据（所有用户）
-- 通过 Supabase RPC 函数 `reset_all_data()` 绕过 RLS 执行，服务端校验管理员身份
+- 新增回收站功能：重置的数据自动移入回收站，管理员可一键恢复或永久删除
+- 通过 Supabase RPC 函数绕过 RLS 执行，服务端校验管理员身份
+- 所有查询自动过滤已删除数据（软删除 `deleted_at` 字段）
 
 ### v2.1 (2026-06-05)
 - 代码精简：移除冗余调用、未使用函数和变量

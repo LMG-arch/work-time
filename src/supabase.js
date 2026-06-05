@@ -84,7 +84,7 @@ async function ensureSession() {
 
 async function getProfile(userId) {
   if (!sb) return null;
-  const { data } = await sb.from('profiles').select('*').eq('id', userId).single();
+  const { data } = await sb.from('profiles').select('*').eq('id', userId).is('deleted_at', null).single();
   return data;
 }
 
@@ -180,6 +180,7 @@ async function getFeedPosts(limit = 20, offset = 0) {
   const { data: posts } = await sb.from('posts')
     .select('*')
     .in('user_id', friendIds)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -193,7 +194,7 @@ async function getFeedPosts(limit = 20, offset = 0) {
 
   // Get like counts and user likes
   const postIds = posts.map(p => p.id);
-  const { data: likes } = await sb.from('post_likes').select('post_id, user_id').in('post_id', postIds);
+  const { data: likes } = await sb.from('post_likes').select('post_id, user_id').in('post_id', postIds).is('deleted_at', null);
 
   const likeCounts = {};
   const userLikes = new Set();
@@ -205,7 +206,7 @@ async function getFeedPosts(limit = 20, offset = 0) {
   }
 
   // Get comment counts
-  const { data: comments } = await sb.from('post_comments').select('post_id').in('post_id', postIds);
+  const { data: comments } = await sb.from('post_comments').select('post_id').in('post_id', postIds).is('deleted_at', null);
   const commentCounts = {};
   if (comments) comments.forEach(c => { commentCounts[c.post_id] = (commentCounts[c.post_id] || 0) + 1; });
 
@@ -221,7 +222,7 @@ async function getFeedPosts(limit = 20, offset = 0) {
 async function deletePost(postId) {
   const user = await getCurrentUser();
   if (!user) return false;
-  const { error } = await sb.from('posts').delete().eq('id', postId).eq('user_id', user.id);
+  const { error } = await sb.from('posts').update({ deleted_at: new Date().toISOString() }).eq('id', postId).eq('user_id', user.id);
   return !error;
 }
 
@@ -230,7 +231,7 @@ async function deletePost(postId) {
 async function toggleLike(postId) {
   const user = await getCurrentUser();
   if (!user) return false;
-  const { data: existing } = await sb.from('post_likes').select('id').eq('post_id', postId).eq('user_id', user.id).maybeSingle();
+  const { data: existing } = await sb.from('post_likes').select('id').eq('post_id', postId).eq('user_id', user.id).is('deleted_at', null).maybeSingle();
   if (existing) {
     await sb.from('post_likes').delete().eq('id', existing.id);
     return false; // unliked
@@ -246,6 +247,7 @@ async function getComments(postId) {
   const { data: comments } = await sb.from('post_comments')
     .select('*')
     .eq('post_id', postId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: true });
 
   if (!comments || comments.length === 0) return [];
@@ -278,7 +280,8 @@ async function getFriendIds() {
   const { data } = await sb.from('friendships')
     .select('user_id, friend_id')
     .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
-    .eq('status', 'accepted');
+    .eq('status', 'accepted')
+    .is('deleted_at', null);
   if (!data) return [];
   return data.map(f => f.user_id === user.id ? f.friend_id : f.user_id);
 }
@@ -296,7 +299,8 @@ async function getFriendRequests() {
   const { data } = await sb.from('friendships')
     .select('*')
     .eq('friend_id', user.id)
-    .eq('status', 'pending');
+    .eq('status', 'pending')
+    .is('deleted_at', null);
   if (!data || data.length === 0) return [];
 
   const userIds = data.map(f => f.user_id);
@@ -346,7 +350,7 @@ async function removeFriend(friendId) {
 
 async function getProfileByUserId(userId) {
   if (!sb) return null;
-  const { data } = await sb.from('profiles').select('id, nickname, avatar').eq('id', userId).single();
+  const { data } = await sb.from('profiles').select('id, nickname, avatar').eq('id', userId).is('deleted_at', null).single();
   return data;
 }
 
@@ -355,7 +359,7 @@ async function getProfileByDisplayId(displayId) {
   if (!sb) return null;
   const numId = parseInt(displayId, 10);
   if (isNaN(numId)) return null;
-  const { data } = await sb.from('profiles').select('id, nickname, avatar, display_id').eq('display_id', numId).maybeSingle();
+  const { data } = await sb.from('profiles').select('id, nickname, avatar, display_id').eq('display_id', numId).is('deleted_at', null).maybeSingle();
   return data;
 }
 
@@ -389,4 +393,33 @@ async function clearAllSocialData() {
   } catch {}
 
   return { error: null };
+}
+
+// ===== Recycle Bin =====
+
+async function getTrashStats() {
+  if (!sb) return null;
+  const { data, error } = await sb.rpc('get_trash_stats');
+  if (error) return null;
+  const stats = {};
+  let total = 0;
+  if (data) data.forEach(r => { stats[r.table_name] = Number(r.count); total += Number(r.count); });
+  stats.total = total;
+  return stats;
+}
+
+async function restoreAllData() {
+  if (!sb) return { error: '未连接' };
+  const user = await ensureSession();
+  if (!user) return { error: '未登录' };
+  const { error } = await sb.rpc('restore_all_data');
+  return { error: error ? error.message : null };
+}
+
+async function emptyTrash() {
+  if (!sb) return { error: '未连接' };
+  const user = await ensureSession();
+  if (!user) return { error: '未登录' };
+  const { error } = await sb.rpc('empty_trash');
+  return { error: error ? error.message : null };
 }
