@@ -172,6 +172,25 @@
           </div>
         </div>
         <div class="settings-group">
+          <div class="settings-group-title">好友圈服务配置</div>
+          <div class="settings-hint">在 <a href="https://supabase.com" target="_blank">supabase.com</a> 免费注册，创建项目后填入以下信息</div>
+          <div class="settings-field">
+            <label>Project URL</label>
+            <input id="supabase-url-input" class="settings-input" placeholder="https://xxx.supabase.co">
+          </div>
+          <div class="settings-field">
+            <label>Anon Key</label>
+            <input id="supabase-key-input" class="settings-input" placeholder="sb_publishable_xxx 或 eyJxxx">
+          </div>
+          <div class="settings-btn-row">
+            <button id="supabase-save-btn" class="settings-action-btn">💾 保存配置</button>
+            <button id="supabase-test-btn" class="settings-action-btn">🔍 测试连接</button>
+          </div>
+          <div class="settings-hint" style="margin-top:8px;">
+            首次配置后需在 Supabase SQL Editor 执行 <b>supabase-setup.sql</b> 创建数据表
+          </div>
+        </div>
+        <div class="settings-group">
           <div class="settings-group-title">主题风格</div>
           <div id="settings-theme-grid" class="theme-grid"></div>
         </div>

@@ -1,12 +1,23 @@
 // Supabase client and API
-const SUPABASE_URL = 'https://zskisngjercopqagrnfz.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_jZcjtmEXX9ZhFP5uygEnZw_MrUwRsbs';
-
 let sb = null;
 
+function getSupabaseConfig() {
+  try {
+    const raw = localStorage.getItem('supabase-config');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { url: '', key: '' };
+}
+
+function saveSupabaseConfig(url, key) {
+  localStorage.setItem('supabase-config', JSON.stringify({ url, key }));
+}
+
 function initSupabase() {
+  const config = getSupabaseConfig();
+  if (!config.url || !config.key) return null;
   if (window.supabase && window.supabase.createClient) {
-    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    sb = window.supabase.createClient(config.url, config.key);
   }
   return sb;
 }

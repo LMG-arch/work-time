@@ -87,12 +87,14 @@
     // --- Export ---
     async exportData() {
       const store = getStore();
-      // Include reminders and records in export
+      // Include reminders, records, and supabase config in export
       let reminders = null;
       let reminderRecords = {};
+      let supabaseConfig = null;
       try { reminders = JSON.parse(localStorage.getItem('calendar-reminders')); } catch {}
       try { reminderRecords = JSON.parse(localStorage.getItem('calendar-reminder-records')) || {}; } catch {}
-      const exportData = { ...store, reminders, reminderRecords };
+      try { supabaseConfig = JSON.parse(localStorage.getItem('supabase-config')); } catch {}
+      const exportData = { ...store, reminders, reminderRecords, supabaseConfig };
       const json = JSON.stringify(exportData, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -132,6 +134,9 @@
             }
             if (imported.reminderRecords) {
               localStorage.setItem('calendar-reminder-records', JSON.stringify(imported.reminderRecords));
+            }
+            if (imported.supabaseConfig) {
+              localStorage.setItem('supabase-config', JSON.stringify(imported.supabaseConfig));
             }
             resolve({ success: true });
           } catch {
