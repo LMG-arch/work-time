@@ -194,7 +194,7 @@ CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
 
 1. 在 Supabase Dashboard 左侧菜单，点击 **Authentication**
 2. 点击 **Providers** 选项卡
-3. 找到 **Anonymous Sign-In**，将开关**打开**
+3. 找到 **Allow anonymous sign-ins**，将开关**打开**
 4. 点击 **Save** 保存
 
 ### 第六步：在 App 中配置
@@ -221,7 +221,7 @@ CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
 - Supabase 免费额度：50,000 月活用户、500MB 数据库，日常使用完全够用
 - Anon Key 是公开密钥，安全的，不会泄露数据（有行级安全策略保护）
 - 一个 Supabase 项目可以多人共用，每个人只需要在 App 里填相同的 URL 和 Key
-- 需要开启 **Anonymous Sign-In**，否则无法登录和发帖
+- 需要开启 **Allow anonymous sign-ins**，否则无法登录和发帖
 - 如果之前已创建数据库但没有 `display_id` 字段，执行：`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_id SERIAL UNIQUE;`
 
 ---
