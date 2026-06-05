@@ -92,22 +92,48 @@ async function updateProfile(updates) {
 
 // ===== Posts =====
 
+// Compress image: max width 1200px, JPEG quality 0.7
+function compressImage(file, maxWidth = 1200, quality = 0.7) {
+  return new Promise((resolve) => {
+    // Skip small files (< 200KB)
+    if (file.size < 200 * 1024) { resolve(file); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => {
+          if (blob && blob.size < file.size) {
+            resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+          } else {
+            resolve(file); // compression didn't help, use original
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // Upload image to Supabase Storage, return public URL
 async function uploadPostImage(file) {
   if (!sb) { console.error('[Upload] sb is null'); return null; }
   const user = await ensureSession();
   if (!user) { console.error('[Upload] no user'); return null; }
-  const ext = file.name.split('.').pop() || 'jpg';
-  const path = `${Date.now()}.${ext}`;
-  console.log('[Upload] uploading to path:', path, 'size:', file.size);
-  const { data, error } = await sb.storage.from('post-images').upload(path, file, { upsert: true });
+  const compressed = await compressImage(file);
+  console.log('[Upload] original:', file.size, 'compressed:', compressed.size);
+  const path = `${Date.now()}.jpg`;
+  const { data, error } = await sb.storage.from('post-images').upload(path, compressed, { upsert: true });
   if (error) {
-    console.error('[Upload] upload error:', JSON.stringify(error));
+    console.error('[Upload] error:', JSON.stringify(error));
     return null;
   }
-  console.log('[Upload] upload success:', data);
   const urlData = sb.storage.from('post-images').getPublicUrl(path);
-  console.log('[Upload] public URL:', urlData.data.publicUrl);
   return urlData.data.publicUrl;
 }
 
