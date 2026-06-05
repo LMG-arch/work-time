@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上班日历</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <div class="calendar-header">
+      <button id="prev-month" class="nav-btn">&lt;</button>
+      <span id="month-label" class="month-label"></span>
+      <button id="next-month" class="nav-btn">&gt;</button>
+      <button id="today-btn" class="today-btn">今天</button>
+    </div>
+
+    <!-- Calendar View -->
+    <div id="calendar-view" class="page-view">
+      <div class="weekday-row">
+        <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+      </div>
+      <div id="calendar-grid" class="calendar-grid"></div>
+      <div id="detail-panel" class="detail-panel">
+        <div id="detail-date" class="detail-date"></div>
+        <div class="status-row">
+          <button class="status-btn" data-status="work">上班</button>
+          <button class="status-btn" data-status="rest">休息</button>
+          <button class="status-btn" data-status="trip">出差</button>
+        </div>
+        <div class="color-row">
+          <span class="color-label">标记颜色</span>
+          <div class="color-options">
+            <span class="color-dot" data-color="" title="无颜色"></span>
+            <span class="color-dot" data-color="#ffcdd2" title="红色" style="background:#ffcdd2"></span>
+            <span class="color-dot" data-color="#c8e6c9" title="绿色" style="background:#c8e6c9"></span>
+            <span class="color-dot" data-color="#bbdefb" title="蓝色" style="background:#bbdefb"></span>
+            <span class="color-dot" data-color="#fff9c4" title="黄色" style="background:#fff9c4"></span>
+            <span class="color-dot" data-color="#e1bee7" title="紫色" style="background:#e1bee7"></span>
+            <span class="color-dot" data-color="#ffe0b2" title="橙色" style="background:#ffe0b2"></span>
+            <span class="color-dot" data-color="#b2dfdb" title="青色" style="background:#b2dfdb"></span>
+          </div>
+        </div>
+        <div class="tag-section">
+          <div id="tag-list" class="tag-list"></div>
+          <div class="tag-input-row">
+            <input id="tag-input" type="text" placeholder="添加标签，回车确认" maxlength="10">
+            <button id="tag-add-btn" class="tag-add-btn">+</button>
+          </div>
+          <div class="tag-quick">
+            <span class="quick-tag" data-tag="加班">加班</span>
+            <span class="quick-tag" data-tag="迟到">迟到</span>
+            <span class="quick-tag" data-tag="早退">早退</span>
+            <span class="quick-tag" data-tag="会议">会议</span>
+            <span class="quick-tag" data-tag="培训">培训</span>
+            <span class="quick-tag" data-tag="请假">请假</span>
+          </div>
+        </div>
+        <div class="todo-section">
+          <div class="todo-header-row">
+            <span class="todo-title">待办</span>
+            <button id="todo-add-btn" class="todo-add-btn">+ 添加待办</button>
+          </div>
+          <div id="todo-list" class="todo-list"></div>
+        </div>
+        <div class="note-section">
+          <textarea id="note-input" placeholder="备注今天做了什么..." rows="3"></textarea>
+          <button id="save-note-btn" class="save-btn">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats View -->
+    <div id="stats-view" class="page-view" style="display:none;">
+      <div id="stats-content" class="stats-content"></div>
+    </div>
+
+    <!-- Todo View -->
+    <div id="todo-view" class="page-view" style="display:none;">
+      <div id="todo-view-content" class="todo-view-content"></div>
+    </div>
+
+    <!-- Clock-in View -->
+    <div id="clockin-view" class="page-view" style="display:none;">
+      <div class="clockin-view-content">
+        <div class="clockin-header-row">
+          <div class="clockin-today-label" id="clockin-today-label"></div>
+          <button id="clockin-settings-btn" class="clockin-settings-btn" title="提醒设置">⚙</button>
+        </div>
+        <div id="clockin-today-reminders" class="clockin-today-reminders"></div>
+        <div class="clockin-history-section">
+          <div class="clockin-history-title">打卡记录</div>
+          <div id="clockin-history" class="clockin-history"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reminder Settings Modal -->
+    <div id="reminder-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-title">打卡提醒设置</div>
+        <div class="reminder-settings-list" id="reminder-settings-list"></div>
+        <div class="modal-actions">
+          <button id="reminder-modal-cancel" class="modal-btn cancel">取消</button>
+          <button id="reminder-modal-save" class="modal-btn confirm">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Todo Modal -->
+    <div id="todo-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-title">添加待办</div>
+        <input id="todo-text-input" type="text" placeholder="待办内容" maxlength="50" class="modal-input">
+        <div class="modal-row">
+          <span class="modal-label">类型</span>
+          <div class="modal-type-btns">
+            <button class="type-btn active" data-type="once">指定日期</button>
+            <button class="type-btn" data-type="weekly">每周重复</button>
+          </div>
+        </div>
+        <div id="todo-once-row" class="modal-row">
+          <span class="modal-label">日期</span>
+          <input id="todo-date-input" type="date" class="modal-date-input">
+        </div>
+        <div id="todo-weekly-row" class="modal-row" style="display:none">
+          <span class="modal-label">重复</span>
+          <div class="weekday-picker">
+            <span class="wd-btn" data-wd="1">一</span>
+            <span class="wd-btn" data-wd="2">二</span>
+            <span class="wd-btn" data-wd="3">三</span>
+            <span class="wd-btn" data-wd="4">四</span>
+            <span class="wd-btn" data-wd="5">五</span>
+            <span class="wd-btn" data-wd="6">六</span>
+            <span class="wd-btn" data-wd="0">日</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="todo-modal-cancel" class="modal-btn cancel">取消</button>
+          <button id="todo-modal-confirm" class="modal-btn confirm">确定</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button id="todo-btn" class="tool-btn" title="待办管理">待办</button>
+      <button id="clockin-btn" class="tool-btn" title="打卡提醒">打卡</button>
+      <button id="stats-btn" class="tool-btn" title="月度统计">统计</button>
+      <button id="export-btn" class="tool-btn" title="导出数据">导出</button>
+      <button id="import-btn" class="tool-btn" title="导入数据">导入</button>
+      <button id="auto-launch-btn" class="tool-btn toggle-btn" title="开机自启">开机自启</button>
+    </div>
+  </div>
+
+  <script src="holidays.js"></script>
+  <script src="web-api.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

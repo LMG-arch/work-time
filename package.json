@@ -1,0 +1,21 @@
+{
+  "name": "work-calendar",
+  "version": "1.0.0",
+  "description": "上班日历 - 桌面日历小程序",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-packager . WorkCalendar --platform=win32 --arch=x64 --out=dist --overwrite && node set-icon.js"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-packager": "^17.1.2",
+    "resedit": "^3.0.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/local-notifications": "^8.2.0"
+  }
+}

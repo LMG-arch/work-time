@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\" npm install)",
+      "Bash(npm start *)",
+      "Bash(node -e ' *)",
+      "Bash(taskkill //F //IM electron.exe)",
+      "Bash(npm run *)",
+      "Bash(ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\" npm run build)",
+      "Bash(taskkill //F //IM \"上班日历.exe\")",
+      "Bash(rm -rf \"D:/ai/上班日历/dist\")",
+      "Bash(ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\" npm run build:dir)",
+      "Bash(rm -rf dist)",
+      "Bash(ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\" npx electron-packager . \"上班日历\" --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico)",
+      "Bash(ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\" npx electron-packager . \"WorkCalendar\" --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico)",
+      "Bash(ELECTRON_MIRROR=\"https://npmmirror.com/mirrors/electron/\" npx electron-packager . \"WorkCalendar\" --platform=win32 --arch=x64 --out=dist --overwrite --no-prune)",
+      "Bash(\"D:/ai/上班日历/dist/WorkCalendar-win32-x64/WorkCalendar.exe\")",
+      "Bash(taskkill //F //IM WorkCalendar.exe)",
+      "Bash(npx rcedit *)",
+      "Bash(node_modules/rcedit/bin/rcedit-x64.exe \"dist/WorkCalendar-win32-x64/WorkCalendar.exe\" --set-icon \"assets/icon.ico\" --set-version-string FileDescription \"上班日历\" --set-version-string ProductName \"上班日历\" --set-file-version \"1.0.0\" --set-product-version \"1.0.0\")",
+      "Bash(cp \"dist/WorkCalendar-win32-x64/WorkCalendar.exe\" /tmp/wc.exe)",
+      "Bash(node_modules/rcedit/bin/rcedit-x64.exe /tmp/wc.exe --set-icon \"assets/icon.ico\")",
+      "Bash(cp /tmp/wc.exe \"dist/WorkCalendar-win32-x64/WorkCalendar.exe\")",
+      "Bash(node set-icon.js)",
+      "Bash(node -e \"const m = require\\('resedit'\\); console.log\\(Object.keys\\(m\\)\\)\")",
+      "Bash(node *)",
+      "Bash(npx cap *)",
+      "Read(//c/Users/21641/AppData/Local/Android/Sdk/**)",
+      "Read(//c/Program Files/**)",
+      "Bash(export ANDROID_HOME=\"/c/Users/21641/AppData/Local/Android/Sdk\")",
+      "Bash(gradle --version)",
+      "Bash(java -version)",
+      "Read(//c/Users/21641/**)",
+      "Bash(\"/c/Program Files/Java/jdk-17.0.12+7/bin/java\" -version)",
+      "Bash(npm uninstall *)",
+      "Bash(export ANDROID_HOME=\"C:\\\\\\\\Users\\\\\\\\21641\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Android\\\\\\\\Sdk\")",
+      "Bash(curl -L -o \"/tmp/jdk21.zip\" \"https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk\")"
+    ]
+  }
+}
