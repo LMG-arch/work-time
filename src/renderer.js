@@ -871,16 +871,20 @@ function switchView(view) {
   document.getElementById('todo-view').style.display = view === 'todo' ? '' : 'none';
   document.getElementById('clockin-view').style.display = view === 'clockin' ? '' : 'none';
   document.getElementById('settings-view').style.display = view === 'settings' ? '' : 'none';
+  document.getElementById('social-view').style.display = view === 'social' ? '' : 'none';
   document.getElementById('stats-btn').textContent = view === 'stats' ? '📊 日历' : '📊 统计';
   document.getElementById('todo-btn').textContent = view === 'todo' ? '📋 日历' : '📋 待办';
   const clockinBtn = document.getElementById('clockin-btn');
   if (clockinBtn) clockinBtn.textContent = view === 'clockin' ? '⏰ 日历' : '⏰ 打卡';
   const settingsBtn = document.getElementById('settings-btn');
   if (settingsBtn) settingsBtn.textContent = view === 'settings' ? '⚙ 日历' : '⚙ 设置';
+  const socialBtn = document.getElementById('social-btn');
+  if (socialBtn) socialBtn.textContent = view === 'social' ? '🌐 日历' : '🌐 好友';
   if (view === 'stats') renderStats();
   if (view === 'todo') renderTodoView();
   if (view === 'clockin') renderClockinView();
   if (view === 'settings') renderSettingsView();
+  if (view === 'social') renderSocialView();
 }
 
 // --- Stats ---
@@ -1035,6 +1039,7 @@ async function changeMonth(delta) {
   if (currentView === 'calendar') renderCalendar();
   else if (currentView === 'stats') renderStats();
   else if (currentView === 'todo') renderTodoView();
+  else if (currentView === 'social') {} // no reload needed
   else renderClockinView();
 }
 
@@ -1152,6 +1157,14 @@ function setupEventListeners() {
     }
   });
 
+  // Social view
+  document.getElementById('social-btn').addEventListener('click', () => {
+    switchView(currentView === 'calendar' ? 'social' : 'calendar');
+  });
+
+  document.getElementById('post-modal-cancel').addEventListener('click', closePostModal);
+  document.getElementById('post-modal-submit').addEventListener('click', submitPost);
+
   // Clock-in settings
   document.getElementById('clockin-settings-btn').addEventListener('click', openReminderSettings);
   document.getElementById('reminder-modal-cancel').addEventListener('click', closeReminderSettings);
@@ -1186,6 +1199,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderCalendar();
   setupEventListeners();
   scheduleReminderNotifications();
+
+  // Init social (Supabase)
+  if (typeof initSocial === 'function') initSocial();
 
   // Listen for reminder confirmations from Electron main process
   if (window.calendarAPI.onReminderConfirmed) {
