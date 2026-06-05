@@ -1589,18 +1589,27 @@ function setupEventListeners() {
     document.getElementById('diag-close').addEventListener('click', () => panel.remove());
   }
 
-  // Clear Supabase data (current user only)
-  document.getElementById('supabase-clear-btn').addEventListener('click', async () => {
-    if (!confirm('确定清除你的好友圈数据？\n\n包括：你的帖子、点赞、评论、好友关系、个人资料\n\n此操作不可恢复！')) return;
-    if (!confirm('再次确认：真的要清除吗？')) return;
-    showToast('正在清除...');
-    const result = await clearAllSocialData();
-    if (result.error) {
-      showToast('清除失败: ' + result.error);
+  // Clear Supabase data (admin only - resets ALL users' data)
+  (async () => {
+    const clearBtn = document.getElementById('supabase-clear-btn');
+    const clearHint = clearBtn?.nextElementSibling;
+    if (await isAdmin()) {
+      clearBtn.addEventListener('click', async () => {
+        if (!confirm('⚠️ 即将清除服务器上所有用户的云端数据！\n\n包括：所有帖子、点赞、评论、好友关系、个人资料\n\n此操作不可恢复！')) return;
+        if (!confirm('再次确认：真的要重置全部数据吗？')) return;
+        showToast('正在清除...');
+        const result = await clearAllSocialData();
+        if (result.error) {
+          showToast('清除失败: ' + result.error);
+        } else {
+          showToast('全部数据已重置 ✓');
+        }
+      });
     } else {
-      showToast('数据已清除 ✓');
+      if (clearBtn) clearBtn.style.display = 'none';
+      if (clearHint) clearHint.style.display = 'none';
     }
-  });
+  })();
 
   // Clock-in settings
   document.getElementById('clockin-settings-btn').addEventListener('click', openReminderSettings);

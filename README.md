@@ -52,6 +52,7 @@
 - 个人主页，简单数字ID分享（从1开始）
 - 数据通过 Supabase 免费云服务同步
 - 图片通过 Supabase Storage 存储（免费1GB）
+- **管理员重置**：数字ID为1的用户可重置服务器全部数据（所有用户），其他用户不显示此功能
 
 ### 设置
 - 数据导出（JSON 格式）
@@ -204,6 +205,26 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('post-images', 'post-imag
 CREATE POLICY "post_images_select" ON storage.objects FOR SELECT USING (bucket_id = 'post-images');
 CREATE POLICY "post_images_insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'post-images');
 CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_id = 'post-images');
+
+-- 管理员重置函数（绕过 RLS，仅数字ID=1的用户可调用）
+CREATE OR REPLACE FUNCTION reset_all_data()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1
+  ) THEN
+    RAISE EXCEPTION '仅管理员可操作';
+  END IF;
+  DELETE FROM post_comments;
+  DELETE FROM post_likes;
+  DELETE FROM posts;
+  DELETE FROM friendships;
+  DELETE FROM profiles WHERE display_id != 1;
+END;
+$$;
 ```
 
 4. 点击右下角 **Run** 按钮执行
@@ -327,6 +348,11 @@ MIT
 ---
 
 ## 更新日志
+
+### v2.2 (2026-06-06)
+- 「清除云端数据」改为管理员专属功能：仅数字ID为1的用户可见
+- 重置范围从当前用户数据改为服务器全部数据（所有用户）
+- 通过 Supabase RPC 函数 `reset_all_data()` 绕过 RLS 执行，服务端校验管理员身份
 
 ### v2.1 (2026-06-05)
 - 代码精简：移除冗余调用、未使用函数和变量

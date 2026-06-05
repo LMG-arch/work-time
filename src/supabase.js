@@ -359,49 +359,34 @@ async function getProfileByDisplayId(displayId) {
   return data;
 }
 
+// ===== Admin =====
+
+async function isAdmin() {
+  const user = await getCurrentUser();
+  if (!user) return false;
+  const profile = await getProfile(user.id);
+  return profile && profile.display_id === 1;
+}
+
 // ===== Data Cleanup =====
 
 async function clearAllSocialData() {
   if (!sb) return { error: '未连接' };
   const user = await ensureSession();
   if (!user) return { error: '未登录' };
-  const uid = user.id;
-  const errors = [];
 
-  // Delete own posts (comments and likes on own posts cascade)
-  const { data: myPosts } = await sb.from('posts').select('id').eq('user_id', uid);
-  if (myPosts && myPosts.length > 0) {
-    const postIds = myPosts.map(p => p.id);
-    await sb.from('post_comments').delete().in('post_id', postIds);
-    await sb.from('post_likes').delete().in('post_id', postIds);
-    const { error } = await sb.from('posts').delete().eq('user_id', uid);
-    if (error) errors.push('posts: ' + error.message);
-  }
+  // Call server-side function (bypasses RLS, admin check inside)
+  const { error } = await sb.rpc('reset_all_data');
+  if (error) return { error: error.message };
 
-  // Delete own likes on others' posts
-  await sb.from('post_likes').delete().eq('user_id', uid);
-
-  // Delete own comments on others' posts
-  await sb.from('post_comments').delete().eq('user_id', uid);
-
-  // Delete friendships (both directions)
-  await sb.from('friendships').delete().eq('user_id', uid);
-  await sb.from('friendships').delete().eq('friend_id', uid);
-
-  // Delete own profile
-  const { error: profErr } = await sb.from('profiles').delete().eq('id', uid);
-  if (profErr) errors.push('profiles: ' + profErr.message);
-
-  // Delete own storage files
+  // Delete ALL storage files
   try {
-    const { data: files } = await sb.storage.from('post-images').list(uid);
+    const { data: files } = await sb.storage.from('post-images').list('');
     if (files && files.length > 0) {
-      const paths = files.map(f => `${uid}/${f.name}`);
+      const paths = files.map(f => f.name);
       await sb.storage.from('post-images').remove(paths);
     }
   } catch {}
 
-  // Reset local state
-  _currentUserId = null;
-  return errors.length > 0 ? { error: errors.join('; ') } : { error: null };
+  return { error: null };
 }

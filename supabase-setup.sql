@@ -83,6 +83,28 @@ CREATE POLICY "friendships_update" ON friendships FOR UPDATE
 CREATE POLICY "friendships_delete" ON friendships FOR DELETE
   USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
+-- 管理员重置函数（绕过 RLS，仅 display_id=1 可调用）
+CREATE OR REPLACE FUNCTION reset_all_data()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- 检查调用者是否是管理员（display_id = 1）
+  IF NOT EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1
+  ) THEN
+    RAISE EXCEPTION '仅管理员可操作';
+  END IF;
+
+  DELETE FROM post_comments;
+  DELETE FROM post_likes;
+  DELETE FROM posts;
+  DELETE FROM friendships;
+  DELETE FROM profiles WHERE display_id != 1;  -- 保留管理员自己的资料
+END;
+$$;
+
 -- 索引
 CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_time ON posts(created_at DESC);
