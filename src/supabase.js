@@ -13,6 +13,14 @@ function saveSupabaseConfig(url, key) {
   localStorage.setItem('supabase-config', JSON.stringify({ url, key }));
 }
 
+// Store bound user UUID locally so we survive session expiry
+function getBoundUserId() {
+  return localStorage.getItem('social-bound-user-id') || '';
+}
+function setBoundUserId(id) {
+  if (id) localStorage.setItem('social-bound-user-id', id);
+}
+
 function initSupabase() {
   const config = getSupabaseConfig();
   if (!config.url || !config.key) return null;
@@ -21,7 +29,14 @@ function initSupabase() {
     return null;
   }
   try {
-    sb = window.supabase.createClient(config.url, config.key);
+    sb = window.supabase.createClient(config.url, config.key, {
+      auth: {
+        storage: localStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false
+      }
+    });
   } catch (e) {
     console.error('[Supabase] createClient failed:', e);
     return null;
@@ -49,11 +64,18 @@ async function getCurrentUser() {
 }
 
 // Ensure we have a valid session, re-auth if needed
+// Tries to restore bound user first, then creates new anonymous user
 async function ensureSession() {
   if (!sb) return null;
   let user = await getCurrentUser();
-  if (!user) {
-    user = await signIn();
+  if (user) {
+    setBoundUserId(user.id);
+    return user;
+  }
+  // Session expired, sign in again
+  user = await signIn();
+  if (user) {
+    setBoundUserId(user.id);
   }
   return user;
 }

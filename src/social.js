@@ -499,10 +499,32 @@ async function initSocial() {
   }
   if (!sb) return;
 
-  // Try to restore session
-  const user = await getCurrentUser();
+  // Try to restore session (Supabase auto-restores from localStorage)
+  let user = await getCurrentUser();
+
   if (!user) {
-    await signIn();
+    // No valid session, try to restore from Supabase stored session
+    try {
+      const { data } = await sb.auth.getSession();
+      if (data.session && data.session.user) {
+        user = data.session.user;
+        console.log('[Social] Restored session for user:', user.id.slice(0, 8));
+      }
+    } catch (e) {
+      console.log('[Social] Session restore failed:', e.message);
+    }
   }
-  await ensureUserId();
+
+  if (!user) {
+    // All restore attempts failed, create new anonymous user
+    user = await signIn();
+    if (user) {
+      console.log('[Social] New anonymous user created:', user.id.slice(0, 8));
+    }
+  }
+
+  if (user) {
+    setBoundUserId(user.id);
+    _currentUserId = user.id;
+  }
 }
