@@ -34,7 +34,10 @@
       "Bash(\"/c/Program Files/Java/jdk-17.0.12+7/bin/java\" -version)",
       "Bash(npm uninstall *)",
       "Bash(export ANDROID_HOME=\"C:\\\\\\\\Users\\\\\\\\21641\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Android\\\\\\\\Sdk\")",
-      "Bash(curl -L -o \"/tmp/jdk21.zip\" \"https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk\")"
+      "Bash(curl -L -o \"/tmp/jdk21.zip\" \"https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk\")",
+      "Bash(gh auth *)",
+      "Bash(./gradlew assembleRelease)",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Java/jdk-21.0.11+10\")"
     ]
   }
 }

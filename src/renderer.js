@@ -43,7 +43,9 @@ function getFirstDayOfWeek(year, month) {
 }
 
 function updateMonthLabel() {
+  const lunar = Lunar.getMonthLunarInfo(currentYear, currentMonth);
   document.getElementById('month-label').textContent = `${currentYear}年${currentMonth + 1}月`;
+  document.getElementById('month-lunar-label').textContent = `${lunar.ganZhi}${lunar.animal}年 ${lunar.monthName}`;
 }
 
 function getDayData(dateStr) {
@@ -125,6 +127,51 @@ function renderTodoList(dateStr) {
 
 // --- Todo Modal ---
 
+function initLunarSelects() {
+  const monthSel = document.getElementById('todo-lunar-month');
+  const daySel = document.getElementById('todo-lunar-day');
+  monthSel.innerHTML = '';
+  for (let m = 1; m <= 12; m++) {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = Lunar.MonthCN[m - 1] + '月';
+    monthSel.appendChild(opt);
+  }
+  updateLunarDays();
+  monthSel.addEventListener('change', updateLunarDays);
+}
+
+function updateLunarDays() {
+  const daySel = document.getElementById('todo-lunar-day');
+  const month = parseInt(document.getElementById('todo-lunar-month').value);
+  const year = currentYear;
+  // 农历每月最多30天，闰月需额外计算
+  let maxDays = 30;
+  daySel.innerHTML = '';
+  for (let d = 1; d <= maxDays; d++) {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = Lunar.dayCN(d);
+    daySel.appendChild(opt);
+  }
+}
+
+// 农历转公历：遍历当月每一天找到对应农历日期
+function lunarToSolar(year, lunarMonth, lunarDay) {
+  const daysInMonth = getDaysInMonth(year, 0); // 先用1月试
+  // 遍历全年找到匹配的农历日期
+  for (let m = 0; m < 12; m++) {
+    const dim = getDaysInMonth(year, m);
+    for (let d = 1; d <= dim; d++) {
+      const lunar = Lunar.solar2lunar(year, m, d);
+      if (lunar.lunarMonth === lunarMonth && lunar.lunarDay === lunarDay && !lunar.isLeap) {
+        return dateToStr(year, m, d);
+      }
+    }
+  }
+  return null;
+}
+
 function openTodoModal() {
   const modal = document.getElementById('todo-modal');
   document.getElementById('todo-text-input').value = '';
@@ -134,6 +181,13 @@ function openTodoModal() {
   document.getElementById('todo-once-row').style.display = '';
   document.getElementById('todo-weekly-row').style.display = 'none';
   document.querySelectorAll('.wd-btn').forEach(b => b.classList.remove('active'));
+  // Reset calendar type to solar
+  document.querySelectorAll('.calendar-type-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.calendar-type-btn[data-caltype="solar"]').classList.add('active');
+  document.getElementById('todo-once-row').style.display = '';
+  document.getElementById('todo-lunar-row').style.display = 'none';
+  // Show lunar hint for selected date
+  updateLunarHint();
   modal.style.display = 'flex';
 }
 
@@ -141,19 +195,48 @@ function closeTodoModal() {
   document.getElementById('todo-modal').style.display = 'none';
 }
 
+function updateLunarHint() {
+  const dateVal = document.getElementById('todo-date-input').value;
+  const hint = document.getElementById('todo-date-lunar-hint');
+  if (dateVal) {
+    const parts = dateVal.split('-');
+    const lunar = Lunar.solar2lunar(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    hint.textContent = lunar.full;
+  } else {
+    hint.textContent = '';
+  }
+}
+
 function setupTodoModal() {
   const modal = document.getElementById('todo-modal');
   const typeBtns = document.querySelectorAll('.type-btn');
   const wdBtns = document.querySelectorAll('.wd-btn');
+
+  initLunarSelects();
 
   typeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       typeBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('todo-once-row').style.display = btn.dataset.type === 'once' ? '' : 'none';
+      document.getElementById('todo-lunar-row').style.display = (btn.dataset.type === 'once' && document.querySelector('.calendar-type-btn[data-caltype="lunar"]').classList.contains('active')) ? '' : 'none';
       document.getElementById('todo-weekly-row').style.display = btn.dataset.type === 'weekly' ? '' : 'none';
     });
   });
+
+  // Calendar type toggle (solar/lunar)
+  document.querySelectorAll('.calendar-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.calendar-type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const isLunar = btn.dataset.caltype === 'lunar';
+      document.getElementById('todo-once-row').style.display = isLunar ? 'none' : '';
+      document.getElementById('todo-lunar-row').style.display = isLunar ? '' : 'none';
+    });
+  });
+
+  // Update lunar hint when date changes
+  document.getElementById('todo-date-input').addEventListener('change', updateLunarHint);
 
   wdBtns.forEach(btn => {
     btn.addEventListener('click', () => btn.classList.toggle('active'));
@@ -167,9 +250,20 @@ function setupTodoModal() {
     const type = document.querySelector('.type-btn.active').dataset.type;
     const todo = { text, type };
     if (type === 'once') {
-      const dateVal = document.getElementById('todo-date-input').value;
-      if (!dateVal) { showToast('请选择日期'); return; }
-      todo.date = dateVal;
+      const isLunar = document.querySelector('.calendar-type-btn[data-caltype="lunar"]').classList.contains('active');
+      if (isLunar) {
+        const lunarMonth = parseInt(document.getElementById('todo-lunar-month').value);
+        const lunarDay = parseInt(document.getElementById('todo-lunar-day').value);
+        const dateVal = lunarToSolar(currentYear, lunarMonth, lunarDay);
+        if (!dateVal) { showToast('找不到对应的公历日期'); return; }
+        todo.date = dateVal;
+        todo.lunarMonth = lunarMonth;
+        todo.lunarDay = lunarDay;
+      } else {
+        const dateVal = document.getElementById('todo-date-input').value;
+        if (!dateVal) { showToast('请选择日期'); return; }
+        todo.date = dateVal;
+      }
       todo.done = false;
     } else {
       const days = [];
@@ -216,11 +310,17 @@ function renderTodoView() {
     html += '<div class="todo-group-title">指定日期</div>';
     for (const todo of onceTodos.sort((a, b) => (a.date || '').localeCompare(b.date || ''))) {
       const done = !!todo.done;
+      let dateDisplay = todo.date || '';
+      if (todo.date) {
+        const parts = todo.date.split('-');
+        const lunar = Lunar.solar2lunar(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        dateDisplay = `${todo.date} ${lunar.full}`;
+      }
       html += `<div class="todo-view-item${done ? ' done' : ''}" data-id="${todo.id}">
         <span class="todo-view-check" data-id="${todo.id}">${done ? '✓' : ''}</span>
         <div class="todo-view-info">
           <span class="todo-view-text">${todo.text}</span>
-          <span class="todo-view-date">${todo.date || ''}</span>
+          <span class="todo-view-date">${dateDisplay}</span>
         </div>
         <span class="todo-view-del" data-id="${todo.id}">&times;</span>
       </div>`;
@@ -655,6 +755,14 @@ function createDayCell(day, dateStr, isOtherMonth) {
   num.className = 'day-num';
   num.textContent = day;
   cell.appendChild(num);
+
+  // 农历标签
+  const parts = dateStr.split('-');
+  const lunar = Lunar.solar2lunar(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const lunarLabel = document.createElement('span');
+  lunarLabel.className = 'lunar-label' + (lunar.isFirstDay ? ' lunar-month' : '');
+  lunarLabel.textContent = lunar.text;
+  cell.appendChild(lunarLabel);
 
   const dayData = allData[dateStr];
   const holiday = getHolidayInfo(dateStr);

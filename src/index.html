@@ -12,7 +12,10 @@
     <!-- Header -->
     <div class="calendar-header">
       <button id="prev-month" class="nav-btn">&lt;</button>
-      <span id="month-label" class="month-label"></span>
+      <div class="month-label-group">
+        <span id="month-label" class="month-label"></span>
+        <span id="month-lunar-label" class="month-lunar-label"></span>
+      </div>
       <button id="next-month" class="nav-btn">&gt;</button>
       <button id="today-btn" class="today-btn">今天</button>
     </div>
@@ -148,6 +151,21 @@
         <div id="todo-once-row" class="modal-row">
           <span class="modal-label">日期</span>
           <input id="todo-date-input" type="date" class="modal-date-input">
+          <span id="todo-date-lunar-hint" class="todo-date-lunar-hint"></span>
+        </div>
+        <div id="todo-lunar-row" class="modal-row" style="display:none">
+          <span class="modal-label">农历</span>
+          <div class="lunar-date-picker">
+            <select id="todo-lunar-month" class="lunar-select"></select>
+            <select id="todo-lunar-day" class="lunar-select"></select>
+          </div>
+        </div>
+        <div class="modal-row">
+          <span class="modal-label">历法</span>
+          <div class="modal-type-btns">
+            <button class="calendar-type-btn active" data-caltype="solar">公历</button>
+            <button class="calendar-type-btn" data-caltype="lunar">农历</button>
+          </div>
         </div>
         <div id="todo-weekly-row" class="modal-row" style="display:none">
           <span class="modal-label">重复</span>
@@ -234,6 +252,7 @@
     })();
   </script>
   <script src="holidays.js"></script>
+  <script src="lunar.js"></script>
   <script src="web-api.js"></script>
   <script src="supabase.js"></script>
   <script src="social.js"></script>
