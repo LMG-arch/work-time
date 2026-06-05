@@ -261,8 +261,12 @@ async function submitPost() {
     // Upload image first if selected
     let imageUrl = '';
     if (_postImageFile) {
+      showToast('正在上传图片...');
       imageUrl = await uploadPostImage(_postImageFile);
-      if (!imageUrl) { showToast('图片上传失败'); return; }
+      if (!imageUrl) {
+        showToast('图片上传失败，请在Supabase中创建存储桶');
+        return;
+      }
     }
     const post = await createPost(text, imageUrl);
     if (post) {

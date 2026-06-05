@@ -94,15 +94,21 @@ async function updateProfile(updates) {
 
 // Upload image to Supabase Storage, return public URL
 async function uploadPostImage(file) {
-  if (!sb) return null;
+  if (!sb) { console.error('[Upload] sb is null'); return null; }
   const user = await ensureSession();
-  if (!user) return null;
+  if (!user) { console.error('[Upload] no user'); return null; }
   const ext = file.name.split('.').pop() || 'jpg';
-  const path = `${user.id}/${Date.now()}.${ext}`;
-  const { error } = await sb.storage.from('post-images').upload(path, file, { upsert: false });
-  if (error) { console.error('[Supabase] uploadPostImage error:', error); return null; }
-  const { data } = sb.storage.from('post-images').getPublicUrl(path);
-  return data.publicUrl;
+  const path = `${Date.now()}.${ext}`;
+  console.log('[Upload] uploading to path:', path, 'size:', file.size);
+  const { data, error } = await sb.storage.from('post-images').upload(path, file, { upsert: true });
+  if (error) {
+    console.error('[Upload] upload error:', JSON.stringify(error));
+    return null;
+  }
+  console.log('[Upload] upload success:', data);
+  const urlData = sb.storage.from('post-images').getPublicUrl(path);
+  console.log('[Upload] public URL:', urlData.data.publicUrl);
+  return urlData.data.publicUrl;
 }
 
 async function createPost(content, imageUrl) {
