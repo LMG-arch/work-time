@@ -117,6 +117,15 @@
       <div class="post-modal-content">
         <div class="modal-title">发布动态</div>
         <textarea id="post-text-input" placeholder="分享你的心情..." rows="4"></textarea>
+        <div id="post-image-preview" class="post-image-preview" style="display:none;">
+          <img id="post-image-preview-img" src="">
+          <span id="post-image-remove" class="post-image-remove">&times;</span>
+        </div>
+        <div class="post-modal-toolbar">
+          <label id="post-image-label" class="post-image-btn">📷 图片
+            <input type="file" id="post-image-input" accept="image/*" style="display:none;">
+          </label>
+        </div>
         <div class="modal-actions">
           <button id="post-modal-cancel" class="modal-btn cancel">取消</button>
           <button id="post-modal-submit" class="modal-btn confirm">发布</button>

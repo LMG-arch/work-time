@@ -1167,6 +1167,7 @@ function setupEventListeners() {
 
   document.getElementById('post-modal-cancel').addEventListener('click', closePostModal);
   document.getElementById('post-modal-submit').addEventListener('click', submitPost);
+  setupPostImagePicker();
 
   // Supabase config
   document.getElementById('supabase-save-btn').addEventListener('click', () => {

@@ -92,11 +92,25 @@ async function updateProfile(updates) {
 
 // ===== Posts =====
 
-async function createPost(content) {
+// Upload image to Supabase Storage, return public URL
+async function uploadPostImage(file) {
   if (!sb) return null;
   const user = await ensureSession();
   if (!user) return null;
-  const { data, error } = await sb.from('posts').insert({ user_id: user.id, content }).select().single();
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `${user.id}/${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from('post-images').upload(path, file, { upsert: false });
+  if (error) { console.error('[Supabase] uploadPostImage error:', error); return null; }
+  const { data } = sb.storage.from('post-images').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function createPost(content, imageUrl) {
+  if (!sb) return null;
+  const user = await ensureSession();
+  if (!user) return null;
+  const row = { user_id: user.id, content: content || '', image_url: imageUrl || '' };
+  const { data, error } = await sb.from('posts').insert(row).select().single();
   if (error) { console.error('[Supabase] createPost error:', error); return null; }
   return data;
 }

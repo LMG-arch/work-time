@@ -126,6 +126,7 @@ function renderPostCard(post) {
       ${isMine ? `<span class="post-delete" data-id="${post.id}">&times;</span>` : ''}
     </div>
     <div class="post-content">${escapeHtml(post.content)}</div>
+    ${post.image_url ? `<div class="post-image"><img src="${post.image_url}" loading="lazy"></div>` : ''}
     <div class="post-actions">
       <span class="post-action-btn like-btn${post.liked ? ' liked' : ''}" data-id="${post.id}">
         ${post.liked ? '❤' : '♡'} ${post.likeCount || ''}
@@ -209,24 +210,61 @@ async function renderCommentsPanel(postId, panel) {
 
 // ===== Post Modal =====
 
+let _postImageFile = null;
+
 function openPostModal() {
-  const modal = document.getElementById('post-modal');
   document.getElementById('post-text-input').value = '';
-  modal.style.display = 'flex';
+  _postImageFile = null;
+  document.getElementById('post-image-preview').style.display = 'none';
+  document.getElementById('post-image-input').value = '';
+  document.getElementById('post-modal').style.display = 'flex';
 }
 
 function closePostModal() {
   document.getElementById('post-modal').style.display = 'none';
+  _postImageFile = null;
+}
+
+function setupPostImagePicker() {
+  const input = document.getElementById('post-image-input');
+  const preview = document.getElementById('post-image-preview');
+  const previewImg = document.getElementById('post-image-preview-img');
+  const removeBtn = document.getElementById('post-image-remove');
+
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('图片不能超过5MB'); input.value = ''; return; }
+    _postImageFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      previewImg.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  removeBtn.addEventListener('click', () => {
+    _postImageFile = null;
+    preview.style.display = 'none';
+    input.value = '';
+  });
 }
 
 async function submitPost() {
   const text = document.getElementById('post-text-input').value.trim();
-  if (!text) { showToast('请输入内容'); return; }
+  if (!text && !_postImageFile) { showToast('请输入内容或选择图片'); return; }
   const btn = document.getElementById('post-modal-submit');
   btn.disabled = true;
   btn.textContent = '发布中...';
   try {
-    const post = await createPost(text);
+    // Upload image first if selected
+    let imageUrl = '';
+    if (_postImageFile) {
+      imageUrl = await uploadPostImage(_postImageFile);
+      if (!imageUrl) { showToast('图片上传失败'); return; }
+    }
+    const post = await createPost(text, imageUrl);
     if (post) {
       closePostModal();
       showToast('发布成功');

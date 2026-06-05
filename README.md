@@ -35,11 +35,12 @@
 - 节假日信息汇总
 
 ### 🌐 好友圈
-- 发布文字动态，好友可见
+- 发布文字+图片动态，好友可见
 - 点赞、评论互动
 - 好友申请 / 同意 / 拒绝
 - 个人主页，简单数字ID分享（从1开始）
 - 数据通过 Supabase 免费云服务同步
+- 图片通过 Supabase Storage 存储（免费1GB）
 
 ### ⚙ 设置
 - 数据导出（JSON 格式）
@@ -111,7 +112,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 CREATE TABLE IF NOT EXISTS posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  image_url TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -185,6 +187,12 @@ CREATE INDEX IF NOT EXISTS idx_likes_post ON post_likes(post_id);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
+
+-- 存储桶（用于帖子图片上传）
+INSERT INTO storage.buckets (id, name, public) VALUES ('post-images', 'post-images', true) ON CONFLICT (id) DO NOTHING;
+CREATE POLICY "post_images_select" ON storage.objects FOR SELECT USING (bucket_id = 'post-images');
+CREATE POLICY "post_images_insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'post-images' AND auth.role() = 'authenticated');
+CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_id = 'post-images' AND auth.uid()::text = (storage.foldername(name))[1]);
 ```
 
 4. 点击右下角 **Run** 按钮执行
@@ -218,11 +226,14 @@ CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
 
 ### ⚠️ 注意事项
 
-- Supabase 免费额度：50,000 月活用户、500MB 数据库，日常使用完全够用
+- Supabase 免费额度：50,000 月活用户、500MB 数据库、1GB 存储空间，日常使用完全够用
 - Anon Key 是公开密钥，安全的，不会泄露数据（有行级安全策略保护）
 - 一个 Supabase 项目可以多人共用，每个人只需要在 App 里填相同的 URL 和 Key
 - 需要开启 **Allow anonymous sign-ins**，否则无法登录和发帖
-- 如果之前已创建数据库但没有 `display_id` 字段，执行：`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_id SERIAL UNIQUE;`
+- 图片上传需要在 SQL Editor 中执行存储桶相关 SQL（见上方第四步）
+- 升级用户需执行：`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_id SERIAL UNIQUE;`
+- 升级用户需执行：`ALTER TABLE posts ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';`
+
 
 ---
 
@@ -306,6 +317,10 @@ MIT
 ---
 
 ## 📌 更新日志
+
+### v1.4 (2026-06-05)
+- 📷 好友圈支持发布图片+文字动态
+- 🗄️ 图片存储使用 Supabase Storage（需额外执行存储桶SQL）
 
 ### v1.3 (2026-06-05)
 - 🔢 好友圈改用简单数字ID（从1开始），添加好友更方便
