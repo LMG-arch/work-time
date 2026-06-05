@@ -1267,6 +1267,20 @@ function setupEventListeners() {
     document.getElementById('diag-close').addEventListener('click', () => panel.remove());
   }
 
+  // Clear Supabase data
+  document.getElementById('supabase-clear-btn').addEventListener('click', async () => {
+    if (!confirm('确定清除所有云端好友圈数据？\n\n包括：所有帖子、点赞、评论、好友关系、用户资料\n\n此操作不可恢复！')) return;
+    if (!confirm('再次确认：真的要清除全部数据吗？')) return;
+    showToast('正在清除...');
+    const result = await clearAllSocialData();
+    if (result.error) {
+      showToast('清除失败: ' + result.error);
+    } else {
+      showToast('数据已清除 ✓');
+      _currentUserId = null;
+    }
+  });
+
   // Clock-in settings
   document.getElementById('clockin-settings-btn').addEventListener('click', openReminderSettings);
   document.getElementById('reminder-modal-cancel').addEventListener('click', closeReminderSettings);

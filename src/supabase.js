@@ -336,3 +336,25 @@ async function getProfileByDisplayId(displayId) {
   const { data } = await sb.from('profiles').select('id, nickname, avatar, display_id').eq('display_id', numId).maybeSingle();
   return data;
 }
+
+// ===== Data Cleanup =====
+
+async function clearAllSocialData() {
+  if (!sb) return { error: '未连接' };
+  const errors = [];
+  // Delete in order to respect foreign keys
+  const tables = ['post_comments', 'post_likes', 'posts', 'friendships', 'profiles'];
+  for (const table of tables) {
+    const { error } = await sb.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) errors.push(table + ': ' + error.message);
+  }
+  // Clear storage
+  try {
+    const { data: files } = await sb.storage.from('post-images').list();
+    if (files && files.length > 0) {
+      const paths = files.map(f => f.name);
+      await sb.storage.from('post-images').remove(paths);
+    }
+  } catch {}
+  return errors.length > 0 ? { error: errors.join('; ') } : { error: null };
+}
