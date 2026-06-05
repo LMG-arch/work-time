@@ -31,16 +31,6 @@
       return getStore().days;
     },
 
-    async getMonthData(year, month) {
-      const store = getStore();
-      const prefix = year + '-' + String(month + 1).padStart(2, '0');
-      const result = {};
-      for (const [key, val] of Object.entries(store.days)) {
-        if (key.startsWith(prefix)) result[key] = val;
-      }
-      return result;
-    },
-
     async saveDay(date, status, note, tags, color) {
       const store = getStore();
       if (!status && !note && (!tags || tags.length === 0) && !color) {
@@ -187,18 +177,6 @@
       records[date][reminderId] = { confirmed: true, at: new Date().toISOString() };
       localStorage.setItem(key, JSON.stringify(records));
       return { success: true };
-    },
-
-    async getReminderRecords(date) {
-      const key = 'calendar-reminder-records';
-      try {
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          const records = JSON.parse(raw);
-          return records[date] || {};
-        }
-      } catch {}
-      return {};
     },
 
     async getAllReminderRecords() {

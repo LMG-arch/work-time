@@ -450,14 +450,6 @@ function getCurrentUserId() {
   return _currentUserId;
 }
 
-async function ensureUserId() {
-  if (!_currentUserId) {
-    const user = await getCurrentUser();
-    _currentUserId = user ? user.id : null;
-  }
-  return _currentUserId;
-}
-
 function formatTime(isoStr) {
   if (!isoStr) return '';
   const d = new Date(isoStr);

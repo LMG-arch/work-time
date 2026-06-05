@@ -11,6 +11,7 @@ let reminderNotifTimer = null;
 
 const WEEKDAYS_CN = ['日', '一', '二', '三', '四', '五', '六'];
 const STATUS_LABELS = { work: '上班', rest: '休息', trip: '出差' };
+const STATUS_CHARS = { work: '班', rest: '休', trip: '差' };
 
 const THEMES = [
   { id: 'default', name: '经典', color: '#333' },
@@ -32,7 +33,7 @@ const THEMES = [
 // --- Date helpers ---
 
 function isCapacitorPlatform() {
-  return typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  return typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
 }
 
 function formatDateCN(dateStr) {
@@ -157,8 +158,6 @@ function initLunarSelects() {
 function updateLunarDays() {
   const daySel = document.getElementById('todo-lunar-day');
   const month = parseInt(document.getElementById('todo-lunar-month').value);
-  const year = currentYear;
-  // 农历每月最多30天，闰月需额外计算
   let maxDays = 30;
   daySel.innerHTML = '';
   for (let d = 1; d <= maxDays; d++) {
@@ -852,8 +851,8 @@ function scheduleTodoReminders() {
       localStorage.setItem(remindKey, '1');
 
       // Send notification
-      const isCapacitor = isCapacitorPlatform();
-      if (isCapacitor) {
+      const isCap = isCapacitorPlatform();
+      if (isCap) {
         try {
           const { LocalNotifications } = window.Capacitor.Plugins;
           if (LocalNotifications) {
@@ -976,7 +975,7 @@ function createDayCell(day, dateStr, isOtherMonth) {
     cell.dataset.status = dayData.status;
     const label = document.createElement('span');
     label.className = 'status-label';
-    label.textContent = { work: '班', rest: '休', trip: '差' }[dayData.status] || '';
+    label.textContent = STATUS_CHARS[dayData.status] || '';
     cell.appendChild(label);
   }
 
@@ -1405,7 +1404,7 @@ function setupEventListeners() {
           cell.dataset.status = newStatus;
           const label = document.createElement('span');
           label.className = 'status-label';
-          label.textContent = { work: '班', rest: '休', trip: '差' }[newStatus] || '';
+          label.textContent = STATUS_CHARS[newStatus] || '';
           cell.appendChild(label);
         } else {
           delete cell.dataset.status;
@@ -1624,6 +1623,20 @@ function setupEventListeners() {
         modal.style.display = 'none';
       }
     });
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowLeft') changeMonth(-1);
+    if (e.key === 'ArrowRight') changeMonth(1);
+    if (e.key === 't' && !e.ctrlKey && !e.metaKey) { openTodoModal(); e.preventDefault(); }
+    if (e.key === 'Escape') {
+      closeDetailPanel();
+      closeTodoModal();
+      closePostModal();
+      closeReminderSettings();
+    }
   });
 }
 

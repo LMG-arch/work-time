@@ -109,6 +109,26 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Ripple effect on buttons */
+button {
+  position: relative;
+  overflow: hidden;
+}
+button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 10%, transparent 10%);
+  background-size: 0 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: background-size 0.4s ease;
+  pointer-events: none;
+}
+button:active::after {
+  background-size: 300% 300%;
+}
+
 .app {
   max-width: 420px;
   margin: 0 auto;

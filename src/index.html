@@ -87,7 +87,7 @@
       <div class="clockin-view-content">
         <div class="clockin-header-row">
           <div class="clockin-today-label" id="clockin-today-label"></div>
-          <button id="clockin-settings-btn" class="clockin-settings-btn" title="提醒设置">⚙</button>
+          <button id="clockin-settings-btn" class="clockin-settings-btn" title="提醒设置">&#x2699;&#xFE0F;</button>
         </div>
         <div id="clockin-today-reminders" class="clockin-today-reminders"></div>
         <div class="clockin-history-section">
@@ -127,7 +127,7 @@
           <span id="post-image-remove" class="post-image-remove">&times;</span>
         </div>
         <div class="post-modal-toolbar">
-          <label id="post-image-label" class="post-image-btn">📷 图片
+          <label id="post-image-label" class="post-image-btn">图片
             <input type="file" id="post-image-input" accept="image/*" style="display:none;">
           </label>
         </div>
@@ -211,8 +211,8 @@
         <div class="settings-group">
           <div class="settings-group-title">数据管理</div>
           <div class="settings-btn-row">
-            <button id="export-btn" class="settings-action-btn">📤 导出数据</button>
-            <button id="import-btn" class="settings-action-btn">📥 导入数据</button>
+            <button id="export-btn" class="settings-action-btn">导出数据</button>
+            <button id="import-btn" class="settings-action-btn">导入数据</button>
           </div>
         </div>
         <div class="settings-group">
@@ -227,14 +227,14 @@
             <input id="supabase-key-input" class="settings-input" placeholder="sb_publishable_xxx 或 eyJxxx">
           </div>
           <div class="settings-btn-row">
-            <button id="supabase-save-btn" class="settings-action-btn">💾 保存配置</button>
-            <button id="supabase-test-btn" class="settings-action-btn">🔍 测试连接</button>
+            <button id="supabase-save-btn" class="settings-action-btn">保存配置</button>
+            <button id="supabase-test-btn" class="settings-action-btn">测试连接</button>
           </div>
           <div class="settings-hint" style="margin-top:8px;">
             首次配置后需在 Supabase SQL Editor 执行 <b>supabase-setup.sql</b> 创建数据表
           </div>
           <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
-            <button id="supabase-clear-btn" class="settings-action-btn" style="color:#e53935;border-color:#e53935;">🗑 清除云端数据</button>
+            <button id="supabase-clear-btn" class="settings-action-btn" style="color:#e53935;border-color:#e53935;">清除云端数据</button>
             <div class="settings-hint" style="margin-top:4px;">清除所有好友圈数据（帖子、好友、点赞等），不影响配置</div>
           </div>
         </div>
