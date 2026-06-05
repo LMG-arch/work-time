@@ -405,6 +405,9 @@ function renderClockinHistory() {
   if (!hasRecords) {
     historyContainer.innerHTML = '<div class="empty-tip">暂无打卡记录</div>';
   }
+
+  // Render todo section below clockin
+  renderTodoView();
 }
 
 function renderSettingsView() {
@@ -875,20 +878,15 @@ function switchView(view) {
   currentView = view;
   document.getElementById('calendar-view').style.display = view === 'calendar' ? '' : 'none';
   document.getElementById('stats-view').style.display = view === 'stats' ? '' : 'none';
-  document.getElementById('todo-view').style.display = view === 'todo' ? '' : 'none';
   document.getElementById('clockin-view').style.display = view === 'clockin' ? '' : 'none';
   document.getElementById('settings-view').style.display = view === 'settings' ? '' : 'none';
   document.getElementById('social-view').style.display = view === 'social' ? '' : 'none';
-  document.getElementById('stats-btn').textContent = view === 'stats' ? '📊 日历' : '📊 统计';
-  document.getElementById('todo-btn').textContent = view === 'todo' ? '📋 日历' : '📋 待办';
-  const clockinBtn = document.getElementById('clockin-btn');
-  if (clockinBtn) clockinBtn.textContent = view === 'clockin' ? '⏰ 日历' : '⏰ 打卡';
-  const settingsBtn = document.getElementById('settings-btn');
-  if (settingsBtn) settingsBtn.textContent = view === 'settings' ? '⚙ 日历' : '⚙ 设置';
-  const socialBtn = document.getElementById('social-btn');
-  if (socialBtn) socialBtn.textContent = view === 'social' ? '🌐 日历' : '🌐 好友';
+  // Update active state for toolbar buttons
+  document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+  const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
+  const activeBtn = document.getElementById(activeMap[view]);
+  if (activeBtn) activeBtn.classList.add('active');
   if (view === 'stats') renderStats();
-  if (view === 'todo') renderTodoView();
   if (view === 'clockin') renderClockinView();
   if (view === 'settings') renderSettingsView();
   if (view === 'social') renderSocialView();
@@ -1045,7 +1043,6 @@ async function changeMonth(delta) {
   await Promise.all([loadAllData(), loadTodos(), loadReminderRecords()]);
   if (currentView === 'calendar') renderCalendar();
   else if (currentView === 'stats') renderStats();
-  else if (currentView === 'todo') renderTodoView();
   else if (currentView === 'social') {} // no reload needed
   else renderClockinView();
 }
@@ -1064,7 +1061,6 @@ function setupEventListeners() {
     await Promise.all([loadAllData(), loadTodos(), loadReminderRecords()]);
     if (currentView === 'calendar') renderCalendar();
     else if (currentView === 'stats') renderStats();
-    else if (currentView === 'todo') renderTodoView();
     else renderClockinView();
   });
 
@@ -1116,24 +1112,25 @@ function setupEventListeners() {
   // Tags
   setupTagInputs();
 
-  // Stats toggle
+  // Stats view - direct navigation
+  // Home / Calendar - direct navigation
+  document.getElementById('home-btn').addEventListener('click', () => {
+    switchView('calendar');
+  });
+
+  // Stats view - direct navigation
   document.getElementById('stats-btn').addEventListener('click', () => {
-    switchView(currentView === 'calendar' ? 'stats' : 'calendar');
+    switchView('stats');
   });
 
-  // Todo toggle
-  document.getElementById('todo-btn').addEventListener('click', () => {
-    switchView(currentView === 'calendar' ? 'todo' : 'calendar');
-  });
-
-  // Clock-in view
+  // Clock-in view - direct navigation (todo is now part of clockin)
   document.getElementById('clockin-btn').addEventListener('click', () => {
-    switchView(currentView === 'calendar' ? 'clockin' : 'calendar');
+    switchView('clockin');
   });
 
-  // Settings view
+  // Settings view - direct navigation
   document.getElementById('settings-btn').addEventListener('click', () => {
-    switchView(currentView === 'calendar' ? 'settings' : 'calendar');
+    switchView('settings');
   });
 
   // Add todo button in detail panel
@@ -1155,7 +1152,6 @@ function setupEventListeners() {
       await Promise.all([loadAllData(), loadTodos(), loadReminders(), loadReminderRecords()]);
       if (currentView === 'calendar') renderCalendar();
       else if (currentView === 'stats') renderStats();
-      else if (currentView === 'todo') renderTodoView();
       else if (currentView === 'clockin') renderClockinView();
       else renderSettingsView();
       showToast('导入成功');
@@ -1164,9 +1160,9 @@ function setupEventListeners() {
     }
   });
 
-  // Social view
+  // Social view - direct navigation
   document.getElementById('social-btn').addEventListener('click', () => {
-    switchView(currentView === 'calendar' ? 'social' : 'calendar');
+    switchView('social');
   });
 
   document.getElementById('post-modal-cancel').addEventListener('click', closePostModal);
@@ -1187,16 +1183,88 @@ function setupEventListeners() {
     const key = document.getElementById('supabase-key-input').value.trim();
     if (!url || !key) { showToast('请先填写配置'); return; }
     saveSupabaseConfig(url, key);
-    sb = initSupabase();
-    if (!sb) { showToast('初始化失败'); return; }
-    try {
-      const { error } = await sb.from('profiles').select('id').limit(1);
-      if (error) showToast('连接失败: ' + error.message);
-      else showToast('连接成功 ✓');
-    } catch (e) {
-      showToast('连接失败');
+
+    const results = [];
+    const log = (ok, msg) => results.push(ok ? '✅ ' + msg : '❌ ' + msg);
+
+    // Step 1: CDN library
+    if (!window.supabase || !window.supabase.createClient) {
+      log(false, 'Supabase JS 库未加载');
+      showDiag(results.join('\n'));
+      return;
     }
+    log(true, 'Supabase JS 库已加载');
+
+    // Step 2: Create client
+    sb = initSupabase();
+    if (!sb) {
+      log(false, '创建客户端失败');
+      showDiag(results.join('\n'));
+      return;
+    }
+    log(true, '客户端创建成功');
+
+    // Step 3: Anonymous auth
+    try {
+      const { data: authData, error: authError } = await sb.auth.signInAnonymously();
+      if (authError) {
+        log(false, '匿名登录失败: ' + authError.message);
+        log(false, '→ 请到 Supabase Dashboard → Authentication → Providers → 开启 Anonymous Sign-In');
+      } else {
+        log(true, '匿名登录成功');
+        // Try to get display_id
+        try {
+          const { data: prof } = await sb.from('profiles').select('display_id').eq('id', authData.user.id).maybeSingle();
+          if (prof && prof.display_id) log(true, '你的数字ID: ' + prof.display_id);
+        } catch {}
+      }
+    } catch (e) {
+      log(false, '匿名登录异常: ' + e.message);
+    }
+
+    // Step 4: Query profiles table
+    try {
+      const { data, error } = await sb.from('profiles').select('id').limit(1);
+      if (error) {
+        if (error.code === '42P01') {
+          log(false, 'profiles 表不存在');
+          log(false, '→ 请到 Supabase SQL Editor 执行 supabase-setup.sql');
+        } else {
+          log(false, '查询 profiles 失败: ' + error.message + ' (code: ' + error.code + ')');
+        }
+      } else {
+        log(true, 'profiles 表可访问 (共 ' + (data ? data.length : 0) + ' 条)');
+      }
+    } catch (e) {
+      log(false, '查询异常: ' + e.message);
+    }
+
+    // Step 5: Test insert (dry run - try to read posts)
+    try {
+      const { error } = await sb.from('posts').select('id').limit(1);
+      if (error) {
+        log(false, 'posts 表不可用: ' + error.message);
+      } else {
+        log(true, 'posts 表可访问');
+      }
+    } catch (e) {
+      log(false, 'posts 表异常: ' + e.message);
+    }
+
+    showDiag(results.join('\n'));
   });
+
+  function showDiag(message) {
+    const existing = document.getElementById('diag-panel');
+    if (existing) existing.remove();
+    const panel = document.createElement('div');
+    panel.id = 'diag-panel';
+    panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:90%;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-size:13px;white-space:pre-line;line-height:1.8;color:var(--text);';
+    panel.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px;">🔍 诊断结果</div><div>' + message.replace(/\n/g, '<br>') + '</div>' +
+      '<button id="diag-close" style="margin-top:16px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);cursor:pointer;font-size:13px;">关闭</button>';
+    document.body.appendChild(panel);
+    document.getElementById('diag-close').addEventListener('click', () => panel.remove());
+  }
 
   // Clock-in settings
   document.getElementById('clockin-settings-btn').addEventListener('click', openReminderSettings);

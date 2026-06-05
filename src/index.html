@@ -77,12 +77,7 @@
       <div id="stats-content" class="stats-content"></div>
     </div>
 
-    <!-- Todo View -->
-    <div id="todo-view" class="page-view" style="display:none;">
-      <div id="todo-view-content" class="todo-view-content"></div>
-    </div>
-
-    <!-- Clock-in View -->
+    <!-- Clock-in & Todo View -->
     <div id="clockin-view" class="page-view" style="display:none;">
       <div class="clockin-view-content">
         <div class="clockin-header-row">
@@ -93,6 +88,9 @@
         <div class="clockin-history-section">
           <div class="clockin-history-title">打卡记录</div>
           <div id="clockin-history" class="clockin-history"></div>
+        </div>
+        <div id="clockin-todo-section" class="todo-section" style="margin-top:16px;">
+          <div id="todo-view-content" class="todo-view-content"></div>
         </div>
       </div>
     </div>
@@ -203,15 +201,25 @@
 
     <!-- Toolbar -->
     <div class="toolbar">
-      <button id="todo-btn" class="tool-btn primary-btn" title="待办管理">📋 待办</button>
-      <button id="clockin-btn" class="tool-btn primary-btn" title="打卡提醒">⏰ 打卡</button>
+      <button id="home-btn" class="tool-btn active" title="日历">📅 日历</button>
+      <button id="clockin-btn" class="tool-btn primary-btn" title="打卡待办">⏰ 打卡</button>
       <button id="social-btn" class="tool-btn" title="好友圈">🌐 好友</button>
       <button id="stats-btn" class="tool-btn" title="月度统计">📊 统计</button>
       <button id="settings-btn" class="tool-btn" title="设置">⚙ 设置</button>
     </div>
   </div>
 
-  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // Load Supabase JS: local first, CDN fallback
+    (function() {
+      var script = document.createElement('script');
+      var fallback = document.createElement('script');
+      fallback.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+      script.src = '../lib/supabase.min.js';
+      script.onerror = function() { document.head.appendChild(fallback); };
+      document.head.appendChild(script);
+    })();
+  </script>
   <script src="holidays.js"></script>
   <script src="web-api.js"></script>
   <script src="supabase.js"></script>

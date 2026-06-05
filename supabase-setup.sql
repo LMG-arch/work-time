@@ -4,6 +4,7 @@
 -- 用户资料表
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_id SERIAL UNIQUE,
   nickname TEXT NOT NULL DEFAULT '',
   avatar TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()

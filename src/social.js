@@ -222,13 +222,21 @@ function closePostModal() {
 async function submitPost() {
   const text = document.getElementById('post-text-input').value.trim();
   if (!text) { showToast('请输入内容'); return; }
-  const post = await createPost(text);
-  if (post) {
-    closePostModal();
-    showToast('发布成功');
-    renderSocialView();
-  } else {
-    showToast('发布失败');
+  const btn = document.getElementById('post-modal-submit');
+  btn.disabled = true;
+  btn.textContent = '发布中...';
+  try {
+    const post = await createPost(text);
+    if (post) {
+      closePostModal();
+      showToast('发布成功');
+      renderSocialView();
+    } else {
+      showToast('发布失败，请检查网络或重新打开应用');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '发布';
   }
 }
 
@@ -261,7 +269,7 @@ async function renderFriends(container) {
   // Add friend
   html += `<div class="add-friend-section">
     <div class="add-friend-row">
-      <input id="add-friend-input" class="add-friend-input" placeholder="输入好友用户ID">
+      <input id="add-friend-input" class="add-friend-input" placeholder="输入好友的数字ID">
       <button id="add-friend-btn" class="add-friend-btn">添加</button>
     </div>
   </div>`;
@@ -269,7 +277,7 @@ async function renderFriends(container) {
   // Friend list
   html += `<div class="friend-section-title">我的好友 (${friendsList.length})</div>`;
   if (friendsList.length === 0) {
-    html += '<div class="social-empty">暂无好友<br><span class="social-empty-sub">输入好友的用户ID添加</span></div>';
+    html += '<div class="social-empty">暂无好友<br><span class="social-empty-sub">输入好友的数字ID添加</span></div>';
   } else {
     for (const f of friendsList) {
       const avatar = f.avatar
@@ -320,9 +328,19 @@ async function renderFriends(container) {
   if (addBtn) {
     addBtn.addEventListener('click', async () => {
       const input = document.getElementById('add-friend-input');
-      const userId = input.value.trim();
-      if (!userId) { showToast('请输入用户ID'); return; }
-      const result = await sendFriendRequest(userId);
+      const displayId = input.value.trim();
+      if (!displayId) { showToast('请输入好友ID'); return; }
+      // Look up user by display_id
+      const friendProfile = await getProfileByDisplayId(displayId);
+      if (!friendProfile) {
+        showToast('找不到该用户，请检查ID');
+        return;
+      }
+      if (friendProfile.id === getCurrentUserId()) {
+        showToast('不能添加自己');
+        return;
+      }
+      const result = await sendFriendRequest(friendProfile.id);
       if (result.error) {
         showToast(result.error);
       } else {
@@ -347,10 +365,11 @@ async function renderProfile(container) {
     ? `<img src="${profile.avatar}" class="profile-avatar-img">`
     : `<div class="profile-avatar-placeholder">${(profile.nickname || '?')[0]}</div>`;
 
+  const myDisplayId = profile.display_id || '未分配';
   let html = `<div class="profile-card">
     ${avatar}
     <div class="profile-nickname">${escapeHtml(profile.nickname)}</div>
-    <div class="profile-id">ID: ${profile.id}</div>
+    <div class="profile-id">ID: ${myDisplayId}</div>
     <button class="profile-copy-btn" id="copy-my-id">复制我的ID</button>
   </div>`;
 
@@ -365,14 +384,19 @@ async function renderProfile(container) {
   container.innerHTML = html;
 
   document.getElementById('copy-my-id').addEventListener('click', () => {
-    navigator.clipboard.writeText(profile.id).then(() => showToast('已复制'));
+    const copyText = String(profile.display_id || profile.id);
+    navigator.clipboard.writeText(copyText).then(() => showToast('已复制')).catch(() => showToast('复制失败'));
   });
 
   document.getElementById('save-nickname-btn').addEventListener('click', async () => {
     const nickname = document.getElementById('edit-nickname-input').value.trim();
     if (!nickname) { showToast('昵称不能为空'); return; }
-    await updateProfile({ nickname });
-    showToast('昵称已修改');
+    const result = await updateProfile({ nickname });
+    if (result) {
+      showToast('昵称已修改');
+    } else {
+      showToast('修改失败，请重试');
+    }
   });
 }
 

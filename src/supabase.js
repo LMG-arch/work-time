@@ -16,8 +16,15 @@ function saveSupabaseConfig(url, key) {
 function initSupabase() {
   const config = getSupabaseConfig();
   if (!config.url || !config.key) return null;
-  if (window.supabase && window.supabase.createClient) {
+  if (!window.supabase || !window.supabase.createClient) {
+    console.error('[Supabase] CDN library not loaded - window.supabase is undefined');
+    return null;
+  }
+  try {
     sb = window.supabase.createClient(config.url, config.key);
+  } catch (e) {
+    console.error('[Supabase] createClient failed:', e);
+    return null;
   }
   return sb;
 }
@@ -33,8 +40,22 @@ async function signIn() {
 
 async function getCurrentUser() {
   if (!sb) return null;
-  const { data } = await sb.auth.getUser();
-  return data.user;
+  try {
+    const { data } = await sb.auth.getUser();
+    return data.user;
+  } catch {
+    return null;
+  }
+}
+
+// Ensure we have a valid session, re-auth if needed
+async function ensureSession() {
+  if (!sb) return null;
+  let user = await getCurrentUser();
+  if (!user) {
+    user = await signIn();
+  }
+  return user;
 }
 
 // ===== Profile =====
@@ -46,32 +67,37 @@ async function getProfile(userId) {
 }
 
 async function getMyProfile() {
-  const user = await getCurrentUser();
+  const user = await ensureSession();
   if (!user) return null;
   let profile = await getProfile(user.id);
   if (!profile) {
     // Create default profile
     const nickname = localStorage.getItem('social-nickname') || '用户' + user.id.slice(0, 4);
-    const { data } = await sb.from('profiles').insert({ id: user.id, nickname }).select().single();
+    const { data, error } = await sb.from('profiles').insert({ id: user.id, nickname }).select().single();
+    if (error) { console.error('[Supabase] getMyProfile insert error:', error); return null; }
     profile = data;
   }
   return profile;
 }
 
 async function updateProfile(updates) {
-  const user = await getCurrentUser();
+  if (!sb) return null;
+  const user = await ensureSession();
   if (!user) return null;
   if (updates.nickname) localStorage.setItem('social-nickname', updates.nickname);
-  const { data } = await sb.from('profiles').update(updates).eq('id', user.id).select().single();
+  const { data, error } = await sb.from('profiles').update(updates).eq('id', user.id).select().single();
+  if (error) { console.error('[Supabase] updateProfile error:', error); return null; }
   return data;
 }
 
 // ===== Posts =====
 
 async function createPost(content) {
-  const user = await getCurrentUser();
+  if (!sb) return null;
+  const user = await ensureSession();
   if (!user) return null;
-  const { data } = await sb.from('posts').insert({ user_id: user.id, content }).select().single();
+  const { data, error } = await sb.from('posts').insert({ user_id: user.id, content }).select().single();
+  if (error) { console.error('[Supabase] createPost error:', error); return null; }
   return data;
 }
 
@@ -168,9 +194,11 @@ async function getComments(postId) {
 }
 
 async function addComment(postId, content) {
-  const user = await getCurrentUser();
+  if (!sb) return null;
+  const user = await ensureSession();
   if (!user) return null;
-  const { data } = await sb.from('post_comments').insert({ post_id: postId, user_id: user.id, content }).select().single();
+  const { data, error } = await sb.from('post_comments').insert({ post_id: postId, user_id: user.id, content }).select().single();
+  if (error) { console.error('[Supabase] addComment error:', error); return null; }
   return data;
 }
 
@@ -251,5 +279,14 @@ async function removeFriend(friendId) {
 async function getProfileByUserId(userId) {
   if (!sb) return null;
   const { data } = await sb.from('profiles').select('id, nickname, avatar').eq('id', userId).single();
+  return data;
+}
+
+// Look up user by display_id (simple numeric ID)
+async function getProfileByDisplayId(displayId) {
+  if (!sb) return null;
+  const numId = parseInt(displayId, 10);
+  if (isNaN(numId)) return null;
+  const { data } = await sb.from('profiles').select('id, nickname, avatar, display_id').eq('display_id', numId).maybeSingle();
   return data;
 }

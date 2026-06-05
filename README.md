@@ -38,7 +38,7 @@
 - 发布文字动态，好友可见
 - 点赞、评论互动
 - 好友申请 / 同意 / 拒绝
-- 个人主页，用户ID分享
+- 个人主页，简单数字ID分享（从1开始）
 - 数据通过 Supabase 免费云服务同步
 
 ### ⚙ 设置
@@ -50,12 +50,12 @@
 
 ## 🖥️ 界面导航
 
-底部工具栏：
+底部工具栏（直接点击切换页面）：
 
 | 按钮 | 功能 |
 |------|------|
-| 📋 **待办** | 待办事项管理 |
-| ⏰ **打卡** | 打卡提醒与确认 |
+| 📅 **日历** | 返回日历主页 |
+| ⏰ **打卡** | 打卡提醒与确认 + 待办管理 |
 | 🌐 **好友** | 好友圈动态 |
 | 📊 **统计** | 月度数据统计 |
 | ⚙ **设置** | 导出导入、主题、好友圈配置 |
@@ -89,7 +89,7 @@
 2. 点击 **API** 选项卡
 3. 找到以下两个信息并复制：
    - **Project URL**: 类似 `https://xxxxxxxx.supabase.co`
-   - **anon public key**: 类似 `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxxxx...`
+   - **anon public key**: 类似 `sb-eyJhbGxxxxxxxxxxxnR5cCI6IkpXVCJ9.xxxxx...`
 
 ### 第四步：创建数据库表
 
@@ -101,6 +101,7 @@
 -- 用户资料表
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_id SERIAL UNIQUE,
   nickname TEXT NOT NULL DEFAULT '',
   avatar TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -189,7 +190,14 @@ CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
 4. 点击右下角 **Run** 按钮执行
 5. 看到 `Success. No rows returned` 表示成功
 
-### 第五步：在 App 中配置
+### 第五步：开启匿名登录
+
+1. 在 Supabase Dashboard 左侧菜单，点击 **Authentication**
+2. 点击 **Providers** 选项卡
+3. 找到 **Anonymous Sign-In**，将开关**打开**
+4. 点击 **Save** 保存
+
+### 第六步：在 App 中配置
 
 1. 打开上班日历 App
 2. 点击底部工具栏 **⚙ 设置**
@@ -198,13 +206,13 @@ CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
    - **Project URL**: 粘贴你的 URL
    - **Anon Key**: 粘贴你的 Key
 5. 点击 **💾 保存配置**
-6. 点击 **🔍 测试连接**，显示「连接成功」即可
+6. 点击 **🔍 测试连接**，会显示详细诊断结果，全部 ✅ 即可
 
-### 第六步：开始使用
+### 第七步：开始使用
 
 1. 点击底部工具栏 **🌐 好友** 进入好友圈
-2. 点击 **我的** 标签页，复制你的用户ID发给朋友
-3. 朋友在 **好友** 标签页输入你的ID，点击添加
+2. 点击 **我的** 标签页，复制你的**数字ID**（如 `1`、`2`）发给朋友
+3. 朋友在 **好友** 标签页输入你的数字ID，点击添加
 4. 你收到好友申请后点击同意
 5. 之后就可以互相看到动态了！
 
@@ -213,7 +221,8 @@ CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
 - Supabase 免费额度：50,000 月活用户、500MB 数据库，日常使用完全够用
 - Anon Key 是公开密钥，安全的，不会泄露数据（有行级安全策略保护）
 - 一个 Supabase 项目可以多人共用，每个人只需要在 App 里填相同的 URL 和 Key
-- 如果需要更高安全性，可以为每个群组创建独立的 Supabase 项目
+- 需要开启 **Anonymous Sign-In**，否则无法登录和发帖
+- 如果之前已创建数据库但没有 `display_id` 字段，执行：`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_id SERIAL UNIQUE;`
 
 ---
 
@@ -270,6 +279,8 @@ JAVA_HOME="C:/Program Files/Java/jdk-21" ./gradlew assembleDebug
 │   ├── supabase.js         # Supabase API 封装
 │   ├── holidays.js         # 节假日数据
 │   └── web-api.js          # Web/Capacitor API 层
+├── lib/
+│   └── supabase.min.js     # Supabase JS 本地库（CDN fallback）
 ├── main.js                 # Electron 主进程
 ├── preload.js              # Electron 预加载脚本
 ├── supabase-setup.sql      # 数据库初始化 SQL
@@ -295,6 +306,14 @@ MIT
 ---
 
 ## 📌 更新日志
+
+### v1.3 (2026-06-05)
+- 🔢 好友圈改用简单数字ID（从1开始），添加好友更方便
+- 🔧 连接测试升级为详细诊断面板，逐步检查配置问题
+- 🛡️ 会话过期自动重新登录，修复发布失败和加载失败问题
+- 📦 Supabase JS 库本地打包，CDN 作为备用，解决国内加载问题
+- 🧭 导航改为直接切换页面，不再来回跳转
+- 📋 待办事项合并到打卡页面
 
 ### v1.2 (2026-06-05)
 - 🌐 新增好友圈功能：发布动态、点赞评论、好友管理
