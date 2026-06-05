@@ -341,20 +341,45 @@ async function getProfileByDisplayId(displayId) {
 
 async function clearAllSocialData() {
   if (!sb) return { error: '未连接' };
+  const user = await ensureSession();
+  if (!user) return { error: '未登录' };
+  const uid = user.id;
   const errors = [];
-  // Delete in order to respect foreign keys
-  const tables = ['post_comments', 'post_likes', 'posts', 'friendships', 'profiles'];
-  for (const table of tables) {
-    const { error } = await sb.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    if (error) errors.push(table + ': ' + error.message);
+
+  // Delete own posts (comments and likes on own posts cascade)
+  const { data: myPosts } = await sb.from('posts').select('id').eq('user_id', uid);
+  if (myPosts && myPosts.length > 0) {
+    const postIds = myPosts.map(p => p.id);
+    await sb.from('post_comments').delete().in('post_id', postIds);
+    await sb.from('post_likes').delete().in('post_id', postIds);
+    const { error } = await sb.from('posts').delete().eq('user_id', uid);
+    if (error) errors.push('posts: ' + error.message);
   }
-  // Clear storage
+
+  // Delete own likes on others' posts
+  await sb.from('post_likes').delete().eq('user_id', uid);
+
+  // Delete own comments on others' posts
+  await sb.from('post_comments').delete().eq('user_id', uid);
+
+  // Delete friendships (both directions)
+  await sb.from('friendships').delete().eq('user_id', uid);
+  await sb.from('friendships').delete().eq('friend_id', uid);
+
+  // Delete own profile
+  const { error: profErr } = await sb.from('profiles').delete().eq('id', uid);
+  if (profErr) errors.push('profiles: ' + profErr.message);
+
+  // Delete own storage files
   try {
-    const { data: files } = await sb.storage.from('post-images').list();
+    const { data: files } = await sb.storage.from('post-images').list(uid);
     if (files && files.length > 0) {
-      const paths = files.map(f => f.name);
+      const paths = files.map(f => `${uid}/${f.name}`);
       await sb.storage.from('post-images').remove(paths);
     }
   } catch {}
+
+  // Reset local state
+  _currentUserId = null;
   return errors.length > 0 ? { error: errors.join('; ') } : { error: null };
 }
