@@ -59,6 +59,8 @@
             <span class="quick-tag" data-tag="会议">会议</span>
             <span class="quick-tag" data-tag="培训">培训</span>
             <span class="quick-tag" data-tag="请假">请假</span>
+            <span class="quick-tag" data-tag="远程">远程</span>
+            <span class="quick-tag" data-tag="外勤">外勤</span>
           </div>
         </div>
         <div class="todo-section">
@@ -190,8 +192,10 @@
               <option value="15">提前15分钟</option>
               <option value="30">提前30分钟</option>
               <option value="60">提前1小时</option>
+              <option value="120">提前2小时</option>
+              <option value="1440">提前1天</option>
             </select>
-            <input id="todo-remind-time" type="time" class="modal-date-input" value="09:00">
+            <input id="todo-remind-time" type="time" class="modal-date-input" value="09:00" style="display:none">
           </div>
         </div>
         <div class="modal-actions">
@@ -247,11 +251,11 @@
 
     <!-- Toolbar -->
     <div class="toolbar">
-      <button id="home-btn" class="tool-btn active" title="日历">📅 日历</button>
-      <button id="clockin-btn" class="tool-btn primary-btn" title="打卡待办">⏰ 打卡</button>
-      <button id="social-btn" class="tool-btn" title="好友圈">🌐 好友</button>
-      <button id="stats-btn" class="tool-btn" title="月度统计">📊 统计</button>
-      <button id="settings-btn" class="tool-btn" title="设置">⚙ 设置</button>
+      <button id="home-btn" class="tool-btn active" title="日历">日历</button>
+      <button id="clockin-btn" class="tool-btn primary-btn" title="打卡待办">打卡</button>
+      <button id="social-btn" class="tool-btn" title="好友圈">好友</button>
+      <button id="stats-btn" class="tool-btn" title="月度统计">统计</button>
+      <button id="settings-btn" class="tool-btn" title="设置">设置</button>
     </div>
   </div>
 

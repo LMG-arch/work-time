@@ -19,9 +19,21 @@ const THEMES = [
   { id: 'pink',    name: '粉色', color: '#e91e63' },
   { id: 'purple',  name: '紫色', color: '#7e57c2' },
   { id: 'navy',    name: '商务', color: '#1565c0' },
+  { id: 'ocean',   name: '海洋', color: '#00838f' },
+  { id: 'sunset',  name: '日落', color: '#e65100' },
+  { id: 'rose',    name: '玫瑰金', color: '#b76e79' },
+  { id: 'forest',  name: '森林', color: '#2e7d32' },
+  { id: 'coffee',  name: '咖啡', color: '#5d4037' },
+  { id: 'lavender',name: '薰衣草', color: '#9575cd' },
+  { id: 'mint',    name: '薄荷', color: '#26a69a' },
+  { id: 'slate',   name: '石板', color: '#546e7a' },
 ];
 
 // --- Date helpers ---
+
+function isCapacitorPlatform() {
+  return typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+}
 
 function formatDateCN(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -181,15 +193,15 @@ function openTodoModal() {
   document.querySelector('.type-btn[data-type="once"]').classList.add('active');
   document.getElementById('todo-once-row').style.display = '';
   document.getElementById('todo-weekly-row').style.display = 'none';
+  document.getElementById('todo-lunar-row').style.display = 'none';
   document.querySelectorAll('.wd-btn').forEach(b => b.classList.remove('active'));
   // Reset calendar type to solar
   document.querySelectorAll('.calendar-type-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('.calendar-type-btn[data-caltype="solar"]').classList.add('active');
-  document.getElementById('todo-once-row').style.display = '';
-  document.getElementById('todo-lunar-row').style.display = 'none';
   // Reset remind fields
   document.getElementById('todo-remind-select').value = '';
   document.getElementById('todo-remind-time').value = '09:00';
+  document.getElementById('todo-remind-time').style.display = 'none';
   // Show lunar hint for selected date
   updateLunarHint();
   modal.style.display = 'flex';
@@ -217,6 +229,13 @@ function setupTodoModal() {
   const wdBtns = document.querySelectorAll('.wd-btn');
 
   initLunarSelects();
+
+  // Toggle remind time visibility based on selection
+  const remindSelect = document.getElementById('todo-remind-select');
+  const remindTimeRow = document.getElementById('todo-remind-time');
+  remindSelect.addEventListener('change', () => {
+    remindTimeRow.style.display = remindSelect.value ? '' : 'none';
+  });
 
   typeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -329,7 +348,7 @@ function renderTodoView() {
         const lunar = Lunar.solar2lunar(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
         dateDisplay = `${todo.date} ${lunar.full}`;
       }
-      const remindLabel = todo.remind ? (todo.remind === 'same' ? ` ⏰${todo.remindTime}准时` : ` ⏰提前${todo.remind}分钟`) : '';
+      const remindLabel = todo.remind ? (todo.remind === 'same' ? ` ⏰${todo.remindTime}准时` : ` ⏰提前${todo.remind === '120' ? '2小时' : todo.remind === '1440' ? '1天' : todo.remind + '分钟'}`) : '';
       html += `<div class="todo-view-item${done ? ' done' : ''}" data-id="${todo.id}">
         <span class="todo-view-check" data-id="${todo.id}">${done ? '✓' : ''}</span>
         <div class="todo-view-info">
@@ -343,12 +362,16 @@ function renderTodoView() {
 
   if (weeklyTodos.length > 0) {
     html += '<div class="todo-group-title">每周重复</div>';
-    const wdNames = ['日', '一', '二', '三', '四', '五', '六'];
+    const wdNames = WEEKDAYS_CN;
     for (const todo of weeklyTodos) {
       const days = (todo.weekdays || []).map(d => '周' + wdNames[d]).join('、');
-      html += `<div class="todo-view-item" data-id="${todo.id}">
+      const todayStr = getTodayStr();
+      const todayDone = todo.weeklyDone && todo.weeklyDone[todayStr];
+      const remindLabel = todo.remind ? (todo.remind === 'same' ? ` ⏰${todo.remindTime}准时` : ` ⏰提前${todo.remind === '120' ? '2小时' : todo.remind === '1440' ? '1天' : todo.remind + '分钟'}`) : '';
+      html += `<div class="todo-view-item${todayDone ? ' done' : ''}" data-id="${todo.id}">
+        <span class="todo-view-check" data-id="${todo.id}" data-type="weekly">${todayDone ? '✓' : ''}</span>
         <div class="todo-view-info">
-          <span class="todo-view-text">${todo.text}</span>
+          <span class="todo-view-text">${todo.text}${remindLabel}</span>
           <span class="todo-view-date">${days}</span>
         </div>
         <span class="todo-view-del" data-id="${todo.id}">&times;</span>
@@ -362,12 +385,19 @@ function renderTodoView() {
   container.querySelectorAll('.todo-view-check').forEach(btn => {
     btn.addEventListener('click', async () => {
       const todo = allTodos.find(t => t.id === btn.dataset.id);
-      if (todo && todo.type === 'once') {
+      if (!todo) return;
+      if (todo.type === 'once') {
         await window.calendarAPI.updateTodo(todo.id, { done: !todo.done });
         todo.done = !todo.done;
-        renderTodoView();
-        renderCalendar();
+      } else if (todo.type === 'weekly') {
+        const todayStr = getTodayStr();
+        const wd = todo.weeklyDone || {};
+        wd[todayStr] = !wd[todayStr];
+        await window.calendarAPI.updateTodo(todo.id, { weeklyDone: wd });
+        todo.weeklyDone = wd;
       }
+      renderTodoView();
+      renderCalendar();
     });
   });
 
@@ -620,7 +650,7 @@ async function scheduleReminderNotifications() {
   if (enabled.length === 0) return;
 
   // Capacitor Android local notifications
-  const isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  const isCapacitor = isCapacitorPlatform();
   if (isCapacitor) {
     try {
       const { LocalNotifications } = window.Capacitor.Plugins;
@@ -725,11 +755,10 @@ async function scheduleReminderNotifications() {
     Notification.requestPermission();
   }
 
-  // Also notify main process to schedule Electron native notifications
-  if (typeof window.calendarAPI?.saveReminders === 'function') {
-    // Reminders are already saved in Electron main process which handles notifications
-    return;
-  }
+  // Electron main process handles notifications via IPC
+  // Web/Capacitor: use browser Notification API as fallback
+  const isElectron = typeof window.calendarAPI?.saveReminders === 'function' && !isCapacitor;
+  if (isElectron) return;
 
   // Fallback: use Web Notification in browser
   if (Notification.permission !== 'granted') return;
@@ -823,7 +852,7 @@ function scheduleTodoReminders() {
       localStorage.setItem(remindKey, '1');
 
       // Send notification
-      const isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+      const isCapacitor = isCapacitorPlatform();
       if (isCapacitor) {
         try {
           const { LocalNotifications } = window.Capacitor.Plugins;
@@ -1318,16 +1347,32 @@ async function changeMonth(delta) {
   if (currentMonth < 0) { currentMonth = 11; currentYear--; }
   if (currentMonth > 11) { currentMonth = 0; currentYear++; }
   closeDetailPanel();
-  await Promise.all([loadAllData(), loadTodos(), loadReminderRecords()]);
+  await loadAllData();
   if (currentView === 'calendar') renderCalendar();
   else if (currentView === 'stats') renderStats();
-  else if (currentView === 'social') {} // no reload needed
   else renderClockinView();
 }
 
 // --- Event listeners ---
 
 function setupEventListeners() {
+  // Touch swipe for month navigation
+  let touchStartX = 0;
+  let touchStartY = 0;
+  const calendarView = document.getElementById('calendar-view');
+  calendarView.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  calendarView.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx > 0) changeMonth(-1);
+      else changeMonth(1);
+    }
+  }, { passive: true });
+
   document.getElementById('prev-month').addEventListener('click', () => changeMonth(-1));
   document.getElementById('next-month').addEventListener('click', () => changeMonth(1));
 
@@ -1336,7 +1381,7 @@ function setupEventListeners() {
     currentYear = today.getFullYear();
     currentMonth = today.getMonth();
     closeDetailPanel();
-    await Promise.all([loadAllData(), loadTodos(), loadReminderRecords()]);
+    await loadAllData();
     if (currentView === 'calendar') renderCalendar();
     else if (currentView === 'stats') renderStats();
     else renderClockinView();
@@ -1570,6 +1615,15 @@ function setupEventListeners() {
     await window.calendarAPI.setAutoLaunch(!current);
     updateAutoLaunchBtn();
     showToast(current ? '已关闭开机自启' : '已开启开机自启');
+  });
+
+  // Close modals on backdrop click
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
   });
 }
 

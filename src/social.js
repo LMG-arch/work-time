@@ -89,7 +89,7 @@ async function renderFeed(container) {
 
   let html = '';
   if (feedPosts.length === 0) {
-    html = '<div class="social-empty">暂无动态<br><span class="social-empty-sub">添加好友后可以看到彼此的动态</span></div>';
+    html = '<div class="social-empty">暂无动态<br><span class="social-empty-sub">发布一条动态或添加好友吧</span></div>';
   } else {
     html += '<div class="feed-list">';
     for (const post of feedPosts) {

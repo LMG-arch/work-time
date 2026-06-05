@@ -8,9 +8,13 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const store = JSON.parse(raw);
-      if (store && store.days) return store;
+      if (store && store.days) {
+        if (!store.todos) store.todos = [];
+        if (!store.reminderRecords) store.reminderRecords = {};
+        return store;
+      }
     } catch {}
-    return { days: {}, todos: [] };
+    return { days: {}, todos: [], reminders: null, reminderRecords: {} };
   }
 
   function saveStore(store) {
