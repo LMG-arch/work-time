@@ -9,6 +9,24 @@ async function renderSocialView() {
   updateMonthLabel();
   const container = document.getElementById('social-content');
 
+  // Check if Supabase is configured
+  const config = getSupabaseConfig();
+  if (!config.url || !config.key) {
+    container.innerHTML = `<div class="social-empty" style="text-align:left;padding:20px;">
+      <div style="font-size:16px;font-weight:600;margin-bottom:12px;">⚙️ 需要先配置服务</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+        <p>请先到 <b>设置</b> 页面配置好友圈服务：</p>
+        <ol style="padding-left:20px;">
+          <li>到 <a href="https://supabase.com" target="_blank" style="color:var(--accent);">supabase.com</a> 免费注册</li>
+          <li>创建一个项目，获取 URL 和 Anon Key</li>
+          <li>在设置页面填入并保存</li>
+          <li>首次使用需执行 supabase-setup.sql 创建数据表</li>
+        </ol>
+      </div>
+    </div>`;
+    return;
+  }
+
   // Check if database is set up
   const dbReady = await checkDatabaseSetup();
   if (!dbReady) {
@@ -407,6 +425,9 @@ async function checkDatabaseSetup() {
 // ===== Init =====
 
 async function initSocial() {
+  const config = getSupabaseConfig();
+  if (!config.url || !config.key) return; // Not configured yet
+
   if (!sb) {
     sb = initSupabase();
   }

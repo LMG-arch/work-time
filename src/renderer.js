@@ -425,6 +425,13 @@ function renderSettingsView() {
     grid.appendChild(opt);
   }
 
+  // Supabase config
+  const config = getSupabaseConfig();
+  const urlInput = document.getElementById('supabase-url-input');
+  const keyInput = document.getElementById('supabase-key-input');
+  if (urlInput) urlInput.value = config.url || '';
+  if (keyInput) keyInput.value = config.key || '';
+
   // Auto-launch button
   updateAutoLaunchBtn();
 }
@@ -1164,6 +1171,32 @@ function setupEventListeners() {
 
   document.getElementById('post-modal-cancel').addEventListener('click', closePostModal);
   document.getElementById('post-modal-submit').addEventListener('click', submitPost);
+
+  // Supabase config
+  document.getElementById('supabase-save-btn').addEventListener('click', () => {
+    const url = document.getElementById('supabase-url-input').value.trim();
+    const key = document.getElementById('supabase-key-input').value.trim();
+    if (!url || !key) { showToast('请填写完整配置'); return; }
+    saveSupabaseConfig(url, key);
+    sb = initSupabase();
+    showToast('配置已保存');
+  });
+
+  document.getElementById('supabase-test-btn').addEventListener('click', async () => {
+    const url = document.getElementById('supabase-url-input').value.trim();
+    const key = document.getElementById('supabase-key-input').value.trim();
+    if (!url || !key) { showToast('请先填写配置'); return; }
+    saveSupabaseConfig(url, key);
+    sb = initSupabase();
+    if (!sb) { showToast('初始化失败'); return; }
+    try {
+      const { error } = await sb.from('profiles').select('id').limit(1);
+      if (error) showToast('连接失败: ' + error.message);
+      else showToast('连接成功 ✓');
+    } catch (e) {
+      showToast('连接失败');
+    }
+  });
 
   // Clock-in settings
   document.getElementById('clockin-settings-btn').addEventListener('click', openReminderSettings);
