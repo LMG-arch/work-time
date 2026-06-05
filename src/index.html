@@ -143,14 +143,33 @@
       </div>
     </div>
 
+    <!-- Settings View -->
+    <div id="settings-view" class="page-view" style="display:none;">
+      <div class="settings-content">
+        <div class="settings-group">
+          <div class="settings-group-title">数据管理</div>
+          <div class="settings-btn-row">
+            <button id="export-btn" class="settings-action-btn">📤 导出数据</button>
+            <button id="import-btn" class="settings-action-btn">📥 导入数据</button>
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-group-title">主题风格</div>
+          <div id="settings-theme-grid" class="theme-grid"></div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-group-title">其他</div>
+          <button id="auto-launch-btn" class="settings-action-btn full">开机自启</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Toolbar -->
     <div class="toolbar">
-      <button id="todo-btn" class="tool-btn" title="待办管理">待办</button>
-      <button id="clockin-btn" class="tool-btn" title="打卡提醒">打卡</button>
-      <button id="stats-btn" class="tool-btn" title="月度统计">统计</button>
-      <button id="export-btn" class="tool-btn" title="导出数据">导出</button>
-      <button id="import-btn" class="tool-btn" title="导入数据">导入</button>
-      <button id="auto-launch-btn" class="tool-btn toggle-btn" title="开机自启">开机自启</button>
+      <button id="todo-btn" class="tool-btn primary-btn" title="待办管理">📋 待办</button>
+      <button id="clockin-btn" class="tool-btn primary-btn" title="打卡提醒">⏰ 打卡</button>
+      <button id="stats-btn" class="tool-btn" title="月度统计">📊 统计</button>
+      <button id="settings-btn" class="tool-btn" title="设置">⚙ 设置</button>
     </div>
   </div>
 

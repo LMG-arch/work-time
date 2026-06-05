@@ -407,6 +407,28 @@ function renderClockinHistory() {
   }
 }
 
+function renderSettingsView() {
+  // Theme grid
+  const grid = document.getElementById('settings-theme-grid');
+  const currentTheme = document.body.dataset.theme || 'default';
+  grid.innerHTML = '';
+  for (const t of THEMES) {
+    const opt = document.createElement('div');
+    opt.className = 'theme-opt' + (currentTheme === t.id ? ' active' : '');
+    opt.dataset.theme = t.id;
+    opt.innerHTML = `<div class="theme-dot" style="background:${t.color}"></div><span>${t.name}</span>`;
+    opt.addEventListener('click', () => {
+      setTheme(t.id);
+      grid.querySelectorAll('.theme-opt').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+    });
+    grid.appendChild(opt);
+  }
+
+  // Auto-launch button
+  updateAutoLaunchBtn();
+}
+
 function renderReminderSettings() {
   const list = document.getElementById('reminder-settings-list');
   list.innerHTML = '';
@@ -688,6 +710,11 @@ function onDayClick(dateStr, isOtherMonth) {
     renderCalendar();
     return;
   }
+  // Toggle: click same day again to close detail panel
+  if (selectedDate === dateStr && document.getElementById('detail-panel').classList.contains('open')) {
+    closeDetailPanel();
+    return;
+  }
   selectedDate = dateStr;
   document.querySelectorAll('.day-cell.selected').forEach(el => el.classList.remove('selected'));
   const cell = document.querySelector(`.day-cell[data-date="${dateStr}"]`);
@@ -843,13 +870,17 @@ function switchView(view) {
   document.getElementById('stats-view').style.display = view === 'stats' ? '' : 'none';
   document.getElementById('todo-view').style.display = view === 'todo' ? '' : 'none';
   document.getElementById('clockin-view').style.display = view === 'clockin' ? '' : 'none';
-  document.getElementById('stats-btn').textContent = view === 'stats' ? '日历' : '统计';
-  document.getElementById('todo-btn').textContent = view === 'todo' ? '日历' : '待办';
+  document.getElementById('settings-view').style.display = view === 'settings' ? '' : 'none';
+  document.getElementById('stats-btn').textContent = view === 'stats' ? '📊 日历' : '📊 统计';
+  document.getElementById('todo-btn').textContent = view === 'todo' ? '📋 日历' : '📋 待办';
   const clockinBtn = document.getElementById('clockin-btn');
-  if (clockinBtn) clockinBtn.textContent = view === 'clockin' ? '日历' : '打卡';
+  if (clockinBtn) clockinBtn.textContent = view === 'clockin' ? '⏰ 日历' : '⏰ 打卡';
+  const settingsBtn = document.getElementById('settings-btn');
+  if (settingsBtn) settingsBtn.textContent = view === 'settings' ? '⚙ 日历' : '⚙ 设置';
   if (view === 'stats') renderStats();
   if (view === 'todo') renderTodoView();
   if (view === 'clockin') renderClockinView();
+  if (view === 'settings') renderSettingsView();
 }
 
 // --- Stats ---
@@ -939,19 +970,6 @@ function renderStats() {
     html += '</div></div>';
   }
 
-  // Theme picker
-  const currentTheme = document.body.dataset.theme || 'default';
-  html += `<div class="theme-panel">
-    <div class="theme-title">主题风格</div>
-    <div class="theme-grid">`;
-  for (const t of THEMES) {
-    html += `<div class="theme-opt${currentTheme === t.id ? ' active' : ''}" data-theme="${t.id}">
-      <div class="theme-dot" style="background:${t.color}"></div>
-      <span>${t.name}</span>
-    </div>`;
-  }
-  html += '</div></div>';
-
   // Day-by-day list
   if (dayRecords.length > 0) {
     html += `<div class="records-title">本月记录 (${dayRecords.length}天)</div>`;
@@ -977,14 +995,6 @@ function renderStats() {
   }
 
   container.innerHTML = html;
-
-  container.querySelectorAll('.theme-opt').forEach(opt => {
-    opt.addEventListener('click', () => {
-      setTheme(opt.dataset.theme);
-      container.querySelectorAll('.theme-opt').forEach(o => o.classList.remove('active'));
-      opt.classList.add('active');
-    });
-  });
 }
 
 // --- Theme ---
@@ -1104,19 +1114,29 @@ function setupEventListeners() {
     switchView(currentView === 'calendar' ? 'todo' : 'calendar');
   });
 
+  // Clock-in view
+  document.getElementById('clockin-btn').addEventListener('click', () => {
+    switchView(currentView === 'calendar' ? 'clockin' : 'calendar');
+  });
+
+  // Settings view
+  document.getElementById('settings-btn').addEventListener('click', () => {
+    switchView(currentView === 'calendar' ? 'settings' : 'calendar');
+  });
+
   // Add todo button in detail panel
   document.getElementById('todo-add-btn').addEventListener('click', openTodoModal);
 
   // Todo modal
   setupTodoModal();
 
-  // Export
+  // Export (in settings view)
   document.getElementById('export-btn').addEventListener('click', async () => {
     const result = await window.calendarAPI.exportData();
-    if (result.success) showToast('导出成功: ' + result.path);
+    if (result.success) showToast('导出成功');
   });
 
-  // Import
+  // Import (in settings view)
   document.getElementById('import-btn').addEventListener('click', async () => {
     const result = await window.calendarAPI.importData();
     if (result.success) {
@@ -1124,27 +1144,21 @@ function setupEventListeners() {
       if (currentView === 'calendar') renderCalendar();
       else if (currentView === 'stats') renderStats();
       else if (currentView === 'todo') renderTodoView();
-      else renderClockinView();
+      else if (currentView === 'clockin') renderClockinView();
+      else renderSettingsView();
       showToast('导入成功');
     } else if (result.error) {
       showToast('导入失败: ' + result.error);
     }
   });
 
-  // Clock-in view
-  document.getElementById('clockin-btn').addEventListener('click', () => {
-    switchView(currentView === 'calendar' ? 'clockin' : 'calendar');
-  });
-
+  // Clock-in settings
   document.getElementById('clockin-settings-btn').addEventListener('click', openReminderSettings);
-
   document.getElementById('reminder-modal-cancel').addEventListener('click', closeReminderSettings);
-
   document.getElementById('reminder-modal-save').addEventListener('click', saveReminderSettings);
 
-  // Auto-launch toggle
+  // Auto-launch toggle (in settings view)
   const autoLaunchBtn = document.getElementById('auto-launch-btn');
-  updateAutoLaunchBtn();
   autoLaunchBtn.addEventListener('click', async () => {
     const current = await window.calendarAPI.getAutoLaunch();
     await window.calendarAPI.setAutoLaunch(!current);
@@ -1156,8 +1170,9 @@ function setupEventListeners() {
 async function updateAutoLaunchBtn() {
   const enabled = await window.calendarAPI.getAutoLaunch();
   const btn = document.getElementById('auto-launch-btn');
-  btn.classList.toggle('active', enabled);
-  btn.textContent = enabled ? '开机自启 ✓' : '开机自启';
+  if (!btn) return;
+  btn.classList.toggle('toggle-active', enabled);
+  btn.textContent = enabled ? '✓ 开机自启已开启' : '开机自启';
 }
 
 // --- Init ---
@@ -1183,9 +1198,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Hide auto-launch button on mobile (not applicable)
+  // Hide auto-launch on mobile (not applicable)
   if (window.Capacitor || !navigator.userAgent.includes('Electron')) {
     const autoBtn = document.getElementById('auto-launch-btn');
-    if (autoBtn) autoBtn.style.display = 'none';
+    if (autoBtn) autoBtn.parentElement.style.display = 'none';
   }
 });
