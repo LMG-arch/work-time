@@ -225,6 +225,17 @@ function getSavedUsername() {
 
 // ===== Profile =====
 
+// Get the effective user ID, following linked_id chain (for RLS compatibility)
+async function getEffectiveUserId() {
+  const user = await ensureSession();
+  if (!user) return null;
+  const profile = await getProfile(user.id);
+  if (profile && profile.linked_id && profile.linked_id !== user.id) {
+    return profile.linked_id;
+  }
+  return user.id;
+}
+
 async function getProfile(userId) {
   if (!sb) return null;
   const { data } = await sb.from('profiles').select('*').eq('id', userId).is('deleted_at', null).single();
@@ -315,21 +326,21 @@ async function uploadPostImage(file) {
 
 async function createPost(content, imageUrl) {
   if (!sb) return null;
-  const user = await ensureSession();
-  if (!user) return null;
-  const row = { user_id: user.id, content: content || '', image_url: imageUrl || '' };
+  const uid = await getEffectiveUserId();
+  if (!uid) return null;
+  const row = { user_id: uid, content: content || '', image_url: imageUrl || '' };
   const { data, error } = await sb.from('posts').insert(row).select().single();
   if (error) { console.error('[Supabase] createPost error:', error); return null; }
   return data;
 }
 
 async function getFeedPosts(limit = 20, offset = 0) {
-  const user = await getCurrentUser();
-  if (!user) return [];
+  const uid = await getEffectiveUserId();
+  if (!uid) return [];
 
   // Get friend IDs
   const friendIds = await getFriendIds();
-  friendIds.push(user.id); // Include own posts
+  friendIds.push(uid); // Include own posts
 
   const { data: posts } = await sb.from('posts')
     .select('*')
@@ -374,9 +385,9 @@ async function getFeedPosts(limit = 20, offset = 0) {
 }
 
 async function deletePost(postId) {
-  const user = await getCurrentUser();
-  if (!user) return false;
-  const { error } = await sb.from('posts').update({ deleted_at: new Date().toISOString() }).eq('id', postId).eq('user_id', user.id);
+  const uid = await getEffectiveUserId();
+  if (!uid) return false;
+  const { error } = await sb.from('posts').update({ deleted_at: new Date().toISOString() }).eq('id', postId).eq('user_id', uid);
   return !error;
 }
 
@@ -385,18 +396,18 @@ async function deletePost(postId) {
 let _likeLock = {};
 
 async function toggleLike(postId) {
-  const user = await getCurrentUser();
-  if (!user) return false;
+  const uid = await getEffectiveUserId();
+  if (!uid) return false;
   // Prevent double-click race condition
   if (_likeLock[postId]) return false;
   _likeLock[postId] = true;
   try {
-    const { data: existing } = await sb.from('post_likes').select('id').eq('post_id', postId).eq('user_id', user.id).is('deleted_at', null).maybeSingle();
+    const { data: existing } = await sb.from('post_likes').select('id').eq('post_id', postId).eq('user_id', uid).is('deleted_at', null).maybeSingle();
     if (existing) {
       await sb.from('post_likes').delete().eq('id', existing.id);
       return false;
     } else {
-      const { error } = await sb.from('post_likes').insert({ post_id: postId, user_id: user.id });
+      const { error } = await sb.from('post_likes').insert({ post_id: postId, user_id: uid });
       return !error;
     }
   } finally {
@@ -428,9 +439,9 @@ async function getComments(postId) {
 
 async function addComment(postId, content) {
   if (!sb) return null;
-  const user = await ensureSession();
-  if (!user) return null;
-  const { data, error } = await sb.from('post_comments').insert({ post_id: postId, user_id: user.id, content }).select().single();
+  const uid = await getEffectiveUserId();
+  if (!uid) return null;
+  const { data, error } = await sb.from('post_comments').insert({ post_id: postId, user_id: uid, content }).select().single();
   if (error) { console.error('[Supabase] addComment error:', error); return null; }
   return data;
 }
@@ -438,15 +449,15 @@ async function addComment(postId, content) {
 // ===== Friends =====
 
 async function getFriendIds() {
-  const user = await getCurrentUser();
-  if (!user) return [];
+  const uid = await getEffectiveUserId();
+  if (!uid) return [];
   const { data } = await sb.from('friendships')
     .select('user_id, friend_id')
-    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
+    .or(`user_id.eq.${uid},friend_id.eq.${uid}`)
     .eq('status', 'accepted')
     .is('deleted_at', null);
   if (!data) return [];
-  return data.map(f => f.user_id === user.id ? f.friend_id : f.user_id);
+  return data.map(f => f.user_id === uid ? f.friend_id : f.user_id);
 }
 
 async function getFriends() {
@@ -457,11 +468,11 @@ async function getFriends() {
 }
 
 async function getFriendRequests() {
-  const user = await getCurrentUser();
-  if (!user) return [];
+  const uid = await getEffectiveUserId();
+  if (!uid) return [];
   const { data } = await sb.from('friendships')
     .select('*')
-    .eq('friend_id', user.id)
+    .eq('friend_id', uid)
     .eq('status', 'pending')
     .is('deleted_at', null);
   if (!data || data.length === 0) return [];
@@ -478,18 +489,20 @@ async function getFriendRequests() {
 }
 
 async function sendFriendRequest(friendId) {
-  const user = await getCurrentUser();
-  if (!user || user.id === friendId) return { error: '不能添加自己' };
+  const uid = await getEffectiveUserId();
+  if (!uid) return { error: '未登录' };
+  if (uid === friendId) return { error: '不能添加自己' };
   // Check if already friends or pending
   const { data: existing } = await sb.from('friendships')
     .select('id, status')
-    .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`)
+    .or(`and(user_id.eq.${uid},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${uid})`)
+    .is('deleted_at', null)
     .maybeSingle();
   if (existing) {
     if (existing.status === 'accepted') return { error: '已经是好友' };
     return { error: '已发送过申请' };
   }
-  const { error } = await sb.from('friendships').insert({ user_id: user.id, friend_id: friendId });
+  const { error } = await sb.from('friendships').insert({ user_id: uid, friend_id: friendId });
   return { error: error ? '发送失败' : null };
 }
 
@@ -637,11 +650,11 @@ function applyCalendarData(data) {
 // Push local data to cloud
 async function pushCalendarData() {
   if (!sb) return { error: '未连接' };
-  const user = await ensureSession();
-  if (!user) return { error: '未登录' };
+  const uid = await getEffectiveUserId();
+  if (!uid) return { error: '未登录' };
   const data = collectCalendarData();
   const { error } = await sb.from('user_data').upsert({
-    user_id: user.id,
+    user_id: uid,
     data: data,
     updated_at: new Date().toISOString()
   }, { onConflict: 'user_id' });
@@ -651,9 +664,9 @@ async function pushCalendarData() {
 // Pull cloud data to local
 async function pullCalendarData() {
   if (!sb) return { error: '未连接' };
-  const user = await ensureSession();
-  if (!user) return { error: '未登录' };
-  const { data, error } = await sb.from('user_data').select('data').eq('user_id', user.id).maybeSingle();
+  const uid = await getEffectiveUserId();
+  if (!uid) return { error: '未登录' };
+  const { data, error } = await sb.from('user_data').select('data').eq('user_id', uid).maybeSingle();
   if (error) return { error: error.message };
   if (data && data.data) {
     applyCalendarData(data.data);
@@ -676,12 +689,12 @@ async function syncCalendarData() {
 
 async function _doSyncCalendarData() {
   if (!sb) return { error: '未连接' };
-  const user = await ensureSession();
-  if (!user) return { error: '未登录' };
+  const uid = await getEffectiveUserId();
+  if (!uid) return { error: '未登录' };
 
   // Get cloud data
   const { data: cloudRow, error: fetchErr } = await sb.from('user_data')
-    .select('data, updated_at').eq('user_id', user.id).maybeSingle();
+    .select('data, updated_at').eq('user_id', uid).maybeSingle();
   if (fetchErr) return { error: fetchErr.message };
 
   const localData = collectCalendarData();
@@ -715,7 +728,7 @@ async function _doSyncCalendarData() {
   // Push merged/local data to cloud
   const pushData = collectCalendarData();
   const { error: pushErr } = await sb.from('user_data').upsert({
-    user_id: user.id,
+    user_id: uid,
     data: pushData,
     updated_at: new Date().toISOString()
   }, { onConflict: 'user_id' });

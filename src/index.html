@@ -303,18 +303,7 @@
     </div>
   </div>
 
-  <script>
-    // Load Supabase JS: local first, CDN fallback (blocking)
-    (function() {
-      var s = document.createElement('script');
-      s.src = 'lib/supabase.min.js';
-      s.onerror = function() {
-        // CDN fallback with blocking write to ensure it loads before other scripts
-        document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>');
-      };
-      document.head.appendChild(s);
-    })();
-  </script>
+  <script src="lib/supabase.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';s.onload=function(){if(typeof initSupabase==='function'&&typeof sb!=='undefined'&&!sb)window.sb=initSupabase();};document.head.appendChild(s);"></script>
   <script src="utils.js"></script>
   <script src="holidays.js"></script>
   <script src="lunar.js"></script>

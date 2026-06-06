@@ -73,7 +73,6 @@ const HOLIDAYS = {
   // 中秋节
   "2026-09-25": { name: "中秋节", type: "holiday" },
   "2026-09-26": { name: "中秋节", type: "holiday" },
-  "2026-09-27": { name: "中秋节", type: "holiday" },
   // 国庆节
   "2026-10-01": { name: "国庆节", type: "holiday" },
   "2026-10-02": { name: "国庆节", type: "holiday" },
@@ -82,7 +81,7 @@ const HOLIDAYS = {
   "2026-10-05": { name: "国庆节", type: "holiday" },
   "2026-10-06": { name: "国庆节", type: "holiday" },
   "2026-10-07": { name: "国庆节", type: "holiday" },
-  "2026-09-27": { name: "国庆调休", type: "workday" },
+  "2026-09-27": { name: "中秋节/国庆调休", type: "workday" },
   "2026-10-10": { name: "国庆调休", type: "workday" },
 };
 

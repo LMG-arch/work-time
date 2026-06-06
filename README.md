@@ -120,255 +120,10 @@
 
 1. 在 Supabase Dashboard 左侧菜单，点击 **SQL Editor**
 2. 点击 **New query**
-3. 复制以下 SQL 代码，粘贴到编辑器中：
+3. 打开项目根目录的 `supabase-setup.sql` 文件，复制全部内容粘贴到编辑器中
 
-```sql
--- 用户资料表
-CREATE TABLE IF NOT EXISTS profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  display_id SERIAL UNIQUE,
-  nickname TEXT NOT NULL DEFAULT '',
-  avatar TEXT DEFAULT '',
-  username TEXT UNIQUE,
-  password_hash TEXT,
-  linked_id UUID,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  deleted_at TIMESTAMPTZ
-);
+> 💡 完整 SQL 包含 7 张表（profiles、posts、post_likes、post_comments、friendships、user_data、bind_codes）、RLS 策略、索引和服务端函数。请勿手动拼接部分 SQL，以确保数据库结构完整。
 
--- 动态表
-CREATE TABLE IF NOT EXISTS posts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  content TEXT NOT NULL DEFAULT '',
-  image_url TEXT DEFAULT '',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  deleted_at TIMESTAMPTZ
-);
-
--- 点赞表
-CREATE TABLE IF NOT EXISTS post_likes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  deleted_at TIMESTAMPTZ,
-  UNIQUE(post_id, user_id)
-);
-
--- 评论表
-CREATE TABLE IF NOT EXISTS post_comments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  deleted_at TIMESTAMPTZ
-);
-
--- 好友关系表
-CREATE TABLE IF NOT EXISTS friendships (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  friend_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  deleted_at TIMESTAMPTZ,
-  UNIQUE(user_id, friend_id)
-);
-
--- 用户数据同步表（日历/待办/提醒等本地数据云端备份）
-CREATE TABLE IF NOT EXISTS user_data (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  data JSONB NOT NULL DEFAULT '{}',
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 启用行级安全策略
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE post_likes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
-
--- 有效用户ID函数（支持多端登录 linked_id 关联）
-CREATE OR REPLACE FUNCTION get_effective_user_id()
-RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
-DECLARE uid UUID; linked UUID;
-BEGIN
-  uid := auth.uid();
-  SELECT linked_id INTO linked FROM profiles WHERE id = uid AND deleted_at IS NULL;
-  RETURN COALESCE(linked, uid);
-END;
-$$;
-
--- Profiles: 所有人可读，本人可写
-CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
-CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id OR get_effective_user_id() = id);
-
--- Posts: 所有人可读，有效用户可写删
-CREATE POLICY "posts_select" ON posts FOR SELECT USING (true);
-CREATE POLICY "posts_insert" ON posts FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
-CREATE POLICY "posts_delete" ON posts FOR DELETE USING (get_effective_user_id() = user_id);
-
--- Likes: 所有人可读，有效用户可写删
-CREATE POLICY "likes_select" ON post_likes FOR SELECT USING (true);
-CREATE POLICY "likes_insert" ON post_likes FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
-CREATE POLICY "likes_delete" ON post_likes FOR DELETE USING (get_effective_user_id() = user_id);
-
--- Comments: 所有人可读，有效用户可写删
-CREATE POLICY "comments_select" ON post_comments FOR SELECT USING (true);
-CREATE POLICY "comments_insert" ON post_comments FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
-CREATE POLICY "comments_delete" ON post_comments FOR DELETE USING (get_effective_user_id() = user_id);
-
--- Friendships: 有效用户相关可读写
-CREATE POLICY "friendships_select" ON friendships FOR SELECT
-  USING (get_effective_user_id() = user_id OR get_effective_user_id() = friend_id);
-CREATE POLICY "friendships_insert" ON friendships FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
-CREATE POLICY "friendships_update" ON friendships FOR UPDATE USING (get_effective_user_id() = friend_id);
-CREATE POLICY "friendships_delete" ON friendships FOR DELETE
-  USING (get_effective_user_id() = user_id OR get_effective_user_id() = friend_id);
-
--- User Data: 有效用户可读写
-CREATE POLICY "user_data_select" ON user_data FOR SELECT USING (get_effective_user_id() = user_id);
-CREATE POLICY "user_data_insert" ON user_data FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
-CREATE POLICY "user_data_update" ON user_data FOR UPDATE USING (get_effective_user_id() = user_id);
-
--- 管理员重置函数（软删除，保留数据可恢复）
-CREATE OR REPLACE FUNCTION reset_all_data()
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1) THEN
-    RAISE EXCEPTION '仅管理员可操作';
-  END IF;
-  UPDATE post_comments SET deleted_at = NOW() WHERE deleted_at IS NULL;
-  UPDATE post_likes SET deleted_at = NOW() WHERE deleted_at IS NULL;
-  UPDATE posts SET deleted_at = NOW() WHERE deleted_at IS NULL;
-  UPDATE friendships SET deleted_at = NOW() WHERE deleted_at IS NULL;
-  UPDATE profiles SET deleted_at = NOW() WHERE deleted_at IS NULL AND display_id != 1;
-END;
-$$;
-
--- 管理员恢复函数
-CREATE OR REPLACE FUNCTION restore_all_data()
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1) THEN
-    RAISE EXCEPTION '仅管理员可操作';
-  END IF;
-  UPDATE post_comments SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
-  UPDATE post_likes SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
-  UPDATE posts SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
-  UPDATE friendships SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
-  UPDATE profiles SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
-END;
-$$;
-
--- 管理员清空回收站（永久删除）
-CREATE OR REPLACE FUNCTION empty_trash()
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1) THEN
-    RAISE EXCEPTION '仅管理员可操作';
-  END IF;
-  DELETE FROM post_comments WHERE deleted_at IS NOT NULL;
-  DELETE FROM post_likes WHERE deleted_at IS NOT NULL;
-  DELETE FROM posts WHERE deleted_at IS NOT NULL;
-  DELETE FROM friendships WHERE deleted_at IS NOT NULL;
-  DELETE FROM profiles WHERE deleted_at IS NOT NULL;
-END;
-$$;
-
--- 查询回收站统计
-CREATE OR REPLACE FUNCTION get_trash_stats()
-RETURNS TABLE(table_name text, count bigint)
-LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1) THEN
-    RAISE EXCEPTION '仅管理员可操作';
-  END IF;
-  RETURN QUERY SELECT 'profiles'::text, (SELECT COUNT(*) FROM profiles WHERE deleted_at IS NOT NULL);
-  RETURN QUERY SELECT 'posts'::text, (SELECT COUNT(*) FROM posts WHERE deleted_at IS NOT NULL);
-  RETURN QUERY SELECT 'comments'::text, (SELECT COUNT(*) FROM post_comments WHERE deleted_at IS NOT NULL);
-  RETURN QUERY SELECT 'likes'::text, (SELECT COUNT(*) FROM post_likes WHERE deleted_at IS NOT NULL);
-  RETURN QUERY SELECT 'friendships'::text, (SELECT COUNT(*) FROM friendships WHERE deleted_at IS NOT NULL);
-END;
-$$;
-
--- 生成绑定验证码（6位数字，5分钟有效）
-CREATE OR REPLACE FUNCTION generate_bind_code()
-RETURNS text LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE code TEXT;
-BEGIN
-  code := lpad(floor(random() * 1000000)::text, 6, '0');
-  INSERT INTO bind_codes (user_id, code, expires_at)
-  VALUES (auth.uid(), code, NOW() + INTERVAL '5 minutes')
-  ON CONFLICT (user_id) DO UPDATE SET code = EXCLUDED.code, expires_at = EXCLUDED.expires_at;
-  RETURN code;
-END;
-$$;
-
--- 验证绑定验证码
-CREATE OR REPLACE FUNCTION verify_bind_code(target_user_id UUID, input_code TEXT)
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE valid BOOLEAN;
-BEGIN
-  SELECT EXISTS(SELECT 1 FROM bind_codes WHERE user_id = target_user_id AND code = input_code AND expires_at > NOW()) INTO valid;
-  IF valid THEN DELETE FROM bind_codes WHERE user_id = target_user_id; END IF;
-  RETURN valid;
-END;
-$$;
-
--- 创建索引
-CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
-CREATE INDEX IF NOT EXISTS idx_posts_time ON posts(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_likes_post ON post_likes(post_id);
-CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments(post_id);
-CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id);
-CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
-CREATE INDEX IF NOT EXISTS idx_profiles_deleted ON profiles(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_posts_deleted ON posts(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_likes_deleted ON post_likes(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_comments_deleted ON post_comments(deleted_at);
-CREATE INDEX IF NOT EXISTS idx_friendships_deleted ON friendships(deleted_at);
-
--- 存储桶（用于帖子图片上传）
-INSERT INTO storage.buckets (id, name, public) VALUES ('post-images', 'post-images', true) ON CONFLICT (id) DO NOTHING;
-CREATE POLICY "post_images_select" ON storage.objects FOR SELECT USING (bucket_id = 'post-images');
-CREATE POLICY "post_images_insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'post-images');
-CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_id = 'post-images');
-
--- 注册账号（用户名+密码哈希，绑定到当前匿名用户）
-CREATE OR REPLACE FUNCTION register_username(p_username TEXT, p_password_hash TEXT)
-RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE existing_id UUID;
-BEGIN
-  SELECT id INTO existing_id FROM profiles WHERE username = p_username AND deleted_at IS NULL;
-  IF existing_id IS NOT NULL THEN RETURN json_build_object('error', '用户名已存在'); END IF;
-  UPDATE profiles SET username = p_username, password_hash = p_password_hash WHERE id = auth.uid();
-  IF NOT FOUND THEN INSERT INTO profiles (id, nickname, username, password_hash) VALUES (auth.uid(), p_username, p_username, p_password_hash); END IF;
-  RETURN json_build_object('user_id', auth.uid());
-END;
-$$;
-
--- 登录账号（验证密码，迁移数据到当前匿名session）
--- 登录账号（验证密码，通过 linked_id 关联，不迁移数据）
-CREATE OR REPLACE FUNCTION login_username(p_username TEXT, p_password_hash TEXT)
-RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE target_user UUID; curr UUID;
-BEGIN
-  curr := auth.uid();
-  SELECT id INTO target_user FROM profiles WHERE username = p_username AND password_hash = p_password_hash AND deleted_at IS NULL;
-  IF target_user IS NULL THEN RETURN json_build_object('error', '用户名或密码错误'); END IF;
-  IF target_user = curr THEN RETURN json_build_object('user_id', curr); END IF;
-  INSERT INTO profiles (id, nickname, linked_id) VALUES (curr, 'linked', target_user)
-  ON CONFLICT (id) DO UPDATE SET linked_id = target_user;
-  RETURN json_build_object('user_id', target_user);
-END;
-$$;
-```
 
 4. 点击右下角 **Run** 按钮执行
 5. 看到 `Success. No rows returned` 表示成功
@@ -524,11 +279,14 @@ JAVA_HOME="C:/Program Files/Java/jdk-21" ./gradlew assembleDebug
 │       └── supabase.min.js # Supabase JS 本地库
 ├── main.js                 # Electron 主进程
 ├── preload.js              # Electron 预加载脚本
-├── supabase-setup.sql      # 数据库初始化 SQL
+├── set-icon.js             # 打包后设置 .exe 图标
+├── supabase-setup.sql      # 数据库初始化 SQL（完整版，含索引和存储桶）
 ├── android/                # Capacitor Android 项目
 ├── assets/                 # 应用图标
 ├── capacitor.config.json   # Capacitor 配置
-└── package.json
+├── package.json
+├── 启动上班日历.bat          # Windows 启动脚本
+└── 启动上班日历.vbs          # Windows 静默启动脚本
 ```
 
 ## 安卓权限
@@ -547,6 +305,20 @@ MIT
 ---
 
 ## 更新日志
+
+### v3.1.1 (2026-06-06) — Bug 修复与安全改进
+- **关键修复**：admin 控件（清除云端数据、回收站）不在设置页显示 — `isAdmin()` 在 Supabase 初始化前执行导致永远返回 false，改为 DOMContentLoaded 后延迟调用
+- **关键修复**：account linking 后所有写入操作（发帖、点赞、评论、加好友）静默失败 — 客户端使用 `auth.uid()` 但 RLS 使用 `get_effective_user_id()`，新增 `getEffectiveUserId()` 统一使用
+- **关键修复**：颜色选择器、标签输入、待办弹窗、图片上传按钮无响应 — `setupColorPicker/setupTagInputs/setupTodoModal/setupPostImagePicker` 从未被调用
+- **关键修复**：添加待办、保存备注、发布/取消动态按钮无事件绑定
+- **修复**：holidays.js 重复键 `2026-09-27`（中秋节被国庆调休覆盖）— 合并为 `中秋节/国庆调休`
+- **修复**：supabase-setup.sql 中 `get_effective_user_id()` 函数定义在引用它的 RLS 策略之后 — 移至策略之前
+- **修复**：Supabase CDN fallback 使用 `document.write()` 可能清空页面 — 改为同步 script 标签 + onerror 回调
+- **修复**：sendFriendRequest 未过滤 `deleted_at`，导致无法重新添加已删除的好友
+- **改进**：`initSocial()` 调用添加 `await`，确保初始化顺序正确
+- **文档**：README 中内嵌 SQL 改为引用 `supabase-setup.sql` 文件，避免版本不同步
+- **文档**：更新项目结构，补充 `set-icon.js`、启动脚本等
+- **文档**：`.gitignore` 添加 `.claude/`
 
 ### v3.1.0 (2026-06-06) — 全面重构
 - **代码拆分**：renderer.js (2004行) 拆分为 6 个模块：calendar.js、todos.js、reminders.js、stats.js、settings.js、utils.js

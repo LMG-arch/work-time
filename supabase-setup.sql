@@ -78,6 +78,23 @@ ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bind_codes ENABLE ROW LEVEL SECURITY;
 
+-- 获取有效用户ID（如果当前用户有 linked_id 则返回 linked_id，否则返回自身）
+CREATE OR REPLACE FUNCTION get_effective_user_id()
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+AS $$
+DECLARE
+  uid UUID;
+  linked UUID;
+BEGIN
+  uid := auth.uid();
+  SELECT linked_id INTO linked FROM profiles WHERE id = uid AND deleted_at IS NULL;
+  RETURN COALESCE(linked, uid);
+END;
+$$;
+
 -- Profiles: 所有人可读，本人可写（通过 linked_id 关联）
 CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
 CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
@@ -263,23 +280,6 @@ BEGIN
   END IF;
 
   RETURN json_build_object('user_id', auth.uid());
-END;
-$$;
-
--- 获取有效用户ID（如果当前用户有 linked_id 则返回 linked_id，否则返回自身）
-CREATE OR REPLACE FUNCTION get_effective_user_id()
-RETURNS UUID
-LANGUAGE plpgsql
-SECURITY DEFINER
-STABLE
-AS $$
-DECLARE
-  uid UUID;
-  linked UUID;
-BEGIN
-  uid := auth.uid();
-  SELECT linked_id INTO linked FROM profiles WHERE id = uid AND deleted_at IS NULL;
-  RETURN COALESCE(linked, uid);
 END;
 $$;
 
