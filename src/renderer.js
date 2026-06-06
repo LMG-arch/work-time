@@ -1857,19 +1857,25 @@ function setupEventListeners() {
     if (!sb) sb = initSupabase();
 
     async function updateAccountUI() {
+      const savedUsername = getSavedUsername();
       const user = await getCurrentUser();
-      if (user) {
+      if (user && savedUsername) {
+        // Logged in with account
         loggedOut.style.display = 'none';
         loggedIn.style.display = '';
         const profile = await getProfile(user.id);
-        const nickname = profile ? profile.nickname : (getSavedUsername() || '用户');
+        const nickname = profile ? profile.nickname : savedUsername;
         const displayId = profile ? profile.display_id : '-';
         document.getElementById('account-avatar').textContent = nickname[0];
         document.getElementById('account-nickname').textContent = nickname;
-        document.getElementById('account-id').textContent = `ID: ${displayId} | ${getSavedUsername() || '匿名用户'}`;
+        document.getElementById('account-id').textContent = `ID: ${displayId} | ${savedUsername}`;
       } else {
+        // Logged out or anonymous
         loggedOut.style.display = '';
         loggedIn.style.display = 'none';
+        regUsername.value = '';
+        regPassword.value = '';
+        authStatus.textContent = '';
       }
     }
     updateAccountUI();
