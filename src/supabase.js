@@ -100,13 +100,31 @@ async function ensureSession() {
 
 const ACCOUNT_USERNAME_KEY = 'social-account-username';
 
+function usernameToEmail(username) {
+  // Convert username to valid email: hash Chinese chars to hex, keep latin chars
+  let safe = '';
+  for (let i = 0; i < username.length; i++) {
+    const c = username[i];
+    if (/[a-z0-9_-]/i.test(c)) {
+      safe += c.toLowerCase();
+    } else {
+      // Encode non-ascii chars as hex
+      safe += 'x' + c.charCodeAt(0).toString(16);
+    }
+  }
+  return safe + '@workcalendar.local';
+}
+
 async function registerAccount(username, password) {
   if (!sb) return { error: '未配置服务' };
   if (!username || !password) return { error: '请输入用户名和密码' };
   if (username.length < 2) return { error: '用户名至少2个字符' };
   if (password.length < 4) return { error: '密码至少4个字符' };
 
-  const email = username.toLowerCase().replace(/[^a-z0-9_-]/g, '') + '@workcalendar.local';
+  // Sign out any existing session first to avoid conflicts
+  try { await sb.auth.signOut(); } catch {}
+
+  const email = usernameToEmail(username);
   const { data, error } = await sb.auth.signUp({ email, password });
   if (error) {
     if (error.message.includes('already registered') || error.message.includes('already been registered')) {
@@ -117,6 +135,7 @@ async function registerAccount(username, password) {
   if (data.user) {
     localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
     setBoundUserId(data.user.id);
+    if (typeof _currentUserId !== 'undefined') _currentUserId = data.user.id;
   }
   return { user: data.user };
 }
@@ -125,12 +144,16 @@ async function loginAccount(username, password) {
   if (!sb) return { error: '未配置服务' };
   if (!username || !password) return { error: '请输入用户名和密码' };
 
-  const email = username.toLowerCase().replace(/[^a-z0-9_-]/g, '') + '@workcalendar.local';
+  // Sign out any existing session first
+  try { await sb.auth.signOut(); } catch {}
+
+  const email = usernameToEmail(username);
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) return { error: '用户名或密码错误' };
   if (data.user) {
     localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
     setBoundUserId(data.user.id);
+    if (typeof _currentUserId !== 'undefined') _currentUserId = data.user.id;
   }
   return { user: data.user };
 }
@@ -139,7 +162,8 @@ async function logoutAccount() {
   if (!sb) return;
   await sb.auth.signOut();
   localStorage.removeItem(ACCOUNT_USERNAME_KEY);
-  _currentUserId = null;
+  localStorage.removeItem('social-bound-user-id');
+  if (typeof _currentUserId !== 'undefined') _currentUserId = null;
 }
 
 function getSavedUsername() {

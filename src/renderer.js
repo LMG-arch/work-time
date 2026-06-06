@@ -1879,6 +1879,8 @@ function setupEventListeners() {
           authStatus.textContent = result.error;
           authStatus.style.color = '#e53935';
         } else {
+          // Create profile immediately so display_id is assigned
+          await getMyProfile();
           authStatus.textContent = '注册成功！';
           authStatus.style.color = '';
           regUsername.value = '';
@@ -1906,11 +1908,14 @@ function setupEventListeners() {
           regUsername.value = '';
           regPassword.value = '';
           updateAccountUI();
-          // Pull synced data
-          if (isSyncEnabled()) {
+          // Always try to sync after login
+          try {
             await syncCalendarData();
             if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
             if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
+            if (typeof allReminders !== 'undefined') allReminders = await window.calendarAPI.getReminders();
+          } catch (e) {
+            console.log('[Login] Sync after login failed:', e.message);
           }
         }
       } finally {
