@@ -288,6 +288,11 @@ BEGIN
     RETURN json_build_object('user_id', new_user);
   END IF;
 
+  -- 确保新用户有 profile（外键约束要求）
+  INSERT INTO profiles (id, nickname)
+  VALUES (new_user, 'temp')
+  ON CONFLICT (id) DO NOTHING;
+
   -- 迁移：把旧用户的所有数据改为新用户的UUID
   UPDATE posts SET user_id = new_user WHERE user_id = old_user;
   UPDATE post_likes SET user_id = new_user WHERE user_id = old_user;
@@ -297,7 +302,7 @@ BEGIN
   UPDATE user_data SET user_id = new_user WHERE user_id = old_user;
   UPDATE bind_codes SET user_id = new_user WHERE user_id = old_user;
 
-  -- 删除新用户的空profile（如果存在）
+  -- 删除新用户的临时profile
   DELETE FROM profiles WHERE id = new_user AND username IS NULL;
 
   -- 迁移旧profile到新UUID

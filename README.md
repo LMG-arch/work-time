@@ -364,6 +364,7 @@ BEGIN
   SELECT id INTO old_user FROM profiles WHERE username = p_username AND password_hash = p_password_hash AND deleted_at IS NULL;
   IF old_user IS NULL THEN RETURN json_build_object('error', '用户名或密码错误'); END IF;
   IF old_user = new_user THEN RETURN json_build_object('user_id', new_user); END IF;
+  INSERT INTO profiles (id, nickname) VALUES (new_user, 'temp') ON CONFLICT (id) DO NOTHING;
   UPDATE posts SET user_id = new_user WHERE user_id = old_user;
   UPDATE post_likes SET user_id = new_user WHERE user_id = old_user;
   UPDATE post_comments SET user_id = new_user WHERE user_id = old_user;
@@ -372,6 +373,7 @@ BEGIN
   UPDATE user_data SET user_id = new_user WHERE user_id = old_user;
   UPDATE bind_codes SET user_id = new_user WHERE user_id = old_user;
   DELETE FROM profiles WHERE id = new_user AND username IS NULL;
+  UPDATE profiles SET id = new_user WHERE id = old_user;
   UPDATE profiles SET id = new_user WHERE id = old_user;
   RETURN json_build_object('user_id', new_user);
 END;
