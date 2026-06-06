@@ -165,6 +165,9 @@ async function loginAccount(username, password) {
 }
 
 async function logoutAccount() {
+  if (sb) {
+    try { await sb.auth.signOut(); } catch {}
+  }
   localStorage.removeItem(ACCOUNT_USERNAME_KEY);
   localStorage.removeItem('social-bound-user-id');
   if (typeof _currentUserId !== 'undefined') _currentUserId = null;
