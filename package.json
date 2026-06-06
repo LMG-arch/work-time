@@ -1,6 +1,6 @@
 {
   "name": "work-calendar",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "上班日历 - 桌面日历小程序",
   "main": "main.js",
   "scripts": {
