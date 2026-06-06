@@ -142,7 +142,7 @@ SECURITY DEFINER
 AS $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1
+    SELECT 1 FROM profiles WHERE id = get_effective_user_id() AND display_id = 1
   ) THEN
     RAISE EXCEPTION '仅管理员可操作';
   END IF;
@@ -163,7 +163,7 @@ SECURITY DEFINER
 AS $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1
+    SELECT 1 FROM profiles WHERE id = get_effective_user_id() AND display_id = 1
   ) THEN
     RAISE EXCEPTION '仅管理员可操作';
   END IF;
@@ -184,7 +184,7 @@ SECURITY DEFINER
 AS $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1
+    SELECT 1 FROM profiles WHERE id = get_effective_user_id() AND display_id = 1
   ) THEN
     RAISE EXCEPTION '仅管理员可操作';
   END IF;
@@ -205,7 +205,7 @@ SECURITY DEFINER
 AS $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND display_id = 1
+    SELECT 1 FROM profiles WHERE id = get_effective_user_id() AND display_id = 1
   ) THEN
     RAISE EXCEPTION '仅管理员可操作';
   END IF;
