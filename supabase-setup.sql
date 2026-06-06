@@ -219,6 +219,27 @@ BEGIN
 END;
 $$;
 
+-- 查询回收站各项占用大小（行数 + 估算字节）
+CREATE OR REPLACE FUNCTION get_trash_sizes()
+RETURNS TABLE(table_name text, deleted_count bigint, total_size text)
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = get_effective_user_id() AND display_id = 1) THEN
+    RAISE EXCEPTION '仅管理员可操作';
+  END IF;
+  RETURN QUERY SELECT 'profiles'::text, (SELECT COUNT(*) FROM profiles WHERE deleted_at IS NOT NULL),
+    pg_size_pretty((SELECT pg_total_relation_size('profiles')));
+  RETURN QUERY SELECT 'posts'::text, (SELECT COUNT(*) FROM posts WHERE deleted_at IS NOT NULL),
+    pg_size_pretty((SELECT pg_total_relation_size('posts')));
+  RETURN QUERY SELECT 'comments'::text, (SELECT COUNT(*) FROM post_comments WHERE deleted_at IS NOT NULL),
+    pg_size_pretty((SELECT pg_total_relation_size('post_comments')));
+  RETURN QUERY SELECT 'likes'::text, (SELECT COUNT(*) FROM post_likes WHERE deleted_at IS NOT NULL),
+    pg_size_pretty((SELECT pg_total_relation_size('post_likes')));
+  RETURN QUERY SELECT 'friendships'::text, (SELECT COUNT(*) FROM friendships WHERE deleted_at IS NOT NULL),
+    pg_size_pretty((SELECT pg_total_relation_size('friendships')));
+END;
+$$;
+
 -- 选择性清除（软删除指定表的数据）
 CREATE OR REPLACE FUNCTION reset_selected(p_tables TEXT[])
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$

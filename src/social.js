@@ -84,6 +84,8 @@ async function renderSocialTabContent() {
 
 // Feed cache helpers
 const FEED_CACHE_KEY = 'social-feed-cache';
+const FEED_CACHE_TIME_KEY = 'social-feed-cache-time';
+const FEED_CACHE_TTL = 60000; // 60 seconds
 
 function getCachedFeed() {
   try {
@@ -93,9 +95,18 @@ function getCachedFeed() {
   return null;
 }
 
+function isFeedCacheFresh() {
+  try {
+    const t = parseInt(localStorage.getItem(FEED_CACHE_TIME_KEY) || '0');
+    return Date.now() - t < FEED_CACHE_TTL;
+  } catch {}
+  return false;
+}
+
 function setCachedFeed(posts) {
   try {
     localStorage.setItem(FEED_CACHE_KEY, JSON.stringify(posts));
+    localStorage.setItem(FEED_CACHE_TIME_KEY, String(Date.now()));
   } catch {}
 }
 
@@ -124,6 +135,8 @@ async function renderFeed(container) {
     feedPosts = cached;
     feedOffset = 0;
     renderFeedPosts(container, feedPosts);
+    // Skip background fetch if cache is still fresh
+    if (isFeedCacheFresh()) return;
   } else {
     container.innerHTML = '<div class="social-loading">加载中...</div>';
   }

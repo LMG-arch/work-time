@@ -282,9 +282,19 @@ function setupEventListeners() {
 
     logoutBtn.addEventListener('click', async () => {
       if (!confirm('确定退出登录？')) return;
+      logoutBtn.disabled = true;
       await logoutAccount();
       updateAccountUI();
+      // Force re-enable inputs and buttons (Electron may lose focus after signOut)
+      regBtn.disabled = false;
+      loginBtn.disabled = false;
+      regUsername.disabled = false;
+      regPassword.disabled = false;
+      regUsername.value = '';
+      regPassword.value = '';
+      authStatus.textContent = '';
       showToast('已退出登录');
+      logoutBtn.disabled = false;
     });
 
     // Avatar upload
@@ -495,9 +505,10 @@ async function setupAdminControls() {
     trashSection.style.cssText = 'margin-top:12px;border-top:1px solid var(--border);padding-top:12px;';
     trashSection.innerHTML = `
       <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🗑️ 回收站</div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px;">
+      <div id="trash-checkboxes" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px;">
         ${TABLES.map(t => `<label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:3px;">
           <input type="checkbox" class="trash-check" data-table="${t.key}" style="width:14px;height:14px;">${t.label}
+          <span id="trash-size-${t.key}" style="color:var(--text3);font-size:11px;"></span>
         </label>`).join('')}
         <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:3px;color:var(--text3);">
           (不勾选 = 全部)
@@ -514,7 +525,10 @@ async function setupAdminControls() {
     async function updateTrashStats() {
       const statsEl = document.getElementById('trash-stats');
       if (!statsEl) return;
-      const stats = await getTrashStats();
+
+      // Fetch stats and sizes in parallel
+      const [stats, sizes] = await Promise.all([getTrashStats(), getTrashSizes()]);
+
       if (!stats || stats.total === 0) { statsEl.textContent = '回收站为空'; return; }
       const parts = [];
       if (stats.profiles) parts.push(`${stats.profiles} 个用户`);
@@ -523,6 +537,19 @@ async function setupAdminControls() {
       if (stats.likes) parts.push(`${stats.likes} 个点赞`);
       if (stats.friendships) parts.push(`${stats.friendships} 条好友关系`);
       statsEl.textContent = `共 ${stats.total} 条数据：${parts.join('、')}`;
+
+      // Show sizes next to checkboxes
+      if (sizes) {
+        const sizeMap = {};
+        sizes.forEach(s => { sizeMap[s.table_name] = { count: s.deleted_count, size: s.total_size }; });
+        TABLES.forEach(t => {
+          const el = document.getElementById(`trash-size-${t.key}`);
+          if (el && sizeMap[t.key]) {
+            const info = sizeMap[t.key];
+            el.textContent = `(${info.size}${info.count > 0 ? ', 回收站' + info.count + '条' : ''})`;
+          }
+        });
+      }
     }
     updateTrashStats();
 

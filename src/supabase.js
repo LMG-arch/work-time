@@ -396,42 +396,38 @@ async function getFeedPosts(limit = 20, offset = 0) {
   const uid = await getEffectiveUserId();
   if (!uid) return [];
 
-  // Get friend IDs
-  const friendIds = await getFriendIds();
+  // Get friend IDs (pass uid to avoid redundant getEffectiveUserId call)
+  const friendIds = await getFriendIds(uid);
   friendIds.push(uid); // Include own posts
 
-  const { data: posts } = await sb.from('posts')
-    .select('*')
-    .in('user_id', friendIds)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+  // Fetch posts + profiles in parallel with likes + comments
+  const [postsRes, likesRes, commentsRes] = await Promise.all([
+    sb.from('posts').select('*').in('user_id', friendIds).is('deleted_at', null)
+      .order('created_at', { ascending: false }).range(offset, offset + limit - 1),
+    sb.from('post_likes').select('post_id, user_id').in('user_id', friendIds).is('deleted_at', null),
+    sb.from('post_comments').select('post_id').in('user_id', friendIds).is('deleted_at', null)
+  ]);
 
+  const posts = postsRes.data;
   if (!posts || posts.length === 0) return [];
 
-  // Get profiles for these posts
+  // Fetch profiles for post authors
   const userIds = [...new Set(posts.map(p => p.user_id))];
   const { data: profiles } = await sb.from('profiles').select('id, nickname, avatar').in('id', userIds);
   const profileMap = {};
   if (profiles) profiles.forEach(p => profileMap[p.id] = p);
 
-  // Get like counts and user likes
-  const postIds = posts.map(p => p.id);
-  const { data: likes } = await sb.from('post_likes').select('post_id, user_id').in('post_id', postIds).is('deleted_at', null);
-
+  // Build like/comment counts
   const likeCounts = {};
   const userLikes = new Set();
-  if (likes) {
-    likes.forEach(l => {
+  if (likesRes.data) {
+    likesRes.data.forEach(l => {
       likeCounts[l.post_id] = (likeCounts[l.post_id] || 0) + 1;
-      if (l.user_id === user.id) userLikes.add(l.post_id);
+      if (l.user_id === uid) userLikes.add(l.post_id);
     });
   }
-
-  // Get comment counts
-  const { data: comments } = await sb.from('post_comments').select('post_id').in('post_id', postIds).is('deleted_at', null);
   const commentCounts = {};
-  if (comments) comments.forEach(c => { commentCounts[c.post_id] = (commentCounts[c.post_id] || 0) + 1; });
+  if (commentsRes.data) commentsRes.data.forEach(c => { commentCounts[c.post_id] = (commentCounts[c.post_id] || 0) + 1; });
 
   return posts.map(p => ({
     ...p,
@@ -506,8 +502,8 @@ async function addComment(postId, content) {
 
 // ===== Friends =====
 
-async function getFriendIds() {
-  const uid = await getEffectiveUserId();
+async function getFriendIds(precomputedUid) {
+  const uid = precomputedUid || await getEffectiveUserId();
   if (!uid) return [];
   const { data } = await sb.from('friendships')
     .select('user_id, friend_id')
@@ -698,6 +694,13 @@ async function emptySelected(tables) {
   return { error: error ? error.message : null };
 }
 
+async function getTrashSizes() {
+  if (!sb) return null;
+  const { data, error } = await sb.rpc('get_trash_sizes');
+  if (error) return null;
+  return data;
+}
+
 // ===== Calendar Data Sync =====
 
 const SYNC_ENABLED_KEY = 'calendar-sync-enabled';
@@ -818,7 +821,7 @@ async function _doSyncCalendarData() {
   return { error: pushErr ? pushErr.message : null };
 }
 
-// Auto-sync: push if enabled (debounced, 3s idle)
+// Auto-sync: full sync if enabled (debounced, 3s idle)
 let _syncTimer = null;
 function autoSyncPush() {
   if (!isSyncEnabled() || !sb) return;
@@ -826,9 +829,9 @@ function autoSyncPush() {
   _syncTimer = setTimeout(async () => {
     _syncTimer = null;
     try {
-      await pushCalendarData();
+      await syncCalendarData();
     } catch (e) {
-      console.log('[Sync] Auto-push failed:', e.message);
+      console.log('[Sync] Auto-sync failed:', e.message);
     }
   }, 3000);
 }
