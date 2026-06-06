@@ -148,13 +148,22 @@ async function renderFeed(container) {
   }
 }
 
+function sanitizeUrl(url) {
+  if (!url) return '';
+  const s = String(url);
+  if (s.startsWith('https://') || s.startsWith('http://')) return s;
+  return '';
+}
+
 function renderPostCard(post) {
   const time = formatTime(post.created_at);
-  const avatar = post.profile.avatar
-    ? `<img src="${post.profile.avatar}" class="post-avatar">`
-    : `<div class="post-avatar avatar-placeholder">${(post.profile.nickname || '?')[0]}</div>`;
+  const safeAvatar = sanitizeUrl(post.profile.avatar);
+  const avatar = safeAvatar
+    ? `<img src="${safeAvatar}" class="post-avatar">`
+    : `<div class="post-avatar avatar-placeholder">${escapeHtml((post.profile.nickname || '?')[0])}</div>`;
 
   const isMine = post.profile.id === getCurrentUserId();
+  const likeCount = Math.max(0, post.likeCount || 0);
 
   return `<div class="post-card" data-id="${post.id}">
     <div class="post-header">
@@ -166,10 +175,10 @@ function renderPostCard(post) {
       ${isMine ? `<span class="post-delete" data-id="${post.id}">&times;</span>` : ''}
     </div>
     <div class="post-content">${escapeHtml(post.content)}</div>
-    ${post.image_url ? `<div class="post-image"><img src="${post.image_url}" loading="lazy"></div>` : ''}
+    ${post.image_url ? `<div class="post-image"><img src="${sanitizeUrl(post.image_url)}" loading="lazy"></div>` : ''}
     <div class="post-actions">
       <span class="post-action-btn like-btn${post.liked ? ' liked' : ''}" data-id="${post.id}">
-        ${post.liked ? '❤' : '♡'} ${post.likeCount || ''}
+        ${post.liked ? '❤' : '♡'} ${likeCount || ''}
       </span>
       <span class="post-action-btn comment-btn" data-id="${post.id}">
         💬 ${post.commentCount || ''}
@@ -187,7 +196,7 @@ function bindPostEvents(container) {
       const post = feedPosts.find(p => p.id === postId);
       if (post) {
         post.liked = liked;
-        post.likeCount += liked ? 1 : -1;
+        post.likeCount = Math.max(0, (post.likeCount || 0) + (liked ? 1 : -1));
         btn.className = 'post-action-btn like-btn' + (liked ? ' liked' : '');
         btn.innerHTML = `${liked ? '❤' : '♡'} ${post.likeCount || ''}`;
       }

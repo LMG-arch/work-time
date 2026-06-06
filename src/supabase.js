@@ -101,14 +101,13 @@ async function ensureSession() {
 const ACCOUNT_USERNAME_KEY = 'social-account-username';
 
 function usernameToEmail(username) {
-  // Convert username to valid email: hash Chinese chars to hex, keep latin chars
+  // Convert username to valid email: encode non-ascii, keep case
   let safe = '';
   for (let i = 0; i < username.length; i++) {
     const c = username[i];
-    if (/[a-z0-9_-]/i.test(c)) {
-      safe += c.toLowerCase();
+    if (/[a-zA-Z0-9_-]/.test(c)) {
+      safe += c;
     } else {
-      // Encode non-ascii chars as hex
       safe += 'x' + c.charCodeAt(0).toString(16);
     }
   }
@@ -210,21 +209,27 @@ function compressImage(file, maxWidth = 1200, quality = 0.7) {
     // Skip small files (< 200KB)
     if (file.size < 200 * 1024) { resolve(file); return; }
     const reader = new FileReader();
+    reader.onerror = () => resolve(file);
     reader.onload = (e) => {
       const img = new Image();
+      img.onerror = () => resolve(file);
       img.onload = () => {
-        let w = img.width, h = img.height;
-        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        canvas.toBlob((blob) => {
-          if (blob && blob.size < file.size) {
-            resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
-          } else {
-            resolve(file); // compression didn't help, use original
-          }
-        }, 'image/jpeg', quality);
+        try {
+          let w = img.width, h = img.height;
+          if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob((blob) => {
+            if (blob && blob.size < file.size) {
+              resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+            } else {
+              resolve(file);
+            }
+          }, 'image/jpeg', quality);
+        } catch {
+          resolve(file);
+        }
       };
       img.src = e.target.result;
     };
@@ -318,16 +323,25 @@ async function deletePost(postId) {
 
 // ===== Likes =====
 
+let _likeLock = {};
+
 async function toggleLike(postId) {
   const user = await getCurrentUser();
   if (!user) return false;
-  const { data: existing } = await sb.from('post_likes').select('id').eq('post_id', postId).eq('user_id', user.id).is('deleted_at', null).maybeSingle();
-  if (existing) {
-    await sb.from('post_likes').delete().eq('id', existing.id);
-    return false; // unliked
-  } else {
-    await sb.from('post_likes').insert({ post_id: postId, user_id: user.id });
-    return true; // liked
+  // Prevent double-click race condition
+  if (_likeLock[postId]) return false;
+  _likeLock[postId] = true;
+  try {
+    const { data: existing } = await sb.from('post_likes').select('id').eq('post_id', postId).eq('user_id', user.id).is('deleted_at', null).maybeSingle();
+    if (existing) {
+      await sb.from('post_likes').delete().eq('id', existing.id);
+      return false;
+    } else {
+      const { error } = await sb.from('post_likes').insert({ post_id: postId, user_id: user.id });
+      return !error;
+    }
+  } finally {
+    delete _likeLock[postId];
   }
 }
 
@@ -473,12 +487,16 @@ async function clearAllSocialData() {
   const { error } = await sb.rpc('reset_all_data');
   if (error) return { error: error.message };
 
-  // Delete ALL storage files
+  // Delete ALL storage files (paginated)
   try {
-    const { data: files } = await sb.storage.from('post-images').list('');
-    if (files && files.length > 0) {
+    let offset = 0;
+    while (true) {
+      const { data: files } = await sb.storage.from('post-images').list('', { limit: 100, offset });
+      if (!files || files.length === 0) break;
       const paths = files.map(f => f.name);
       await sb.storage.from('post-images').remove(paths);
+      if (files.length < 100) break;
+      offset += files.length;
     }
   } catch {}
 
@@ -594,7 +612,18 @@ async function verifyBindCode(targetUserId, inputCode) {
 }
 
 // Smart sync: pull cloud data, merge with local, push back
+let _syncing = false;
 async function syncCalendarData() {
+  if (_syncing) return { error: '同步进行中' };
+  _syncing = true;
+  try {
+    return await _doSyncCalendarData();
+  } finally {
+    _syncing = false;
+  }
+}
+
+async function _doSyncCalendarData() {
   if (!sb) return { error: '未连接' };
   const user = await ensureSession();
   if (!user) return { error: '未登录' };
@@ -607,10 +636,9 @@ async function syncCalendarData() {
   const localData = collectCalendarData();
 
   if (cloudRow && cloudRow.data) {
-    // Cloud has data - merge: cloud wins for conflicts, but merge days map
     const cloudData = cloudRow.data;
     if (cloudData.workData && localData.workData) {
-      // Merge days: newer entries win (by comparing keys, cloud takes priority)
+      // Merge days: cloud takes priority for conflicts
       const mergedDays = { ...localData.workData.days, ...cloudData.workData.days };
       cloudData.workData.days = mergedDays;
       // Merge todos: combine by id, cloud version wins
@@ -619,6 +647,17 @@ async function syncCalendarData() {
       if (cloudData.workData.todos) cloudData.workData.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
       cloudData.workData.todos = Object.values(todoMap);
     }
+    // Merge reminderRecords: union (additive, local entries preserved)
+    if (localData.reminderRecords && cloudData.reminderRecords) {
+      for (const date of Object.keys(localData.reminderRecords)) {
+        if (!cloudData.reminderRecords[date]) {
+          cloudData.reminderRecords[date] = localData.reminderRecords[date];
+        } else {
+          Object.assign(cloudData.reminderRecords[date], localData.reminderRecords[date]);
+        }
+      }
+    }
+    // reminders: cloud wins (last-write-wins for config)
     applyCalendarData(cloudData);
   }
 
@@ -633,12 +672,17 @@ async function syncCalendarData() {
   return { error: pushErr ? pushErr.message : null };
 }
 
-// Auto-sync: push if enabled (called after data changes)
-async function autoSyncPush() {
+// Auto-sync: push if enabled (debounced, 3s idle)
+let _syncTimer = null;
+function autoSyncPush() {
   if (!isSyncEnabled() || !sb) return;
-  try {
-    await pushCalendarData();
-  } catch (e) {
-    console.log('[Sync] Auto-push failed:', e.message);
-  }
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(async () => {
+    _syncTimer = null;
+    try {
+      await pushCalendarData();
+    } catch (e) {
+      console.log('[Sync] Auto-push failed:', e.message);
+    }
+  }, 3000);
 }

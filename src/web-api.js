@@ -11,6 +11,7 @@
       if (store && store.days) {
         if (!store.todos) store.todos = [];
         if (!store.reminderRecords) store.reminderRecords = {};
+        if (!store.reminders) store.reminders = null;
         return store;
       }
     } catch {}
@@ -124,8 +125,13 @@
             const store = getStore();
             if (imported.days) {
               Object.assign(store.days, imported.days);
-            } else {
-              Object.assign(store.days, imported);
+            } else if (typeof imported === 'object') {
+              // Old format: keys are date strings, values are day records
+              for (const [k, v] of Object.entries(imported)) {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(k) && typeof v === 'object') {
+                  store.days[k] = v;
+                }
+              }
             }
             if (imported.todos) {
               store.todos = imported.todos;
@@ -146,7 +152,10 @@
             resolve({ success: false, error: '文件格式错误' });
           }
         };
-        input.oncancel = () => resolve({ success: false });
+        input.addEventListener('cancel', () => resolve({ success: false }));
+        // Fallback: if focus returns without change, resolve after timeout
+        const fallback = setTimeout(() => resolve({ success: false }), 60000);
+        input.addEventListener('change', () => clearTimeout(fallback));
         input.click();
       });
     },

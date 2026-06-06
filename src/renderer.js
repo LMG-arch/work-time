@@ -3,6 +3,11 @@ let selectedDate = null;
 let allData = {};
 let allTodos = [];
 let currentView = 'calendar';
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 let todoFilter = 'all';
 let holidayData = null;
 let allReminders = [];
@@ -113,7 +118,7 @@ function renderTodoList(dateStr) {
     item.className = 'todo-item' + (done ? ' done' : '');
     item.innerHTML = `
       <span class="todo-check" data-id="${todo.id}">${done ? '✓' : ''}</span>
-      <span class="todo-text">${todo.text}${remindIcon}</span>
+      <span class="todo-text">${escapeHtml(todo.text)}${remindIcon}</span>
       <span class="todo-del" data-id="${todo.id}">&times;</span>
     `;
     container.appendChild(item);
@@ -170,7 +175,6 @@ function updateLunarDays() {
 
 // 农历转公历：遍历当月每一天找到对应农历日期
 function lunarToSolar(year, lunarMonth, lunarDay) {
-  const daysInMonth = getDaysInMonth(year, 0); // 先用1月试
   // 遍历全年找到匹配的农历日期
   for (let m = 0; m < 12; m++) {
     const dim = getDaysInMonth(year, m);
@@ -351,7 +355,7 @@ function renderTodoView() {
       html += `<div class="todo-view-item${done ? ' done' : ''}" data-id="${todo.id}">
         <span class="todo-view-check" data-id="${todo.id}">${done ? '✓' : ''}</span>
         <div class="todo-view-info">
-          <span class="todo-view-text">${todo.text}</span>
+          <span class="todo-view-text">${escapeHtml(todo.text)}</span>
           <span class="todo-view-date">${dateDisplay}${remindLabel}</span>
         </div>
         <span class="todo-view-del" data-id="${todo.id}">&times;</span>
@@ -370,7 +374,7 @@ function renderTodoView() {
       html += `<div class="todo-view-item${todayDone ? ' done' : ''}" data-id="${todo.id}">
         <span class="todo-view-check" data-id="${todo.id}" data-type="weekly">${todayDone ? '✓' : ''}</span>
         <div class="todo-view-info">
-          <span class="todo-view-text">${todo.text}${remindLabel}</span>
+          <span class="todo-view-text">${escapeHtml(todo.text)}${remindLabel}</span>
           <span class="todo-view-date">${days}</span>
         </div>
         <span class="todo-view-del" data-id="${todo.id}">&times;</span>
@@ -800,11 +804,11 @@ let todoRemindTimer = null;
 function scheduleTodoReminders() {
   if (todoRemindTimer) clearInterval(todoRemindTimer);
 
-  const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
-  if (todosWithRemind.length === 0) return;
-
   // Check every 30 seconds
   todoRemindTimer = setInterval(() => {
+    const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
+    if (todosWithRemind.length === 0) return;
+
     const now = new Date();
     const todayStr = getTodayStr();
     const currentHh = String(now.getHours()).padStart(2, '0');
@@ -1300,8 +1304,8 @@ function renderStats() {
           <span class="record-date">${r.day}日 周${weekday} ${holidayTag}</span>
           <span class="record-status ${statusClass}">${statusText}</span>
         </div>
-        ${r.tags && r.tags.length > 0 ? `<div class="record-tags">${r.tags.map(t => `<span class="tag-chip static">${t}</span>`).join('')}</div>` : ''}
-        ${r.note ? `<div class="record-note">${r.note}</div>` : ''}
+        ${r.tags && r.tags.length > 0 ? `<div class="record-tags">${r.tags.map(t => `<span class="tag-chip static">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+        ${r.note ? `<div class="record-note">${escapeHtml(r.note)}</div>` : ''}
       </div>`;
     }
     html += '</div>';
@@ -1349,7 +1353,9 @@ async function changeMonth(delta) {
   await loadAllData();
   if (currentView === 'calendar') renderCalendar();
   else if (currentView === 'stats') renderStats();
-  else renderClockinView();
+  else if (currentView === 'clockin') renderClockinView();
+  // social/settings: only update label, don't re-render
+  updateMonthLabel();
 }
 
 // --- Event listeners ---

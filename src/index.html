@@ -323,14 +323,15 @@
   </div>
 
   <script>
-    // Load Supabase JS: local first, CDN fallback
+    // Load Supabase JS: local first, CDN fallback (blocking)
     (function() {
-      var script = document.createElement('script');
-      var fallback = document.createElement('script');
-      fallback.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-      script.src = '../lib/supabase.min.js';
-      script.onerror = function() { document.head.appendChild(fallback); };
-      document.head.appendChild(script);
+      var s = document.createElement('script');
+      s.src = '../lib/supabase.min.js';
+      s.onerror = function() {
+        // CDN fallback with blocking write to ensure it loads before other scripts
+        document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>');
+      };
+      document.head.appendChild(s);
     })();
   </script>
   <script src="holidays.js"></script>
