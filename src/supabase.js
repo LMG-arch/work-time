@@ -267,10 +267,11 @@ function getSavedUsername() {
 // ===== Profile =====
 
 // Get the effective user ID, following linked_id chain (for RLS compatibility)
+// 不过滤 deleted_at — 清除数据后匿名用户 profile 可能被软删除，但仍需读取 linked_id
 async function getEffectiveUserId() {
   const user = await ensureSession();
   if (!user) return null;
-  const profile = await getProfile(user.id);
+  const { data: profile } = await sb.from('profiles').select('linked_id').eq('id', user.id).maybeSingle();
   if (profile && profile.linked_id && profile.linked_id !== user.id) {
     return profile.linked_id;
   }
@@ -286,17 +287,18 @@ async function getProfile(userId) {
 async function getMyProfile() {
   const user = await ensureSession();
   if (!user) return null;
-  let profile = await getProfile(user.id);
+  // 不过滤 deleted_at — 清除数据后自己的 profile 可能被软删除
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
   if (!profile) {
     // Create default profile
     const nickname = localStorage.getItem('social-nickname') || '用户' + user.id.slice(0, 4);
     const { data, error } = await sb.from('profiles').insert({ id: user.id, nickname }).select().single();
     if (error) { console.error('[Supabase] getMyProfile insert error:', error); return null; }
-    profile = data;
+    return data;
   }
   // Follow linked_id for multi-device support
   if (profile.linked_id && profile.linked_id !== user.id) {
-    const linkedProfile = await getProfile(profile.linked_id);
+    const { data: linkedProfile } = await sb.from('profiles').select('*').eq('id', profile.linked_id).maybeSingle();
     if (linkedProfile) return linkedProfile;
   }
   return profile;
