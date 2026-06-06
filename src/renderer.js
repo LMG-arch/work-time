@@ -472,7 +472,6 @@ async function setupAdminControls() {
   const clearBtn = document.getElementById('supabase-clear-btn');
   const clearHint = clearBtn?.nextElementSibling;
   if (await isAdmin()) {
-    // Data type checkboxes
     const TABLES = [
       { key: 'posts', label: '动态' },
       { key: 'comments', label: '评论' },
@@ -483,18 +482,23 @@ async function setupAdminControls() {
 
     function getSelectedTables() {
       const checked = document.querySelectorAll('.trash-check:checked');
-      if (checked.length === 0) return null; // none selected = all
+      if (checked.length === 0) return null;
       return Array.from(checked).map(cb => cb.dataset.table);
     }
-
-    // Selective clear button
-    clearBtn.addEventListener('click', async () => {
+    function getSelectedLabel() {
       const tables = getSelectedTables();
-      const label = tables ? tables.map(t => TABLES.find(x => x.key === t)?.label || t).join('、') : '全部';
+      if (!tables) return '全部';
+      return tables.map(t => TABLES.find(x => x.key === t)?.label || t).join('、');
+    }
+
+    // Clear button — always selective
+    clearBtn.addEventListener('click', async () => {
+      const label = getSelectedLabel();
       if (!confirm(`⚠️ 即将清除以下数据：${label}\n\n数据会移入回收站，可从回收站恢复。\n\n继续吗？`)) return;
       if (!confirm('再次确认：真的要清除吗？')) return;
       showToast('正在清除...');
-      const result = tables ? await resetSelected(tables) : await clearAllSocialData();
+      const tables = getSelectedTables() || TABLES.map(t => t.key);
+      const result = await resetSelected(tables);
       if (result.error) showToast('清除失败: ' + result.error);
       else { showToast('数据已移入回收站 ✓'); updateTrashStats(); }
     });
@@ -504,15 +508,14 @@ async function setupAdminControls() {
     trashSection.id = 'trash-section';
     trashSection.style.cssText = 'margin-top:12px;border-top:1px solid var(--border);padding-top:12px;';
     trashSection.innerHTML = `
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🗑️ 回收站</div>
-      <div id="trash-checkboxes" style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px;">
-        ${TABLES.map(t => `<label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:3px;">
-          <input type="checkbox" class="trash-check" data-table="${t.key}" style="width:14px;height:14px;">${t.label}
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🗑️ 数据管理</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">勾选要操作的数据类型，不勾选则操作全部</div>
+      <div id="trash-checkboxes" style="display:flex;flex-direction:column;gap:3px;margin-bottom:10px;">
+        ${TABLES.map(t => `<label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;padding:2px 0;">
+          <input type="checkbox" class="trash-check" data-table="${t.key}" style="width:14px;height:14px;">
+          <span style="min-width:50px;">${t.label}</span>
           <span id="trash-size-${t.key}" style="color:var(--text3);font-size:11px;"></span>
         </label>`).join('')}
-        <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:3px;color:var(--text3);">
-          (不勾选 = 全部)
-        </label>
       </div>
       <div id="trash-stats" class="settings-hint" style="margin-bottom:8px;">加载中...</div>
       <div style="display:flex;gap:8px;">
@@ -525,28 +528,29 @@ async function setupAdminControls() {
     async function updateTrashStats() {
       const statsEl = document.getElementById('trash-stats');
       if (!statsEl) return;
-
-      // Fetch stats and sizes in parallel
       const [stats, sizes] = await Promise.all([getTrashStats(), getTrashSizes()]);
-
-      if (!stats || stats.total === 0) { statsEl.textContent = '回收站为空'; return; }
+      if (!stats || stats.total === 0) {
+        statsEl.textContent = '回收站为空';
+        TABLES.forEach(t => { const el = document.getElementById(`trash-size-${t.key}`); if (el) el.textContent = ''; });
+        return;
+      }
       const parts = [];
       if (stats.profiles) parts.push(`${stats.profiles} 个用户`);
       if (stats.posts) parts.push(`${stats.posts} 条动态`);
       if (stats.comments) parts.push(`${stats.comments} 条评论`);
       if (stats.likes) parts.push(`${stats.likes} 个点赞`);
       if (stats.friendships) parts.push(`${stats.friendships} 条好友关系`);
-      statsEl.textContent = `共 ${stats.total} 条数据：${parts.join('、')}`;
-
-      // Show sizes next to checkboxes
+      statsEl.textContent = `回收站共 ${stats.total} 条：${parts.join('、')}`;
       if (sizes) {
         const sizeMap = {};
-        sizes.forEach(s => { sizeMap[s.table_name] = { count: s.deleted_count, size: s.total_size }; });
+        sizes.forEach(s => { sizeMap[s.table_name] = { count: Number(s.deleted_count), size: s.total_size }; });
         TABLES.forEach(t => {
           const el = document.getElementById(`trash-size-${t.key}`);
           if (el && sizeMap[t.key]) {
             const info = sizeMap[t.key];
-            el.textContent = `(${info.size}${info.count > 0 ? ', 回收站' + info.count + '条' : ''})`;
+            const parts2 = [info.size];
+            if (info.count > 0) parts2.push(`回收站${info.count}条`);
+            el.textContent = parts2.join(' · ');
           }
         });
       }
@@ -554,22 +558,29 @@ async function setupAdminControls() {
     updateTrashStats();
 
     document.getElementById('trash-restore-btn').addEventListener('click', async () => {
-      const tables = getSelectedTables();
-      const label = tables ? tables.map(t => TABLES.find(x => x.key === t)?.label || t).join('、') : '全部';
+      const label = getSelectedLabel();
       if (!confirm(`确定从回收站恢复以下数据？\n${label}`)) return;
       showToast('正在恢复...');
-      const result = tables ? await restoreSelected(tables) : await restoreAllData();
+      const tables = getSelectedTables() || TABLES.map(t => t.key);
+      const result = await restoreSelected(tables);
       if (result.error) showToast('恢复失败: ' + result.error);
-      else { showToast('数据已恢复 ✓'); updateTrashStats(); }
+      else {
+        showToast('数据已恢复 ✓');
+        // Reload data into memory and refresh UI
+        if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
+        if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
+        if (typeof renderCalendar === 'function') renderCalendar();
+        updateTrashStats();
+      }
     });
 
     document.getElementById('trash-empty-btn').addEventListener('click', async () => {
-      const tables = getSelectedTables();
-      const label = tables ? tables.map(t => TABLES.find(x => x.key === t)?.label || t).join('、') : '全部';
+      const label = getSelectedLabel();
       if (!confirm(`⚠️ 以下数据将永久删除，无法恢复！\n${label}\n\n确定继续？`)) return;
       if (!confirm('再次确认：真的要永久删除吗？')) return;
       showToast('正在清空...');
-      const result = tables ? await emptySelected(tables) : await emptyTrash();
+      const tables = getSelectedTables() || TABLES.map(t => t.key);
+      const result = await emptySelected(tables);
       if (result.error) showToast('清空失败: ' + result.error);
       else { showToast('回收站已清空'); updateTrashStats(); }
     });

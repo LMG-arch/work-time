@@ -621,11 +621,16 @@ async function clearAllSocialData() {
   const user = await ensureSession();
   if (!user) return { error: '未登录' };
 
-  // Call server-side function (bypasses RLS, admin check inside)
+  // Call server-side function (soft delete only, no storage deletion)
   const { error } = await sb.rpc('reset_all_data');
   if (error) return { error: error.message };
 
-  // Delete ALL storage files (paginated)
+  return { error: null };
+}
+
+// Permanently delete storage files (only called from emptyTrash)
+async function deleteAllStorageFiles() {
+  if (!sb) return;
   try {
     let offset = 0;
     while (true) {
@@ -637,8 +642,6 @@ async function clearAllSocialData() {
       offset += files.length;
     }
   } catch {}
-
-  return { error: null };
 }
 
 // ===== Recycle Bin =====
@@ -667,7 +670,10 @@ async function emptyTrash() {
   const user = await ensureSession();
   if (!user) return { error: '未登录' };
   const { error } = await sb.rpc('empty_trash');
-  return { error: error ? error.message : null };
+  if (error) return { error: error.message };
+  // Also delete storage files when permanently deleting posts
+  await deleteAllStorageFiles();
+  return { error: null };
 }
 
 async function resetSelected(tables) {
