@@ -267,17 +267,31 @@ async function scheduleReminderNotifications() {
         console.warn('[Notifications] Cancel pending error:', cancelErr.message);
       }
 
-      // Create notification channel (Android 8+)
+      // Create notification channels (Android 8+)
       try {
         await LocalNotifications.createChannel({
           id: 'clockin-reminders',
           name: '打卡提醒',
           description: '上班日历的打卡签到提醒',
-          importance: 5, // High
+          importance: 5, // High (heads-up popup)
           visibility: 1, // Public
           sound: 'default',
           vibration: true,
-          light: true
+          vibrationPattern: [0, 500, 200, 500, 200, 500], // 震-停-震-停-震
+          light: true,
+          lightColor: '#FF0000'
+        });
+        await LocalNotifications.createChannel({
+          id: 'todo-reminders',
+          name: '待办提醒',
+          description: '上班日历的待办事项提醒',
+          importance: 5,
+          visibility: 1,
+          sound: 'default',
+          vibration: true,
+          vibrationPattern: [0, 300, 200, 300],
+          light: true,
+          lightColor: '#0000FF'
         });
       } catch (channelErr) {
         console.warn('[Notifications] Create channel error:', channelErr.message);
@@ -313,7 +327,9 @@ async function scheduleReminderNotifications() {
             largeIcon: 'ic_launcher_round',
             extra: { reminderId: r.id, date: dateStr },
             channelId: 'clockin-reminders',
-            actionTypeId: 'clockin-action'
+            actionTypeId: 'clockin-action',
+            sound: 'default',
+            vibrate: true
           });
         }
       }
@@ -447,7 +463,9 @@ function scheduleTodoReminders() {
                 body: `📋 ${todo.text} (${targetTime})`,
                 schedule: { at: new Date() },
                 smallIcon: 'ic_launcher',
-                channelId: 'clockin-reminders'
+                channelId: 'todo-reminders',
+                sound: 'default',
+                vibrate: true
               }]
             });
           }
