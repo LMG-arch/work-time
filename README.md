@@ -356,7 +356,7 @@ $$;
 -- 登录账号（验证密码，迁移数据到当前匿名session）
 -- 登录账号（验证密码，通过 linked_id 关联，不迁移数据）
 CREATE OR REPLACE FUNCTION login_username(p_username TEXT, p_password_hash TEXT)
-RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$$
+RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE target_user UUID; curr UUID;
 BEGIN
   curr := auth.uid();
