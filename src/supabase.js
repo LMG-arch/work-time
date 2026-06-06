@@ -856,41 +856,109 @@ async function _doSyncCalendarData() {
 
   const localData = await collectCalendarData();
 
-  // Debug logging
-  console.log('[Sync] Local days count:', Object.keys(localData.workData?.days || {}).length);
-  console.log('[Sync] Cloud days count:', Object.keys(cloudRow?.data?.workData?.days || {}).length);
-  console.log('[Sync] Local dates:', Object.keys(localData.workData?.days || {}).join(', '));
+  console.log('[Sync] Local days:', Object.keys(localData.workData?.days || {}).length);
+  console.log('[Sync] Cloud days:', Object.keys(cloudRow?.data?.workData?.days || {}).length);
 
   if (cloudRow && cloudRow.data) {
     const cloudData = cloudRow.data;
 
-    // Smart merge: local data takes priority (deletes are synced)
-    // This ensures local deletions are reflected in cloud
+    // Smart merge: compare updatedAt for each item, keep the latest
     if (cloudData.workData && localData.workData) {
-      // Days: local overwrites cloud (including deletions)
-      cloudData.workData.days = { ...localData.workData.days };
+      // Merge days: keep the one with newer updatedAt
+      const mergedDays = {};
+      const allDates = new Set([
+        ...Object.keys(localData.workData.days || {}),
+        ...Object.keys(cloudData.workData.days || {})
+      ]);
 
-      // Todos: local overwrites cloud
-      cloudData.workData.todos = localData.workData.todos || [];
+      for (const date of allDates) {
+        const localDay = localData.workData.days?.[date];
+        const cloudDay = cloudData.workData.days?.[date];
+
+        if (localDay && cloudDay) {
+          // Both exist: keep newer
+          const localTime = new Date(localDay.updatedAt || 0).getTime();
+          const cloudTime = new Date(cloudDay.updatedAt || 0).getTime();
+          const winner = localTime >= cloudTime ? localDay : cloudDay;
+          // Only keep if not deleted
+          if (!winner.deleted) {
+            mergedDays[date] = winner;
+          }
+        } else if (localDay) {
+          // Only local: keep if not deleted
+          if (!localDay.deleted) {
+            mergedDays[date] = localDay;
+          }
+        } else if (cloudDay) {
+          // Only cloud: keep if not deleted
+          if (!cloudDay.deleted) {
+            mergedDays[date] = cloudDay;
+          }
+        }
+      }
+      cloudData.workData.days = mergedDays;
+
+      // Merge todos: keep the one with newer updatedAt per id
+      const todoMap = {};
+      const allTodos = [
+        ...(localData.workData.todos || []),
+        ...(cloudData.workData.todos || [])
+      ];
+      for (const todo of allTodos) {
+        if (!todo || !todo.id) continue;
+        const existing = todoMap[todo.id];
+        if (!existing) {
+          todoMap[todo.id] = todo;
+        } else {
+          const existingTime = new Date(existing.updatedAt || 0).getTime();
+          const currentTime = new Date(todo.updatedAt || 0).getTime();
+          if (currentTime > existingTime) {
+            todoMap[todo.id] = todo;
+          }
+        }
+      }
+      cloudData.workData.todos = Object.values(todoMap);
     }
 
-    // Reminders: local overwrites cloud
-    if (localData.reminders) {
+    // Reminders: keep newer
+    if (localData.reminders && cloudData.reminders) {
+      const localTime = new Date(localData.reminders.updatedAt || 0).getTime();
+      const cloudTime = new Date(cloudData.reminders.updatedAt || 0).getTime();
+      if (localTime > cloudTime) {
+        cloudData.reminders = localData.reminders;
+      }
+    } else if (localData.reminders) {
       cloudData.reminders = localData.reminders;
     }
 
-    // ReminderRecords: merge with local priority
+    // ReminderRecords: merge, keep newer per record
     if (localData.reminderRecords) {
       if (!cloudData.reminderRecords) cloudData.reminderRecords = {};
       for (const date of Object.keys(localData.reminderRecords)) {
-        cloudData.reminderRecords[date] = localData.reminderRecords[date];
+        if (!cloudData.reminderRecords[date]) {
+          cloudData.reminderRecords[date] = localData.reminderRecords[date];
+        } else {
+          for (const rid of Object.keys(localData.reminderRecords[date])) {
+            const localRec = localData.reminderRecords[date][rid];
+            const cloudRec = cloudData.reminderRecords[date][rid];
+            if (!cloudRec) {
+              cloudData.reminderRecords[date][rid] = localRec;
+            } else {
+              const localTime = new Date(localRec.at || 0).getTime();
+              const cloudTime = new Date(cloudRec.at || 0).getTime();
+              if (localTime >= cloudTime) {
+                cloudData.reminderRecords[date][rid] = localRec;
+              }
+            }
+          }
+        }
       }
     }
 
     await applyCalendarData(cloudData);
   }
 
-  // Push local data to cloud (overwrite cloud with local)
+  // Push merged data to cloud
   const pushData = await collectCalendarData();
   const { error: pushErr } = await sb.from('user_data').upsert({
     user_id: uid,

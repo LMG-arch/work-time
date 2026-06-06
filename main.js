@@ -53,9 +53,10 @@ function saveStoreSilent() {
 
 function saveDayData(dateStr, status, note, tags, color) {
   if (!status && !note && (!tags || tags.length === 0) && !color) {
-    delete store.days[dateStr];
+    // Mark as deleted with timestamp (tombstone) for sync
+    store.days[dateStr] = { status: null, note: '', tags: [], color: '', updatedAt: new Date().toISOString(), deleted: true };
   } else {
-    store.days[dateStr] = { status, note, tags: tags || [], color: color || '', updatedAt: new Date().toISOString() };
+    store.days[dateStr] = { status, note, tags: tags || [], color: color || '', updatedAt: new Date().toISOString(), deleted: false };
   }
   fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
   notifyDataChanged();
@@ -84,13 +85,20 @@ function setAutoLaunch(enable) {
 // --- IPC ---
 
 function registerIPC() {
-  ipcMain.handle('get-all-data', () => store.days);
+  // Filter out deleted records when returning data
+  ipcMain.handle('get-all-data', () => {
+    const result = {};
+    for (const [key, val] of Object.entries(store.days)) {
+      if (!val.deleted) result[key] = val;
+    }
+    return result;
+  });
 
   ipcMain.handle('get-month-data', (_, year, month) => {
     const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
     const result = {};
     for (const [key, val] of Object.entries(store.days)) {
-      if (key.startsWith(prefix)) result[key] = val;
+      if (key.startsWith(prefix) && !val.deleted) result[key] = val;
     }
     return result;
   });

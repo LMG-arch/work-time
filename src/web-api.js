@@ -33,15 +33,22 @@
   window.calendarAPI = {
     // --- Day data ---
     async getAllData() {
-      return getStore().days;
+      const days = getStore().days;
+      // Filter out deleted records
+      const result = {};
+      for (const [key, val] of Object.entries(days)) {
+        if (!val.deleted) result[key] = val;
+      }
+      return result;
     },
 
     async saveDay(date, status, note, tags, color) {
       const store = getStore();
       if (!status && !note && (!tags || tags.length === 0) && !color) {
-        delete store.days[date];
+        // Mark as deleted with timestamp (tombstone) for sync
+        store.days[date] = { status: null, note: '', tags: [], color: '', updatedAt: new Date().toISOString(), deleted: true };
       } else {
-        store.days[date] = { status, note, tags: tags || [], color: color || '', updatedAt: new Date().toISOString() };
+        store.days[date] = { status, note, tags: tags || [], color: color || '', updatedAt: new Date().toISOString(), deleted: false };
       }
       saveStore(store);
       if (typeof autoSyncPush === 'function') autoSyncPush();
