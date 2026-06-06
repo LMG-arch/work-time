@@ -648,16 +648,20 @@ MIT
 ## 更新日志
 
 ### v3.1.1 (2026-06-06) — Bug 修复与安全改进
+- **新功能**：头像上传 — 点击设置页头像选择本地图片，压缩后上传到 Supabase Storage，好友圈同步显示
 - **关键修复**：admin 控件（清除云端数据、回收站）不在设置页显示 — `isAdmin()` 在 Supabase 初始化前执行导致永远返回 false，改为 DOMContentLoaded 后延迟调用
 - **关键修复**：account linking 后所有写入操作（发帖、点赞、评论、加好友）静默失败 — 客户端使用 `auth.uid()` 但 RLS 使用 `get_effective_user_id()`，新增 `getEffectiveUserId()` 统一使用
 - **关键修复**：颜色选择器、标签输入、待办弹窗、图片上传按钮无响应 — `setupColorPicker/setupTagInputs/setupTodoModal/setupPostImagePicker` 从未被调用
 - **关键修复**：添加待办、保存备注、发布/取消动态按钮无事件绑定
+- **修复**：退出登录重新登录后设置页 ID/用户名显示错误 — `updateAccountUI` 改用 `getMyProfile()` 跟随 `linked_id` 链
 - **修复**：holidays.js 重复键 `2026-09-27`（中秋节被国庆调休覆盖）— 合并为 `中秋节/国庆调休`
 - **修复**：supabase-setup.sql 中 `get_effective_user_id()` 函数定义在引用它的 RLS 策略之后 — 移至策略之前
 - **修复**：Supabase CDN fallback 使用 `document.write()` 可能清空页面 — 改为同步 script 标签 + onerror 回调
 - **修复**：sendFriendRequest 未过滤 `deleted_at`，导致无法重新添加已删除的好友
 - **改进**：`initSocial()` 调用添加 `await`，确保初始化顺序正确
-- **文档**：README 中内嵌 SQL 改为引用 `supabase-setup.sql` 文件，避免版本不同步
+- **改进**：Windows 安装包体积从 158MB 精简到 108MB，排除 android/ 和多余语言文件
+- **文档**：README SQL 与 supabase-setup.sql 完全同步，内嵌完整 SQL 便于复制
+- **文档**：添加 Supabase 配置截图
 - **文档**：更新项目结构，补充 `set-icon.js`、启动脚本等
 - **文档**：`.gitignore` 添加 `.claude/`
 
