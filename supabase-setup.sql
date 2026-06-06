@@ -219,6 +219,51 @@ BEGIN
 END;
 $$;
 
+-- 选择性清除（软删除指定表的数据）
+CREATE OR REPLACE FUNCTION reset_selected(p_tables TEXT[])
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = get_effective_user_id() AND display_id = 1) THEN
+    RAISE EXCEPTION '仅管理员可操作';
+  END IF;
+  IF 'comments' = ANY(p_tables) THEN UPDATE post_comments SET deleted_at = NOW() WHERE deleted_at IS NULL; END IF;
+  IF 'likes' = ANY(p_tables) THEN UPDATE post_likes SET deleted_at = NOW() WHERE deleted_at IS NULL; END IF;
+  IF 'posts' = ANY(p_tables) THEN UPDATE posts SET deleted_at = NOW() WHERE deleted_at IS NULL; END IF;
+  IF 'friendships' = ANY(p_tables) THEN UPDATE friendships SET deleted_at = NOW() WHERE deleted_at IS NULL; END IF;
+  IF 'profiles' = ANY(p_tables) THEN UPDATE profiles SET deleted_at = NOW() WHERE deleted_at IS NULL AND display_id != 1; END IF;
+END;
+$$;
+
+-- 选择性恢复（从回收站恢复指定表的数据）
+CREATE OR REPLACE FUNCTION restore_selected(p_tables TEXT[])
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = get_effective_user_id() AND display_id = 1) THEN
+    RAISE EXCEPTION '仅管理员可操作';
+  END IF;
+  IF 'comments' = ANY(p_tables) THEN UPDATE post_comments SET deleted_at = NULL WHERE deleted_at IS NOT NULL; END IF;
+  IF 'likes' = ANY(p_tables) THEN UPDATE post_likes SET deleted_at = NULL WHERE deleted_at IS NOT NULL; END IF;
+  IF 'posts' = ANY(p_tables) THEN UPDATE posts SET deleted_at = NULL WHERE deleted_at IS NOT NULL; END IF;
+  IF 'friendships' = ANY(p_tables) THEN UPDATE friendships SET deleted_at = NULL WHERE deleted_at IS NOT NULL; END IF;
+  IF 'profiles' = ANY(p_tables) THEN UPDATE profiles SET deleted_at = NULL WHERE deleted_at IS NOT NULL; END IF;
+END;
+$$;
+
+-- 选择性清空回收站（永久删除指定表的数据）
+CREATE OR REPLACE FUNCTION empty_selected(p_tables TEXT[])
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = get_effective_user_id() AND display_id = 1) THEN
+    RAISE EXCEPTION '仅管理员可操作';
+  END IF;
+  IF 'comments' = ANY(p_tables) THEN DELETE FROM post_comments WHERE deleted_at IS NOT NULL; END IF;
+  IF 'likes' = ANY(p_tables) THEN DELETE FROM post_likes WHERE deleted_at IS NOT NULL; END IF;
+  IF 'posts' = ANY(p_tables) THEN DELETE FROM posts WHERE deleted_at IS NOT NULL; END IF;
+  IF 'friendships' = ANY(p_tables) THEN DELETE FROM friendships WHERE deleted_at IS NOT NULL; END IF;
+  IF 'profiles' = ANY(p_tables) THEN DELETE FROM profiles WHERE deleted_at IS NOT NULL; END IF;
+END;
+$$;
+
 -- 生成绑定验证码（6位数字，5分钟有效）
 CREATE OR REPLACE FUNCTION generate_bind_code()
 RETURNS text

@@ -462,13 +462,31 @@ async function setupAdminControls() {
   const clearBtn = document.getElementById('supabase-clear-btn');
   const clearHint = clearBtn?.nextElementSibling;
   if (await isAdmin()) {
+    // Data type checkboxes
+    const TABLES = [
+      { key: 'posts', label: '动态' },
+      { key: 'comments', label: '评论' },
+      { key: 'likes', label: '点赞' },
+      { key: 'friendships', label: '好友关系' },
+      { key: 'profiles', label: '用户' }
+    ];
+
+    function getSelectedTables() {
+      const checked = document.querySelectorAll('.trash-check:checked');
+      if (checked.length === 0) return null; // none selected = all
+      return Array.from(checked).map(cb => cb.dataset.table);
+    }
+
+    // Selective clear button
     clearBtn.addEventListener('click', async () => {
-      if (!confirm('⚠️ 即将重置服务器上所有用户的云端数据！\n\n数据会移入回收站，可从回收站恢复。\n\n继续吗？')) return;
-      if (!confirm('再次确认：真的要重置全部数据吗？')) return;
-      showToast('正在重置...');
-      const result = await clearAllSocialData();
-      if (result.error) showToast('重置失败: ' + result.error);
-      else { showToast('全部数据已移入回收站 ✓'); updateTrashStats(); }
+      const tables = getSelectedTables();
+      const label = tables ? tables.map(t => TABLES.find(x => x.key === t)?.label || t).join('、') : '全部';
+      if (!confirm(`⚠️ 即将清除以下数据：${label}\n\n数据会移入回收站，可从回收站恢复。\n\n继续吗？`)) return;
+      if (!confirm('再次确认：真的要清除吗？')) return;
+      showToast('正在清除...');
+      const result = tables ? await resetSelected(tables) : await clearAllSocialData();
+      if (result.error) showToast('清除失败: ' + result.error);
+      else { showToast('数据已移入回收站 ✓'); updateTrashStats(); }
     });
 
     const container = clearBtn.parentElement;
@@ -477,9 +495,17 @@ async function setupAdminControls() {
     trashSection.style.cssText = 'margin-top:12px;border-top:1px solid var(--border);padding-top:12px;';
     trashSection.innerHTML = `
       <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🗑️ 回收站</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px;">
+        ${TABLES.map(t => `<label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:3px;">
+          <input type="checkbox" class="trash-check" data-table="${t.key}" style="width:14px;height:14px;">${t.label}
+        </label>`).join('')}
+        <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:3px;color:var(--text3);">
+          (不勾选 = 全部)
+        </label>
+      </div>
       <div id="trash-stats" class="settings-hint" style="margin-bottom:8px;">加载中...</div>
       <div style="display:flex;gap:8px;">
-        <button id="trash-restore-btn" class="settings-action-btn" style="flex:1;">恢复全部数据</button>
+        <button id="trash-restore-btn" class="settings-action-btn" style="flex:1;">恢复数据</button>
         <button id="trash-empty-btn" class="settings-action-btn" style="flex:1;color:#e53935;border-color:#e53935;">清空回收站</button>
       </div>
     `;
@@ -501,18 +527,22 @@ async function setupAdminControls() {
     updateTrashStats();
 
     document.getElementById('trash-restore-btn').addEventListener('click', async () => {
-      if (!confirm('确定从回收站恢复所有数据？')) return;
+      const tables = getSelectedTables();
+      const label = tables ? tables.map(t => TABLES.find(x => x.key === t)?.label || t).join('、') : '全部';
+      if (!confirm(`确定从回收站恢复以下数据？\n${label}`)) return;
       showToast('正在恢复...');
-      const result = await restoreAllData();
+      const result = tables ? await restoreSelected(tables) : await restoreAllData();
       if (result.error) showToast('恢复失败: ' + result.error);
-      else { showToast('数据已全部恢复 ✓'); updateTrashStats(); }
+      else { showToast('数据已恢复 ✓'); updateTrashStats(); }
     });
 
     document.getElementById('trash-empty-btn').addEventListener('click', async () => {
-      if (!confirm('⚠️ 清空回收站后数据将永久删除，无法恢复！\n\n确定继续？')) return;
+      const tables = getSelectedTables();
+      const label = tables ? tables.map(t => TABLES.find(x => x.key === t)?.label || t).join('、') : '全部';
+      if (!confirm(`⚠️ 以下数据将永久删除，无法恢复！\n${label}\n\n确定继续？`)) return;
       if (!confirm('再次确认：真的要永久删除吗？')) return;
       showToast('正在清空...');
-      const result = await emptyTrash();
+      const result = tables ? await emptySelected(tables) : await emptyTrash();
       if (result.error) showToast('清空失败: ' + result.error);
       else { showToast('回收站已清空'); updateTrashStats(); }
     });

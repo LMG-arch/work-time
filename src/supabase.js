@@ -674,6 +674,30 @@ async function emptyTrash() {
   return { error: error ? error.message : null };
 }
 
+async function resetSelected(tables) {
+  if (!sb) return { error: '未连接' };
+  const user = await ensureSession();
+  if (!user) return { error: '未登录' };
+  const { error } = await sb.rpc('reset_selected', { p_tables: tables });
+  return { error: error ? error.message : null };
+}
+
+async function restoreSelected(tables) {
+  if (!sb) return { error: '未连接' };
+  const user = await ensureSession();
+  if (!user) return { error: '未登录' };
+  const { error } = await sb.rpc('restore_selected', { p_tables: tables });
+  return { error: error ? error.message : null };
+}
+
+async function emptySelected(tables) {
+  if (!sb) return { error: '未连接' };
+  const user = await ensureSession();
+  if (!user) return { error: '未登录' };
+  const { error } = await sb.rpc('empty_selected', { p_tables: tables });
+  return { error: error ? error.message : null };
+}
+
 // ===== Calendar Data Sync =====
 
 const SYNC_ENABLED_KEY = 'calendar-sync-enabled';
