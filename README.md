@@ -660,6 +660,10 @@ MIT
 - **修复**：supabase-setup.sql 中 `get_effective_user_id()` 函数定义在引用它的 RLS 策略之后 — 移至策略之前
 - **修复**：Supabase CDN fallback 使用 `document.write()` 可能清空页面 — 改为同步 script 标签 + onerror 回调
 - **修复**：sendFriendRequest 未过滤 `deleted_at`，导致无法重新添加已删除的好友
+- **修复**：Android 通知注册 `actionTypeId`，显示「已打卡」操作按钮，点击自动确认打卡
+- **修复**：通知排期从 7 天扩展到 30 天
+- **修复**：通知 ID 碰撞风险
+- **修复**：Electron 待办通知双重弹窗
 - **改进**：`initSocial()` 调用添加 `await`，确保初始化顺序正确
 - **改进**：Windows 安装包体积从 158MB 精简到 108MB，排除 android/ 和多余语言文件
 - **文档**：README SQL 与 supabase-setup.sql 完全同步，内嵌完整 SQL 便于复制
