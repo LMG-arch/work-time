@@ -506,16 +506,22 @@ JAVA_HOME="C:/Program Files/Java/jdk-21" ./gradlew assembleDebug
 ```
 ├── src/
 │   ├── index.html          # 主页面
-│   ├── renderer.js         # 前端逻辑
-│   ├── styles.css          # 样式
+│   ├── utils.js            # 共享工具函数（escapeHtml、日期、toast）
+│   ├── renderer.js         # 入口：全局状态、路由、事件监听、初始化
+│   ├── calendar.js         # 日历网格、日期导航、详情面板
+│   ├── todos.js            # 待办 CRUD、弹窗、提醒
+│   ├── reminders.js        # 打卡视图、提醒设置、通知调度
+│   ├── stats.js            # 月度统计视图
+│   ├── settings.js         # 设置视图、主题、开机自启
+│   ├── social.js           # 好友圈 UI
+│   ├── supabase.js         # Supabase API（认证、社交、同步、管理员）
+│   ├── web-api.js          # localStorage 数据层
+│   ├── styles.css          # 主样式
 │   ├── social.css          # 好友圈样式
-│   ├── social.js           # 好友圈逻辑
-│   ├── supabase.js         # Supabase API 封装
 │   ├── lunar.js            # 农历转换库（寿星万年历）
 │   ├── holidays.js         # 节假日数据
-│   └── web-api.js          # Web/Capacitor API 层
-├── lib/
-│   └── supabase.min.js     # Supabase JS 本地库（CDN fallback）
+│   └── lib/
+│       └── supabase.min.js # Supabase JS 本地库
 ├── main.js                 # Electron 主进程
 ├── preload.js              # Electron 预加载脚本
 ├── supabase-setup.sql      # 数据库初始化 SQL
@@ -541,6 +547,14 @@ MIT
 ---
 
 ## 更新日志
+
+### v3.1.0 (2026-06-06) — 全面重构
+- **代码拆分**：renderer.js (2004行) 拆分为 6 个模块：calendar.js、todos.js、reminders.js、stats.js、settings.js、utils.js
+- **安全修复**：修复 8 处 XSS 漏洞（reminder label、tag text、showDiag、avatar URL）
+- **统一工具函数**：escapeHtml / sanitizeUrl / escapeAttr / showToast 等移入 utils.js
+- **安全改进**：导出数据不再包含 Supabase 凭据
+- **稳定性**：localStorage 写入加 try/catch 防止 quota 超限崩溃
+- **SQL 修复**：修正保留字 current_user 改为 curr
 
 ### v3.0.0 (2026-06-06) — 多端同步
 - **多端同步**：登录同一账号，多台设备共享好友圈和日历数据
