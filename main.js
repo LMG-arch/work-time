@@ -10,6 +10,13 @@ let dataPath;
 let store = { days: {}, todos: [], reminders: null, reminderRecords: {} };
 let reminderTimers = [];
 
+// Notify renderer to auto-sync after data changes
+function notifyDataChanged() {
+  if (win) {
+    try { win.webContents.send('data-changed'); } catch {}
+  }
+}
+
 // --- Data persistence ---
 
 function getDefaultReminders() {
@@ -36,15 +43,22 @@ function initStore() {
 
 function saveStore() {
   fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+  notifyDataChanged();
+}
+
+// Save without triggering sync notification (used by sync-write to avoid loops)
+function saveStoreSilent() {
+  fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
 }
 
 function saveDayData(dateStr, status, note, tags, color) {
   if (!status && !note && (!tags || tags.length === 0) && !color) {
     delete store.days[dateStr];
   } else {
-    store.days[dateStr] = { status, note, tags: tags || [], color: color || '' };
+    store.days[dateStr] = { status, note, tags: tags || [], color: color || '', updatedAt: new Date().toISOString() };
   }
   fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+  notifyDataChanged();
 }
 
 // --- Auto-launch ---
@@ -164,6 +178,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('save-reminders', (_, reminders) => {
+    reminders.updatedAt = new Date().toISOString();
     store.reminders = reminders;
     saveStore();
     scheduleReminders();
@@ -192,6 +207,7 @@ function registerIPC() {
 
   ipcMain.handle('add-todo', (_, todo) => {
     todo.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    todo.updatedAt = new Date().toISOString();
     store.todos.push(todo);
     saveStore();
     return todo;
@@ -200,6 +216,7 @@ function registerIPC() {
   ipcMain.handle('update-todo', (_, id, updates) => {
     const idx = store.todos.findIndex(t => t.id === id);
     if (idx >= 0) {
+      updates.updatedAt = new Date().toISOString();
       Object.assign(store.todos[idx], updates);
       saveStore();
       return store.todos[idx];
@@ -212,6 +229,39 @@ function registerIPC() {
     saveStore();
     return { success: true };
   });
+
+  // Sync bridge: read/write full store for cloud sync
+  ipcMain.handle('sync-read', () => {
+    return {
+      days: store.days || {},
+      todos: store.todos || [],
+      reminders: store.reminders || null,
+      reminderRecords: store.reminderRecords || {}
+    };
+  });
+
+  ipcMain.handle('sync-write', (_, data) => {
+    if (!data) return;
+    if (data.days) store.days = { ...store.days, ...data.days };
+    if (data.todos) {
+      const todoMap = {};
+      (store.todos || []).forEach(t => { if (t && t.id) todoMap[t.id] = t; });
+      data.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
+      store.todos = Object.values(todoMap);
+    }
+    if (data.reminders) store.reminders = data.reminders;
+    if (data.reminderRecords) {
+      if (!store.reminderRecords) store.reminderRecords = {};
+      for (const date of Object.keys(data.reminderRecords)) {
+        if (!store.reminderRecords[date]) store.reminderRecords[date] = {};
+        Object.assign(store.reminderRecords[date], data.reminderRecords[date]);
+      }
+    }
+    saveStoreSilent();
+    scheduleReminders();
+    return { success: true };
+  });
+
 
   // Todo notification from renderer
   ipcMain.on('notify-todo', (_, text, time) => {

@@ -721,41 +721,65 @@ function setSyncEnabled(enabled) {
   localStorage.setItem(SYNC_ENABLED_KEY, enabled ? 'true' : 'false');
 }
 
-// Collect all calendar data from localStorage
-function collectCalendarData() {
+// Collect all calendar data from storage
+// Electron: reads from main process JSON file via IPC (syncRead)
+// Web/Capacitor: reads from localStorage
+async function collectCalendarData() {
   const data = {};
-  try {
-    const store = JSON.parse(localStorage.getItem('work-calendar-data'));
-    if (store) {
-      data.workData = { days: store.days || {}, todos: store.todos || [] };
-    }
-  } catch {}
-  try { data.reminders = JSON.parse(localStorage.getItem('calendar-reminders')); } catch {}
-  try { data.reminderRecords = JSON.parse(localStorage.getItem('calendar-reminder-records')); } catch {}
+  const isElectron = typeof window.calendarAPI?.syncRead === 'function';
+  if (isElectron) {
+    try {
+      const store = await window.calendarAPI.syncRead();
+      if (store) {
+        data.workData = { days: store.days || {}, todos: store.todos || [] };
+        data.reminders = store.reminders || null;
+        data.reminderRecords = store.reminderRecords || {};
+      }
+    } catch (e) { console.error('[Sync] syncRead failed:', e.message); }
+  } else {
+    try {
+      const store = JSON.parse(localStorage.getItem('work-calendar-data'));
+      if (store) data.workData = { days: store.days || {}, todos: store.todos || [] };
+    } catch {}
+    try { data.reminders = JSON.parse(localStorage.getItem('calendar-reminders')); } catch {}
+    try { data.reminderRecords = JSON.parse(localStorage.getItem('calendar-reminder-records')); } catch {}
+  }
   try { data.theme = localStorage.getItem('calendar-theme'); } catch {}
   return data;
 }
 
-// Apply synced data to localStorage
-function applyCalendarData(data) {
+// Apply synced data to storage
+// Electron: writes to main process JSON file via IPC (syncWrite)
+// Web/Capacitor: writes to localStorage
+async function applyCalendarData(data) {
   if (!data) return;
-  // Merge into work-calendar-data (the main store used by web-api.js)
-  try {
-    const store = JSON.parse(localStorage.getItem('work-calendar-data')) || { days: {}, todos: [] };
-    if (data.workData) {
-      if (data.workData.days) store.days = { ...store.days, ...data.workData.days };
-      if (data.workData.todos) {
-        const todoMap = {};
-        (store.todos || []).forEach(t => { if (t && t.id) todoMap[t.id] = t; });
-        data.workData.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
-        store.todos = Object.values(todoMap);
+  const isElectron = typeof window.calendarAPI?.syncWrite === 'function';
+  if (isElectron) {
+    try {
+      await window.calendarAPI.syncWrite({
+        days: data.workData?.days,
+        todos: data.workData?.todos,
+        reminders: data.reminders,
+        reminderRecords: data.reminderRecords
+      });
+    } catch (e) { console.error('[Sync] syncWrite failed:', e.message); }
+  } else {
+    try {
+      const store = JSON.parse(localStorage.getItem('work-calendar-data')) || { days: {}, todos: [] };
+      if (data.workData) {
+        if (data.workData.days) store.days = { ...store.days, ...data.workData.days };
+        if (data.workData.todos) {
+          const todoMap = {};
+          (store.todos || []).forEach(t => { if (t && t.id) todoMap[t.id] = t; });
+          data.workData.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
+          store.todos = Object.values(todoMap);
+        }
       }
-    }
-    localStorage.setItem('work-calendar-data', JSON.stringify(store));
-  } catch {}
-  // Also write to separate keys (used by reminders.js and other modules)
-  if (data.reminders) localStorage.setItem('calendar-reminders', JSON.stringify(data.reminders));
-  if (data.reminderRecords) localStorage.setItem('calendar-reminder-records', JSON.stringify(data.reminderRecords));
+      localStorage.setItem('work-calendar-data', JSON.stringify(store));
+    } catch {}
+    if (data.reminders) localStorage.setItem('calendar-reminders', JSON.stringify(data.reminders));
+    if (data.reminderRecords) localStorage.setItem('calendar-reminder-records', JSON.stringify(data.reminderRecords));
+  }
   if (data.theme) localStorage.setItem('calendar-theme', data.theme);
 }
 
@@ -764,7 +788,7 @@ async function pushCalendarData() {
   if (!sb) return { error: '未连接' };
   const uid = await getEffectiveUserId();
   if (!uid) return { error: '未登录' };
-  const data = collectCalendarData();
+  const data = await collectCalendarData();
   const { error } = await sb.from('user_data').upsert({
     user_id: uid,
     data: data,
@@ -781,7 +805,7 @@ async function pullCalendarData() {
   const { data, error } = await sb.from('user_data').select('data').eq('user_id', uid).maybeSingle();
   if (error) return { error: error.message };
   if (data && data.data) {
-    applyCalendarData(data.data);
+    await applyCalendarData(data.data);
     return { error: null, pulled: true };
   }
   return { error: null, pulled: false };
@@ -809,36 +833,91 @@ async function _doSyncCalendarData() {
     .select('data, updated_at').eq('user_id', uid).maybeSingle();
   if (fetchErr) return { error: fetchErr.message };
 
-  const localData = collectCalendarData();
+  const localData = await collectCalendarData();
 
   if (cloudRow && cloudRow.data) {
     const cloudData = cloudRow.data;
     if (cloudData.workData && localData.workData) {
-      // Merge days: cloud takes priority for conflicts
-      const mergedDays = { ...localData.workData.days, ...cloudData.workData.days };
+      // Merge days: compare updatedAt, keep the newer version
+      const mergedDays = {};
+      const allDateKeys = new Set([
+        ...Object.keys(localData.workData.days || {}),
+        ...Object.keys(cloudData.workData.days || {})
+      ]);
+      for (const date of allDateKeys) {
+        const localDay = localData.workData.days?.[date];
+        const cloudDay = cloudData.workData.days?.[date];
+        if (!localDay && cloudDay) {
+          mergedDays[date] = cloudDay;
+        } else if (localDay && !cloudDay) {
+          mergedDays[date] = localDay;
+        } else if (localDay && cloudDay) {
+          // Both exist: compare updatedAt, keep newer
+          const localTime = localDay.updatedAt || '0';
+          const cloudTime = cloudDay.updatedAt || '0';
+          mergedDays[date] = localTime >= cloudTime ? localDay : cloudDay;
+        }
+      }
       cloudData.workData.days = mergedDays;
-      // Merge todos: combine by id, cloud version wins
+
+      // Merge todos: compare updatedAt, keep newer version per id
       const todoMap = {};
       if (localData.workData.todos) localData.workData.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
-      if (cloudData.workData.todos) cloudData.workData.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
+      if (cloudData.workData.todos) {
+        cloudData.workData.todos.forEach(t => {
+          if (t && t.id) {
+            const existing = todoMap[t.id];
+            if (!existing) {
+              todoMap[t.id] = t;
+            } else {
+              // Keep newer version
+              const localTime = existing.updatedAt || '0';
+              const cloudTime = t.updatedAt || '0';
+              if (cloudTime > localTime) todoMap[t.id] = t;
+            }
+          }
+        });
+      }
       cloudData.workData.todos = Object.values(todoMap);
     }
-    // Merge reminderRecords: union (additive, local entries preserved)
+    // Merge reminderRecords: union (additive, keep newer per record)
     if (localData.reminderRecords && cloudData.reminderRecords) {
       for (const date of Object.keys(localData.reminderRecords)) {
         if (!cloudData.reminderRecords[date]) {
           cloudData.reminderRecords[date] = localData.reminderRecords[date];
         } else {
-          Object.assign(cloudData.reminderRecords[date], localData.reminderRecords[date]);
+          // For each reminder record, keep the newer one
+          for (const reminderId of Object.keys(localData.reminderRecords[date])) {
+            const localRecord = localData.reminderRecords[date][reminderId];
+            const cloudRecord = cloudData.reminderRecords[date][reminderId];
+            if (!cloudRecord) {
+              cloudData.reminderRecords[date][reminderId] = localRecord;
+            } else {
+              const localTime = localRecord.at || localRecord.updatedAt || '0';
+              const cloudTime = cloudRecord.at || cloudRecord.updatedAt || '0';
+              if (localTime >= cloudTime) {
+                cloudData.reminderRecords[date][reminderId] = localRecord;
+              }
+            }
+          }
         }
       }
     }
-    // reminders: cloud wins (last-write-wins for config)
-    applyCalendarData(cloudData);
+    // reminders: use updatedAt to keep newer config
+    if (localData.reminders && cloudData.reminders) {
+      const localTime = localData.reminders.updatedAt || '0';
+      const cloudTime = cloudData.reminders.updatedAt || '0';
+      if (localTime > cloudTime) {
+        cloudData.reminders = localData.reminders;
+      }
+    } else if (localData.reminders && !cloudData.reminders) {
+      cloudData.reminders = localData.reminders;
+    }
+    await applyCalendarData(cloudData);
   }
 
   // Push merged/local data to cloud
-  const pushData = collectCalendarData();
+  const pushData = await collectCalendarData();
   const { error: pushErr } = await sb.from('user_data').upsert({
     user_id: uid,
     data: pushData,
@@ -849,16 +928,24 @@ async function _doSyncCalendarData() {
 }
 
 // Auto-sync: full sync if enabled (debounced, 3s idle)
+// Returns a promise that resolves when sync completes (or immediately if no sync needed)
 let _syncTimer = null;
+let _syncResolve = null;
 function autoSyncPush() {
-  if (!isSyncEnabled() || !sb) return;
-  if (_syncTimer) clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(async () => {
-    _syncTimer = null;
-    try {
-      await syncCalendarData();
-    } catch (e) {
-      console.log('[Sync] Auto-sync failed:', e.message);
-    }
-  }, 3000);
+  return new Promise((resolve) => {
+    if (!isSyncEnabled() || !sb) { resolve(); return; }
+    if (_syncTimer) { clearTimeout(_syncTimer); }
+    if (_syncResolve) _syncResolve(); // resolve previous pending
+    _syncResolve = resolve;
+    _syncTimer = setTimeout(async () => {
+      _syncTimer = null;
+      _syncResolve = null;
+      try {
+        await syncCalendarData();
+      } catch (e) {
+        console.log('[Sync] Auto-sync failed:', e.message);
+      }
+      resolve();
+    }, 3000);
+  });
 }

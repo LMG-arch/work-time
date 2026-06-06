@@ -55,6 +55,22 @@ function switchView(view) {
   if (view === 'social') renderSocialView();
 }
 
+// Refresh all data from storage and re-render current view
+async function refreshAllData() {
+  try {
+    allData = await window.calendarAPI.getAllData();
+    allTodos = await window.calendarAPI.getTodos();
+    allReminders = await window.calendarAPI.getReminders();
+    allReminderRecords = await window.calendarAPI.getAllReminderRecords();
+    renderCalendar();
+    if (currentView === 'clockin') renderClockinView();
+    if (currentView === 'stats') renderStatsView();
+    if (currentView === 'todos') renderTodos();
+  } catch (e) {
+    console.error('[refreshAllData] Failed:', e.message);
+  }
+}
+
 // ===== Account UI =====
 
 async function updateAccountUI() {
@@ -273,9 +289,7 @@ function setupEventListeners() {
           updateAccountUI();
           try {
             await syncCalendarData();
-            if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
-            if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
-            if (typeof allReminders !== 'undefined') allReminders = await window.calendarAPI.getReminders();
+            await refreshAllData();
           } catch (e) { console.log('[Login] Sync after login failed:', e.message); }
         }
       } finally { loginBtn.disabled = false; }
@@ -332,12 +346,19 @@ function setupEventListeners() {
     }
     updateSyncToggleBtn();
 
-    syncToggleBtn.addEventListener('click', () => {
+    syncToggleBtn.addEventListener('click', async () => {
       const next = !isSyncEnabled();
       setSyncEnabled(next);
       updateSyncToggleBtn();
       showToast(next ? '已开启自动同步' : '已关闭自动同步');
-      if (next) { syncCalendarData().then(r => { if (r.error) showToast('同步失败: ' + r.error); else showToast('同步完成 ✓'); }); }
+      if (next) {
+        const r = await syncCalendarData();
+        if (r.error) showToast('同步失败: ' + r.error);
+        else {
+          showToast('同步完成 ✓');
+          await refreshAllData();
+        }
+      }
     });
 
     syncNowBtn.addEventListener('click', async () => {
@@ -347,9 +368,7 @@ function setupEventListeners() {
         if (result.error) showToast('同步失败: ' + result.error);
         else {
           showToast('同步完成 ✓');
-          if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
-          if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
-          if (typeof allReminders !== 'undefined') allReminders = await window.calendarAPI.getReminders();
+          await refreshAllData();
         }
       } finally { syncNowBtn.disabled = false; syncNowBtn.textContent = '立即同步'; }
     });
@@ -571,9 +590,7 @@ async function setupAdminControls() {
       if (result.error) showToast('恢复失败: ' + result.error);
       else {
         showToast('数据已恢复 ✓');
-        if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
-        if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
-        if (typeof renderCalendar === 'function') renderCalendar();
+        await refreshAllData();
         updateTrashStats();
       }
     });
@@ -628,6 +645,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (currentView === 'clockin') renderClockinView();
       renderCalendar();
       showToast('打卡成功 ✓');
+    });
+  }
+
+  // Electron: auto-sync when data changes in main process
+  if (window.calendarAPI?.onDataChanged) {
+    window.calendarAPI.onDataChanged(() => {
+      if (typeof autoSyncPush === 'function') {
+        autoSyncPush().then(() => {
+          refreshAllData();
+        });
+      }
     });
   }
 

@@ -569,11 +569,7 @@ async function initSocial() {
   if (typeof isSyncEnabled === 'function' && isSyncEnabled()) {
     try {
       await syncCalendarData();
-      // Reload in-memory data after sync
-      if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
-      if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
-      if (typeof allReminders !== 'undefined') allReminders = await window.calendarAPI.getReminders();
-      if (typeof renderCalendar === 'function') renderCalendar();
+      if (typeof refreshAllData === 'function') await refreshAllData();
       console.log('[Social] Calendar data synced from cloud');
     } catch (e) {
       console.log('[Social] Calendar sync failed:', e.message);

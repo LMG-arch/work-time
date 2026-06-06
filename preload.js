@@ -21,5 +21,9 @@ contextBridge.exposeInMainWorld('calendarAPI', {
   confirmReminder: (date, reminderId) => ipcRenderer.invoke('confirm-reminder', date, reminderId),
   getReminderRecords: (date) => ipcRenderer.invoke('get-reminder-records', date),
   getAllReminderRecords: () => ipcRenderer.invoke('get-all-reminder-records'),
-  onReminderConfirmed: (callback) => ipcRenderer.on('reminder-confirmed', (_, data) => callback(data))
+  onReminderConfirmed: (callback) => ipcRenderer.on('reminder-confirmed', (_, data) => callback(data)),
+  // Sync bridge: read/write full store for cloud sync
+  syncRead: () => ipcRenderer.invoke('sync-read'),
+  syncWrite: (data) => ipcRenderer.invoke('sync-write', data),
+  onDataChanged: (callback) => ipcRenderer.on('data-changed', () => callback())
 });

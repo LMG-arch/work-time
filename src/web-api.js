@@ -41,7 +41,7 @@
       if (!status && !note && (!tags || tags.length === 0) && !color) {
         delete store.days[date];
       } else {
-        store.days[date] = { status, note, tags: tags || [], color: color || '' };
+        store.days[date] = { status, note, tags: tags || [], color: color || '', updatedAt: new Date().toISOString() };
       }
       saveStore(store);
       if (typeof autoSyncPush === 'function') autoSyncPush();
@@ -61,6 +61,7 @@
     async addTodo(todo) {
       const store = getStore();
       todo.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      todo.updatedAt = new Date().toISOString();
       store.todos.push(todo);
       saveStore(store);
       if (typeof autoSyncPush === 'function') autoSyncPush();
@@ -71,6 +72,7 @@
       const store = getStore();
       const idx = store.todos.findIndex(t => t.id === id);
       if (idx >= 0) {
+        updates.updatedAt = new Date().toISOString();
         Object.assign(store.todos[idx], updates);
         saveStore(store);
         if (typeof autoSyncPush === 'function') autoSyncPush();
@@ -176,6 +178,7 @@
     },
 
     async saveReminders(reminders) {
+      reminders.updatedAt = new Date().toISOString();
       localStorage.setItem('calendar-reminders', JSON.stringify(reminders));
       if (typeof autoSyncPush === 'function') autoSyncPush();
       return { success: true };

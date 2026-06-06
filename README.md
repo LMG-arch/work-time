@@ -646,6 +646,20 @@ MIT
 
 ## 更新日志
 
+### v3.1.5 (2026-06-06) — 多端数据同步修复
+- **关键修复**：多端数据不同步 — `saveDayData()` 保存后不触发同步通知，导致电脑标记的数据无法同步到手机
+- **关键修复**：同步通知不发送 — `notifyDataChanged()` 检查不存在的 `store.syncEnabled`，移除检查直接发送
+- **关键修复**：同步后 UI 不刷新 — 添加 `refreshAllData()` 函数，同步完成后自动刷新日历、待办、打卡等所有视图
+- **关键修复**：同步循环问题 — `sync-write` 使用 `saveStoreSilent()` 避免触发循环同步
+- **关键修复**：同步后通知不更新 — `sync-write` 完成后调用 `scheduleReminders()` 重新调度通知
+- **关键修复**：多端数据覆盖问题 — 使用 `updatedAt` 时间戳比较，保留最新版本数据
+  - days：比较 `updatedAt`，保留最新记录
+  - todos：按 id 比较 `updatedAt`，保留最新版本
+  - reminders：比较 `updatedAt`，保留最新配置
+  - reminderRecords：按日期和 id 比较 `at` 时间戳，保留最新打卡记录
+- **改进**：`autoSyncPush()` 返回 Promise，支持同步完成后执行操作
+- **改进**：所有数据写入操作添加 `updatedAt` 时间戳（saveDay、addTodo、updateTodo、saveReminders）
+
 ### v3.1.4 (2026-06-06) — 数据同步彻底修复
 - **关键修复**：PC 和手机数据不同步 — `getEffectiveUserId()` 在清除数据后返回匿名 UUID 而非关联用户 ID，导致两端读写不同行
 - **修复**：`getMyProfile()` 清除数据后查不到 profile — 查询不再过滤 `deleted_at`
