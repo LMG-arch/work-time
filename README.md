@@ -190,13 +190,6 @@ CREATE TABLE IF NOT EXISTS user_data (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 绑定验证码表
-CREATE TABLE IF NOT EXISTS bind_codes (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  code TEXT NOT NULL,
-  expires_at TIMESTAMPTZ NOT NULL
-);
-
 -- 启用 RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
@@ -204,7 +197,6 @@ ALTER TABLE post_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bind_codes ENABLE ROW LEVEL SECURITY;
 
 -- 获取有效用户ID（如果当前用户有 linked_id 则返回 linked_id，否则返回自身）
 CREATE OR REPLACE FUNCTION get_effective_user_id()
@@ -256,11 +248,6 @@ CREATE POLICY "friendships_delete" ON friendships FOR DELETE
 CREATE POLICY "user_data_select" ON user_data FOR SELECT USING (get_effective_user_id() = user_id);
 CREATE POLICY "user_data_insert" ON user_data FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
 CREATE POLICY "user_data_update" ON user_data FOR UPDATE USING (get_effective_user_id() = user_id);
-
--- Bind Codes: 有效用户可读写
-CREATE POLICY "bind_codes_select" ON bind_codes FOR SELECT USING (get_effective_user_id() = user_id);
-CREATE POLICY "bind_codes_insert" ON bind_codes FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
-CREATE POLICY "bind_codes_update" ON bind_codes FOR UPDATE USING (get_effective_user_id() = user_id);
 
 -- 管理员重置函数（软删除，保留数据可恢复）
 CREATE OR REPLACE FUNCTION reset_all_data()
@@ -394,45 +381,6 @@ BEGIN
   IF 'posts' = ANY(p_tables) THEN DELETE FROM posts WHERE deleted_at IS NOT NULL; END IF;
   IF 'friendships' = ANY(p_tables) THEN DELETE FROM friendships WHERE deleted_at IS NOT NULL; END IF;
   IF 'profiles' = ANY(p_tables) THEN DELETE FROM profiles WHERE deleted_at IS NOT NULL; END IF;
-END;
-$$;
-
--- 生成绑定验证码（6位数字，5分钟有效）
-CREATE OR REPLACE FUNCTION generate_bind_code()
-RETURNS text
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  code TEXT;
-BEGIN
-  code := lpad(floor(random() * 1000000)::text, 6, '0');
-  INSERT INTO bind_codes (user_id, code, expires_at)
-  VALUES (auth.uid(), code, NOW() + INTERVAL '5 minutes')
-  ON CONFLICT (user_id) DO UPDATE SET code = EXCLUDED.code, expires_at = EXCLUDED.expires_at;
-  RETURN code;
-END;
-$$;
-
--- 验证绑定验证码
-CREATE OR REPLACE FUNCTION verify_bind_code(target_user_id UUID, input_code TEXT)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  valid BOOLEAN;
-BEGIN
-  SELECT EXISTS(
-    SELECT 1 FROM bind_codes
-    WHERE user_id = target_user_id
-    AND code = input_code
-    AND expires_at > NOW()
-  ) INTO valid;
-  IF valid THEN
-    DELETE FROM bind_codes WHERE user_id = target_user_id;
-  END IF;
-  RETURN valid;
 END;
 $$;
 
@@ -785,7 +733,7 @@ MIT
 - 数据同步功能：日历/待办/提醒等数据可同步到 Supabase 云端
 - 用户绑定：通过 6 位验证码安全验证，防止他人冒用账号
 - 自动同步：开启后每次数据变更自动上传，登录时自动拉取
-- 新增 `user_data` 表和 `bind_codes` 表
+- 新增 `user_data` 表
 
 ### v2.2.0 (2026-06-06) — 管理员与回收站
 - 「清除云端数据」改为管理员专属功能：仅数字 ID 为 1 的用户可见
