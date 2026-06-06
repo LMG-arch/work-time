@@ -745,6 +745,27 @@ async function collectCalendarData() {
     try { data.reminderRecords = JSON.parse(localStorage.getItem('calendar-reminder-records')); } catch {}
   }
   try { data.theme = localStorage.getItem('calendar-theme'); } catch {}
+
+  // Ensure all days have updatedAt for proper sync comparison
+  if (data.workData?.days) {
+    const now = new Date().toISOString();
+    for (const date of Object.keys(data.workData.days)) {
+      if (!data.workData.days[date].updatedAt) {
+        data.workData.days[date].updatedAt = now;
+      }
+    }
+  }
+  // Ensure all todos have updatedAt
+  if (data.workData?.todos) {
+    const now = new Date().toISOString();
+    data.workData.todos = data.workData.todos.map(t => {
+      if (t && !t.updatedAt) {
+        return { ...t, updatedAt: now };
+      }
+      return t;
+    });
+  }
+
   return data;
 }
 
@@ -834,6 +855,11 @@ async function _doSyncCalendarData() {
   if (fetchErr) return { error: fetchErr.message };
 
   const localData = await collectCalendarData();
+
+  // Debug logging
+  console.log('[Sync] Local days count:', Object.keys(localData.workData?.days || {}).length);
+  console.log('[Sync] Cloud days count:', Object.keys(cloudRow?.data?.workData?.days || {}).length);
+  console.log('[Sync] Local dates:', Object.keys(localData.workData?.days || {}).join(', '));
 
   if (cloudRow && cloudRow.data) {
     const cloudData = cloudRow.data;

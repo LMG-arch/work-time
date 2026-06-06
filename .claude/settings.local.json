@@ -37,7 +37,11 @@
       "Bash(curl -L -o \"/tmp/jdk21.zip\" \"https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk\")",
       "Bash(gh auth *)",
       "Bash(./gradlew assembleRelease)",
-      "Bash(export JAVA_HOME=\"/c/Program Files/Java/jdk-21.0.11+10\")"
+      "Bash(export JAVA_HOME=\"/c/Program Files/Java/jdk-21.0.11+10\")",
+      "Bash(git pull *)",
+      "Bash(cmd.exe /c \"gradlew.bat assembleDebug\")",
+      "Bash(./gradlew.bat assembleDebug)",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-21.0.11+10\")"
     ]
   }
 }

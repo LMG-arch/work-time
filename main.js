@@ -232,9 +232,24 @@ function registerIPC() {
 
   // Sync bridge: read/write full store for cloud sync
   ipcMain.handle('sync-read', () => {
+    // Ensure all days have updatedAt for proper sync comparison
+    const days = store.days || {};
+    const now = new Date().toISOString();
+    for (const date of Object.keys(days)) {
+      if (!days[date].updatedAt) {
+        days[date].updatedAt = now;
+      }
+    }
+    // Ensure all todos have updatedAt
+    const todos = (store.todos || []).map(t => {
+      if (t && !t.updatedAt) {
+        return { ...t, updatedAt: now };
+      }
+      return t;
+    });
     return {
-      days: store.days || {},
-      todos: store.todos || [],
+      days: days,
+      todos: todos,
       reminders: store.reminders || null,
       reminderRecords: store.reminderRecords || {}
     };
