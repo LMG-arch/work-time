@@ -372,6 +372,37 @@ function setupEventListeners() {
         }
       } finally { syncNowBtn.disabled = false; syncNowBtn.textContent = '立即同步'; }
     });
+
+    // One-way sync buttons
+    const pushBtn = document.getElementById('push-to-cloud-btn');
+    const pullBtn = document.getElementById('pull-from-cloud-btn');
+
+    if (pushBtn) {
+      pushBtn.addEventListener('click', async () => {
+        if (!confirm('上传本地数据将覆盖云端数据，确定继续？')) return;
+        pushBtn.disabled = true; pushBtn.textContent = '上传中...';
+        try {
+          const result = await pushToCloud();
+          if (result.error) showToast('上传失败: ' + result.error);
+          else showToast('本地数据已上传到云端 ✓');
+        } finally { pushBtn.disabled = false; pushBtn.textContent = '↑ 上传本地数据'; }
+      });
+    }
+
+    if (pullBtn) {
+      pullBtn.addEventListener('click', async () => {
+        if (!confirm('下载云端数据将覆盖本地数据，确定继续？')) return;
+        pullBtn.disabled = true; pullBtn.textContent = '下载中...';
+        try {
+          const result = await pullFromCloud();
+          if (result.error) showToast('下载失败: ' + result.error);
+          else {
+            showToast('云端数据已下载到本地 ✓');
+            await refreshAllData();
+          }
+        } finally { pullBtn.disabled = false; pullBtn.textContent = '↓ 下载云端数据'; }
+      });
+    }
   })();
 
   // ===== Collapsible Theme Section =====

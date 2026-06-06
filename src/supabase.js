@@ -863,86 +863,34 @@ async function _doSyncCalendarData() {
 
   if (cloudRow && cloudRow.data) {
     const cloudData = cloudRow.data;
-    if (cloudData.workData && localData.workData) {
-      // Merge days: compare updatedAt, keep the newer version
-      const mergedDays = {};
-      const allDateKeys = new Set([
-        ...Object.keys(localData.workData.days || {}),
-        ...Object.keys(cloudData.workData.days || {})
-      ]);
-      for (const date of allDateKeys) {
-        const localDay = localData.workData.days?.[date];
-        const cloudDay = cloudData.workData.days?.[date];
-        if (!localDay && cloudDay) {
-          mergedDays[date] = cloudDay;
-        } else if (localDay && !cloudDay) {
-          mergedDays[date] = localDay;
-        } else if (localDay && cloudDay) {
-          // Both exist: compare updatedAt, keep newer
-          const localTime = localDay.updatedAt || '0';
-          const cloudTime = cloudDay.updatedAt || '0';
-          mergedDays[date] = localTime >= cloudTime ? localDay : cloudDay;
-        }
-      }
-      cloudData.workData.days = mergedDays;
 
-      // Merge todos: compare updatedAt, keep newer version per id
-      const todoMap = {};
-      if (localData.workData.todos) localData.workData.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
-      if (cloudData.workData.todos) {
-        cloudData.workData.todos.forEach(t => {
-          if (t && t.id) {
-            const existing = todoMap[t.id];
-            if (!existing) {
-              todoMap[t.id] = t;
-            } else {
-              // Keep newer version
-              const localTime = existing.updatedAt || '0';
-              const cloudTime = t.updatedAt || '0';
-              if (cloudTime > localTime) todoMap[t.id] = t;
-            }
-          }
-        });
-      }
-      cloudData.workData.todos = Object.values(todoMap);
+    // Smart merge: local data takes priority (deletes are synced)
+    // This ensures local deletions are reflected in cloud
+    if (cloudData.workData && localData.workData) {
+      // Days: local overwrites cloud (including deletions)
+      cloudData.workData.days = { ...localData.workData.days };
+
+      // Todos: local overwrites cloud
+      cloudData.workData.todos = localData.workData.todos || [];
     }
-    // Merge reminderRecords: union (additive, keep newer per record)
-    if (localData.reminderRecords && cloudData.reminderRecords) {
-      for (const date of Object.keys(localData.reminderRecords)) {
-        if (!cloudData.reminderRecords[date]) {
-          cloudData.reminderRecords[date] = localData.reminderRecords[date];
-        } else {
-          // For each reminder record, keep the newer one
-          for (const reminderId of Object.keys(localData.reminderRecords[date])) {
-            const localRecord = localData.reminderRecords[date][reminderId];
-            const cloudRecord = cloudData.reminderRecords[date][reminderId];
-            if (!cloudRecord) {
-              cloudData.reminderRecords[date][reminderId] = localRecord;
-            } else {
-              const localTime = localRecord.at || localRecord.updatedAt || '0';
-              const cloudTime = cloudRecord.at || cloudRecord.updatedAt || '0';
-              if (localTime >= cloudTime) {
-                cloudData.reminderRecords[date][reminderId] = localRecord;
-              }
-            }
-          }
-        }
-      }
-    }
-    // reminders: use updatedAt to keep newer config
-    if (localData.reminders && cloudData.reminders) {
-      const localTime = localData.reminders.updatedAt || '0';
-      const cloudTime = cloudData.reminders.updatedAt || '0';
-      if (localTime > cloudTime) {
-        cloudData.reminders = localData.reminders;
-      }
-    } else if (localData.reminders && !cloudData.reminders) {
+
+    // Reminders: local overwrites cloud
+    if (localData.reminders) {
       cloudData.reminders = localData.reminders;
     }
+
+    // ReminderRecords: merge with local priority
+    if (localData.reminderRecords) {
+      if (!cloudData.reminderRecords) cloudData.reminderRecords = {};
+      for (const date of Object.keys(localData.reminderRecords)) {
+        cloudData.reminderRecords[date] = localData.reminderRecords[date];
+      }
+    }
+
     await applyCalendarData(cloudData);
   }
 
-  // Push merged/local data to cloud
+  // Push local data to cloud (overwrite cloud with local)
   const pushData = await collectCalendarData();
   const { error: pushErr } = await sb.from('user_data').upsert({
     user_id: uid,
@@ -951,6 +899,34 @@ async function _doSyncCalendarData() {
   }, { onConflict: 'user_id' });
 
   return { error: pushErr ? pushErr.message : null };
+}
+
+// One-way push: local -> cloud (overwrites cloud)
+async function pushToCloud() {
+  if (!sb) return { error: '未连接' };
+  const uid = await getEffectiveUserId();
+  if (!uid) return { error: '未登录' };
+  const data = await collectCalendarData();
+  const { error } = await sb.from('user_data').upsert({
+    user_id: uid,
+    data: data,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' });
+  return { error: error ? error.message : null };
+}
+
+// One-way pull: cloud -> local (overwrites local)
+async function pullFromCloud() {
+  if (!sb) return { error: '未连接' };
+  const uid = await getEffectiveUserId();
+  if (!uid) return { error: '未登录' };
+  const { data, error } = await sb.from('user_data').select('data').eq('user_id', uid).maybeSingle();
+  if (error) return { error: error.message };
+  if (data && data.data) {
+    await applyCalendarData(data.data);
+    return { error: null, pulled: true };
+  }
+  return { error: null, pulled: false };
 }
 
 // Auto-sync: full sync if enabled (debounced, 3s idle)
