@@ -99,6 +99,7 @@ async function ensureSession() {
 // ===== Account Registration / Login =====
 
 const ACCOUNT_USERNAME_KEY = 'social-account-username';
+const ACCOUNT_HASH_KEY = 'social-account-hash';
 
 // Simple SHA-256 hash for passwords (browser Web Crypto API)
 async function hashPassword(password) {
@@ -132,6 +133,7 @@ async function registerAccount(username, password) {
   if (data && data.error) return { error: data.error };
 
   localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
+  localStorage.setItem(ACCOUNT_HASH_KEY, pwHash);
   if (typeof _currentUserId !== 'undefined') _currentUserId = user.id;
   return { user: { id: user.id } };
 }
@@ -159,9 +161,52 @@ async function loginAccount(username, password) {
 
   const userId = data.user_id;
   localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
+  localStorage.setItem(ACCOUNT_HASH_KEY, pwHash);
   setBoundUserId(userId);
   if (typeof _currentUserId !== 'undefined') _currentUserId = userId;
   return { user: { id: userId } };
+}
+
+// Auto-restore login on app start (uses saved credentials)
+async function restoreAccount() {
+  const username = getSavedUsername();
+  const pwHash = localStorage.getItem(ACCOUNT_HASH_KEY);
+  if (!username || !pwHash || !sb) return false;
+
+  // Check if already logged in with correct user
+  const currentUser = await getCurrentUser();
+  if (currentUser) {
+    const profile = await getProfile(currentUser.id);
+    if (profile && profile.username === username) {
+      // Already logged in as the right user
+      if (typeof _currentUserId !== 'undefined') _currentUserId = currentUser.id;
+      return true;
+    }
+  }
+
+  // Need to re-login (session expired or different user)
+  let user = await getCurrentUser();
+  if (!user) {
+    try {
+      const { data, error } = await sb.auth.signInAnonymously();
+      if (error) return false;
+      user = data.user;
+      setBoundUserId(user.id);
+    } catch { return false; }
+  }
+
+  try {
+    const { data, error } = await sb.rpc('login_username', {
+      p_username: username,
+      p_password_hash: pwHash
+    });
+    if (error || (data && data.error)) return false;
+
+    const userId = data.user_id;
+    setBoundUserId(userId);
+    if (typeof _currentUserId !== 'undefined') _currentUserId = userId;
+    return true;
+  } catch { return false; }
 }
 
 async function logoutAccount() {
@@ -169,6 +214,7 @@ async function logoutAccount() {
     try { await sb.auth.signOut(); } catch {}
   }
   localStorage.removeItem(ACCOUNT_USERNAME_KEY);
+  localStorage.removeItem(ACCOUNT_HASH_KEY);
   localStorage.removeItem('social-bound-user-id');
   if (typeof _currentUserId !== 'undefined') _currentUserId = null;
 }

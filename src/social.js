@@ -546,17 +546,23 @@ async function initSocial() {
   if (user) {
     _currentUserId = user.id;
     console.log('[Social] User session:', user.id.slice(0, 8));
-
-    // Auto-pull calendar data on login if sync enabled
-    if (typeof isSyncEnabled === 'function' && isSyncEnabled()) {
-      try {
-        await pullCalendarData();
-        console.log('[Social] Calendar data synced from cloud');
-      } catch (e) {
-        console.log('[Social] Calendar sync failed:', e.message);
-      }
-    }
   } else {
     console.warn('[Social] Failed to establish session');
+  }
+
+  // Auto-restore account login (migrates data if session changed)
+  if (typeof restoreAccount === 'function') {
+    const restored = await restoreAccount();
+    if (restored) console.log('[Social] Account restored');
+  }
+
+  // Auto-pull calendar data on login if sync enabled
+  if (typeof isSyncEnabled === 'function' && isSyncEnabled()) {
+    try {
+      await pullCalendarData();
+      console.log('[Social] Calendar data synced from cloud');
+    } catch (e) {
+      console.log('[Social] Calendar sync failed:', e.message);
+    }
   }
 }
