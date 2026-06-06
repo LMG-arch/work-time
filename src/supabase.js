@@ -46,6 +46,16 @@ function initSupabase() {
 
 // ===== Auth =====
 
+async function getCurrentUser() {
+  if (!sb) return null;
+  try {
+    const { data } = await sb.auth.getUser();
+    return data.user;
+  } catch {
+    return null;
+  }
+}
+
 // Robust session restoration: try multiple methods before creating new user
 async function ensureSession() {
   if (!sb) return null;
@@ -63,7 +73,6 @@ async function ensureSession() {
   try {
     const { data } = await sb.auth.getSession();
     if (data.session && data.session.user) {
-      // Try to refresh this session
       const { data: refreshed } = await sb.auth.setSession({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token
@@ -85,6 +94,56 @@ async function ensureSession() {
   } catch {}
 
   return null;
+}
+
+// ===== Account Registration / Login =====
+
+const ACCOUNT_USERNAME_KEY = 'social-account-username';
+
+async function registerAccount(username, password) {
+  if (!sb) return { error: '未配置服务' };
+  if (!username || !password) return { error: '请输入用户名和密码' };
+  if (username.length < 2) return { error: '用户名至少2个字符' };
+  if (password.length < 4) return { error: '密码至少4个字符' };
+
+  const email = username.toLowerCase().replace(/[^a-z0-9_-]/g, '') + '@workcalendar.local';
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if (error) {
+    if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+      return { error: '用户名已存在，请直接登录' };
+    }
+    return { error: error.message };
+  }
+  if (data.user) {
+    localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
+    setBoundUserId(data.user.id);
+  }
+  return { user: data.user };
+}
+
+async function loginAccount(username, password) {
+  if (!sb) return { error: '未配置服务' };
+  if (!username || !password) return { error: '请输入用户名和密码' };
+
+  const email = username.toLowerCase().replace(/[^a-z0-9_-]/g, '') + '@workcalendar.local';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) return { error: '用户名或密码错误' };
+  if (data.user) {
+    localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
+    setBoundUserId(data.user.id);
+  }
+  return { user: data.user };
+}
+
+async function logoutAccount() {
+  if (!sb) return;
+  await sb.auth.signOut();
+  localStorage.removeItem(ACCOUNT_USERNAME_KEY);
+  _currentUserId = null;
+}
+
+function getSavedUsername() {
+  return localStorage.getItem(ACCOUNT_USERNAME_KEY) || '';
 }
 
 // ===== Profile =====

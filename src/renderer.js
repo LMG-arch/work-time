@@ -1835,6 +1835,188 @@ function setupEventListeners() {
     });
   })();
 
+  // ===== Account Registration / Login =====
+  (async () => {
+    const loggedOut = document.getElementById('account-logged-out');
+    const loggedIn = document.getElementById('account-logged-in');
+    const regUsername = document.getElementById('reg-username');
+    const regPassword = document.getElementById('reg-password');
+    const regBtn = document.getElementById('reg-btn');
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const authStatus = document.getElementById('auth-status');
+
+    const config = getSupabaseConfig();
+    if (!config.url || !config.key) return;
+    if (!sb) sb = initSupabase();
+
+    async function updateAccountUI() {
+      const user = await getCurrentUser();
+      if (user) {
+        loggedOut.style.display = 'none';
+        loggedIn.style.display = '';
+        const profile = await getProfile(user.id);
+        const nickname = profile ? profile.nickname : (getSavedUsername() || '用户');
+        const displayId = profile ? profile.display_id : '-';
+        document.getElementById('account-avatar').textContent = nickname[0];
+        document.getElementById('account-nickname').textContent = nickname;
+        document.getElementById('account-id').textContent = `ID: ${displayId} | ${getSavedUsername() || '匿名用户'}`;
+      } else {
+        loggedOut.style.display = '';
+        loggedIn.style.display = 'none';
+      }
+    }
+    updateAccountUI();
+
+    regBtn.addEventListener('click', async () => {
+      const username = regUsername.value.trim();
+      const password = regPassword.value;
+      regBtn.disabled = true;
+      authStatus.textContent = '注册中...';
+      try {
+        const result = await registerAccount(username, password);
+        if (result.error) {
+          authStatus.textContent = result.error;
+          authStatus.style.color = '#e53935';
+        } else {
+          authStatus.textContent = '注册成功！';
+          authStatus.style.color = '';
+          regUsername.value = '';
+          regPassword.value = '';
+          updateAccountUI();
+        }
+      } finally {
+        regBtn.disabled = false;
+      }
+    });
+
+    loginBtn.addEventListener('click', async () => {
+      const username = regUsername.value.trim();
+      const password = regPassword.value;
+      loginBtn.disabled = true;
+      authStatus.textContent = '登录中...';
+      try {
+        const result = await loginAccount(username, password);
+        if (result.error) {
+          authStatus.textContent = result.error;
+          authStatus.style.color = '#e53935';
+        } else {
+          authStatus.textContent = '登录成功！';
+          authStatus.style.color = '';
+          regUsername.value = '';
+          regPassword.value = '';
+          updateAccountUI();
+          // Pull synced data
+          if (isSyncEnabled()) {
+            await syncCalendarData();
+            if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
+            if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
+          }
+        }
+      } finally {
+        loginBtn.disabled = false;
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      if (!confirm('确定退出登录？')) return;
+      await logoutAccount();
+      updateAccountUI();
+      showToast('已退出登录');
+    });
+  })();
+
+  // ===== Collapsible Theme Section =====
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const grid = document.getElementById('settings-theme-grid');
+    const arrow = document.querySelector('#theme-toggle .collapse-arrow');
+    const isOpen = grid.style.display !== 'none';
+    grid.style.display = isOpen ? 'none' : '';
+    arrow.classList.toggle('open', !isOpen);
+  });
+
+  // ===== Nav Bar Settings =====
+  (function() {
+    const NAV_ITEMS_KEY = 'calendar-nav-items';
+    const allNavItems = [
+      { id: 'home', label: '日历', always: true },
+      { id: 'clockin', label: '打卡' },
+      { id: 'social', label: '好友' },
+      { id: 'stats', label: '统计' },
+      { id: 'settings', label: '设置', always: true }
+    ];
+
+    function getNavItems() {
+      try {
+        const raw = localStorage.getItem(NAV_ITEMS_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch {}
+      return allNavItems.map(n => n.id);
+    }
+
+    function saveNavItems(items) {
+      localStorage.setItem(NAV_ITEMS_KEY, JSON.stringify(items));
+    }
+
+    function applyNavItems() {
+      const enabled = getNavItems();
+      allNavItems.forEach(item => {
+        const btn = document.getElementById(item.id + '-btn');
+        if (btn) btn.style.display = enabled.includes(item.id) ? '' : 'none';
+      });
+      // Ensure at least home is visible
+      const homeBtn = document.getElementById('home-btn');
+      if (homeBtn) homeBtn.style.display = '';
+    }
+
+    // Toggle collapsible
+    document.getElementById('nav-toggle').addEventListener('click', () => {
+      const content = document.getElementById('nav-settings-content');
+      const arrow = document.querySelector('#nav-toggle .collapse-arrow');
+      const isOpen = content.style.display !== 'none';
+      content.style.display = isOpen ? 'none' : '';
+      arrow.classList.toggle('open', !isOpen);
+    });
+
+    // Render toggle list
+    const list = document.getElementById('nav-items-list');
+    const enabled = getNavItems();
+    allNavItems.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'nav-item-row';
+      const label = document.createElement('span');
+      label.className = 'nav-item-label';
+      label.textContent = item.label;
+      if (item.always) {
+        label.textContent += '（固定）';
+        label.style.color = 'var(--text3)';
+      }
+      const toggle = document.createElement('button');
+      toggle.className = 'nav-item-toggle' + (enabled.includes(item.id) ? ' on' : '');
+      if (item.always) {
+        toggle.disabled = true;
+        toggle.style.opacity = '0.5';
+      }
+      toggle.addEventListener('click', () => {
+        let items = getNavItems();
+        if (items.includes(item.id)) {
+          items = items.filter(i => i !== item.id);
+          toggle.classList.remove('on');
+        } else {
+          items.push(item.id);
+          toggle.classList.add('on');
+        }
+        saveNavItems(items);
+        applyNavItems();
+      });
+      row.appendChild(label);
+      row.appendChild(toggle);
+      list.appendChild(row);
+    });
+
+    applyNavItems();
+  })();
+
   // Close modals on backdrop click
   document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {

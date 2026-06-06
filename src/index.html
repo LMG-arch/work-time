@@ -209,6 +209,35 @@
     <div id="settings-view" class="page-view" style="display:none;">
       <div class="settings-content">
         <div class="settings-group">
+          <div class="settings-group-title">账号</div>
+          <div id="account-logged-out">
+            <div class="settings-hint" style="margin-bottom:8px;">注册账号后数据不会丢失，换设备可登录恢复</div>
+            <div class="settings-field">
+              <label>用户名</label>
+              <input id="reg-username" class="settings-input" placeholder="设置用户名" maxlength="20">
+            </div>
+            <div class="settings-field">
+              <label>密码</label>
+              <input id="reg-password" class="settings-input" type="password" placeholder="设置密码" maxlength="32">
+            </div>
+            <div class="settings-btn-row">
+              <button id="reg-btn" class="settings-action-btn">注册</button>
+              <button id="login-btn" class="settings-action-btn">登录</button>
+            </div>
+            <div id="auth-status" class="settings-hint" style="margin-top:4px;"></div>
+          </div>
+          <div id="account-logged-in" style="display:none;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div id="account-avatar" class="post-avatar avatar-placeholder" style="width:40px;height:40px;font-size:18px;"></div>
+              <div>
+                <div id="account-nickname" style="font-weight:600;"></div>
+                <div id="account-id" class="settings-hint" style="margin:0;"></div>
+              </div>
+            </div>
+            <button id="logout-btn" class="settings-action-btn full" style="margin-top:8px;">退出登录</button>
+          </div>
+        </div>
+        <div class="settings-group">
           <div class="settings-group-title">数据管理</div>
           <div class="settings-btn-row">
             <button id="export-btn" class="settings-action-btn">导出数据</button>
@@ -266,8 +295,15 @@
           </div>
         </div>
         <div class="settings-group">
-          <div class="settings-group-title">主题风格</div>
-          <div id="settings-theme-grid" class="theme-grid"></div>
+          <div class="settings-group-title settings-collapsible" id="theme-toggle">主题风格 <span class="collapse-arrow">▾</span></div>
+          <div id="settings-theme-grid" class="theme-grid" style="display:none;"></div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-group-title settings-collapsible" id="nav-toggle">导航栏设置 <span class="collapse-arrow">▾</span></div>
+          <div id="nav-settings-content" style="display:none;">
+            <div class="settings-hint" style="margin-bottom:8px;">选择底部导航栏显示的功能</div>
+            <div id="nav-items-list"></div>
+          </div>
         </div>
         <div class="settings-group">
           <div class="settings-group-title">其他</div>
