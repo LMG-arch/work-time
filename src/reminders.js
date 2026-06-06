@@ -221,6 +221,42 @@ async function scheduleReminderNotifications() {
         return;
       }
 
+      // Register action type for clock-in confirmation
+      try {
+        await LocalNotifications.registerActionTypes({
+          types: [{
+            id: 'clockin-action',
+            actions: [{ id: 'confirm', title: '✓ 已打卡' }]
+          }]
+        });
+      } catch (typeErr) {
+        console.warn('[Notifications] Register action type error:', typeErr.message);
+      }
+
+      // Listen for notification action (user tapped "已打卡" or the notification itself)
+      LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
+        const extra = event.notification?.extra || {};
+        if (extra.reminderId && extra.date) {
+          // Auto-confirm the reminder
+          if (typeof confirmReminderRecord === 'function') {
+            confirmReminderRecord(extra.reminderId, extra.date);
+          }
+          if (window.calendarAPI?.confirmReminder) {
+            window.calendarAPI.confirmReminder(extra.date, extra.reminderId);
+          }
+          showToast('打卡成功 ✓');
+          // Refresh view if on clockin page
+          if (typeof currentView !== 'undefined' && currentView === 'clockin') renderClockinView();
+          if (typeof renderCalendar === 'function') renderCalendar();
+        }
+      });
+
+      // Also listen for notification delivered (user tapped the notification body)
+      LocalNotifications.addListener('localNotificationReceived', (event) => {
+        // Notification received while app is in foreground - just log
+        console.log('[Notifications] Received in foreground:', event);
+      });
+
       // Cancel all existing scheduled notifications
       try {
         const pending = await LocalNotifications.getPending();
@@ -247,12 +283,12 @@ async function scheduleReminderNotifications() {
         console.warn('[Notifications] Create channel error:', channelErr.message);
       }
 
-      // Schedule notifications for the next 7 days
+      // Schedule notifications for the next 30 days
       const notifications = [];
-      let notifId = Date.now() % 10000; // Use timestamp to avoid ID conflicts
+      let notifId = Math.floor(Date.now() / 1000) % 1000000;
       const today = new Date();
 
-      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+      for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
         const targetDate = new Date(today);
         targetDate.setDate(targetDate.getDate() + dayOffset);
         const dateStr = dateToStr(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
@@ -406,7 +442,7 @@ function scheduleTodoReminders() {
           if (LocalNotifications) {
             LocalNotifications.schedule({
               notifications: [{
-                id: Date.now() % 100000,
+                id: Math.floor(Date.now() / 1000) % 1000000 + 500000,
                 title: '上班日历 · 待办提醒',
                 body: `📋 ${todo.text} (${targetTime})`,
                 schedule: { at: new Date() },
@@ -418,7 +454,11 @@ function scheduleTodoReminders() {
         } catch (e) {
           console.warn('[TodoRemind] Capacitor notification error:', e);
         }
+      } else if (window.calendarAPI?.notifyTodo) {
+        // Electron: notify via main process (single notification path)
+        window.calendarAPI.notifyTodo(todo.text, targetTime);
       } else if ('Notification' in window && Notification.permission === 'granted') {
+        // Pure web browser fallback (not Electron, not Capacitor)
         try {
           const notif = new Notification('上班日历 · 待办提醒', {
             body: `📋 ${todo.text} (${targetTime})`,
@@ -433,11 +473,6 @@ function scheduleTodoReminders() {
         } catch (e) {
           console.warn('[TodoRemind] Web notification error:', e);
         }
-      }
-
-      // Also notify Electron main process
-      if (window.calendarAPI?.notifyTodo) {
-        window.calendarAPI.notifyTodo(todo.text, targetTime);
       }
     }
   }, 30000);
