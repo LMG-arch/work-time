@@ -531,7 +531,13 @@ async function initSocial() {
   if (!sb) return;
 
   // Use improved session restoration (tries multiple methods before creating new user)
-  const user = await ensureSession();
+  let user = await ensureSession();
+
+  // If session expired but user has saved account, auto re-login
+  if (!user && getSavedUsername()) {
+    console.log('[Social] Session expired, attempting auto-restore...');
+    user = await restoreExpiredSession();
+  }
 
   if (user) {
     _currentUserId = user.id;

@@ -84,7 +84,15 @@ async function ensureSession() {
     }
   } catch {}
 
-  // Method 3: Create new anonymous user (last resort)
+  // Method 3: Create new anonymous user (only if no saved account)
+  // If user has a saved account, don't create a new anonymous user —
+  // it would create a different identity and break the linked_id chain.
+  const hasSavedAccount = getSavedUsername();
+  if (hasSavedAccount) {
+    console.warn('[Auth] Session expired for logged-in user, not creating new anonymous user');
+    return null;
+  }
+
   try {
     const { data, error } = await sb.auth.signInAnonymously();
     if (!error && data.user) {
@@ -94,6 +102,39 @@ async function ensureSession() {
   } catch {}
 
   return null;
+}
+
+// Re-authenticate with saved credentials when session expires
+async function restoreExpiredSession() {
+  if (!sb) return null;
+  const savedUsername = getSavedUsername();
+  const savedHash = localStorage.getItem(ACCOUNT_HASH_KEY);
+  if (!savedUsername || !savedHash) return null;
+
+  try {
+    // Create a fresh anonymous session
+    const { data, error } = await sb.auth.signInAnonymously();
+    if (error || !data.user) return null;
+    setBoundUserId(data.user.id);
+
+    // Re-link via login RPC
+    const { data: loginData, error: loginErr } = await sb.rpc('login_username', {
+      p_username: savedUsername,
+      p_password_hash: savedHash
+    });
+    if (loginErr || (loginData && loginData.error)) {
+      console.warn('[Auth] Auto-restore login failed:', loginErr?.message || loginData?.error);
+      return data.user; // Return the anonymous user at least
+    }
+
+    console.log('[Auth] Session restored for', savedUsername);
+    if (typeof _currentUserId !== 'undefined') _currentUserId = loginData.user_id;
+    setBoundUserId(loginData.user_id);
+    return data.user;
+  } catch (e) {
+    console.warn('[Auth] restoreExpiredSession error:', e.message);
+    return null;
+  }
 }
 
 // ===== Account Registration / Login =====
