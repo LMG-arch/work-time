@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   avatar TEXT DEFAULT '',
   username TEXT UNIQUE,
   password_hash TEXT,
+  linked_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   deleted_at TIMESTAMPTZ
 );
@@ -77,44 +78,44 @@ ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bind_codes ENABLE ROW LEVEL SECURITY;
 
--- Profiles: 所有人可读，本人可写
+-- Profiles: 所有人可读，本人可写（通过 linked_id 关联）
 CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
 CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id OR get_effective_user_id() = id);
 
--- Posts: 所有人可读（RLS过滤在应用层做），本人可写
+-- Posts: 所有人可读，有效用户可写删
 CREATE POLICY "posts_select" ON posts FOR SELECT USING (true);
-CREATE POLICY "posts_insert" ON posts FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "posts_delete" ON posts FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "posts_insert" ON posts FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
+CREATE POLICY "posts_delete" ON posts FOR DELETE USING (get_effective_user_id() = user_id);
 
--- Likes: 所有人可读，本人可写
+-- Likes: 所有人可读，有效用户可写删
 CREATE POLICY "likes_select" ON post_likes FOR SELECT USING (true);
-CREATE POLICY "likes_insert" ON post_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "likes_delete" ON post_likes FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "likes_insert" ON post_likes FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
+CREATE POLICY "likes_delete" ON post_likes FOR DELETE USING (get_effective_user_id() = user_id);
 
--- Comments: 所有人可读，本人可写
+-- Comments: 所有人可读，有效用户可写删
 CREATE POLICY "comments_select" ON post_comments FOR SELECT USING (true);
-CREATE POLICY "comments_insert" ON post_comments FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "comments_delete" ON post_comments FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "comments_insert" ON post_comments FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
+CREATE POLICY "comments_delete" ON post_comments FOR DELETE USING (get_effective_user_id() = user_id);
 
--- Friendships: 相关用户可读，本人可写
+-- Friendships: 有效用户相关可读写
 CREATE POLICY "friendships_select" ON friendships FOR SELECT
-  USING (auth.uid() = user_id OR auth.uid() = friend_id);
-CREATE POLICY "friendships_insert" ON friendships FOR INSERT WITH CHECK (auth.uid() = user_id);
+  USING (get_effective_user_id() = user_id OR get_effective_user_id() = friend_id);
+CREATE POLICY "friendships_insert" ON friendships FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
 CREATE POLICY "friendships_update" ON friendships FOR UPDATE
-  USING (auth.uid() = friend_id);
+  USING (get_effective_user_id() = friend_id);
 CREATE POLICY "friendships_delete" ON friendships FOR DELETE
-  USING (auth.uid() = user_id OR auth.uid() = friend_id);
+  USING (get_effective_user_id() = user_id OR get_effective_user_id() = friend_id);
 
--- User Data: 本人可读写
-CREATE POLICY "user_data_select" ON user_data FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "user_data_insert" ON user_data FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "user_data_update" ON user_data FOR UPDATE USING (auth.uid() = user_id);
+-- User Data: 有效用户可读写
+CREATE POLICY "user_data_select" ON user_data FOR SELECT USING (get_effective_user_id() = user_id);
+CREATE POLICY "user_data_insert" ON user_data FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
+CREATE POLICY "user_data_update" ON user_data FOR UPDATE USING (get_effective_user_id() = user_id);
 
--- Bind Codes: 本人可读写
-CREATE POLICY "bind_codes_select" ON bind_codes FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "bind_codes_insert" ON bind_codes FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "bind_codes_update" ON bind_codes FOR UPDATE USING (auth.uid() = user_id);
+-- Bind Codes: 有效用户可读写
+CREATE POLICY "bind_codes_select" ON bind_codes FOR SELECT USING (get_effective_user_id() = user_id);
+CREATE POLICY "bind_codes_insert" ON bind_codes FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
+CREATE POLICY "bind_codes_update" ON bind_codes FOR UPDATE USING (get_effective_user_id() = user_id);
 
 -- 管理员重置函数（软删除，保留数据可恢复）
 CREATE OR REPLACE FUNCTION reset_all_data()
@@ -265,50 +266,52 @@ BEGIN
 END;
 $$;
 
--- 登录账号（验证密码，迁移数据到当前匿名session）
+-- 获取有效用户ID（如果当前用户有 linked_id 则返回 linked_id，否则返回自身）
+CREATE OR REPLACE FUNCTION get_effective_user_id()
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+AS $$
+DECLARE
+  uid UUID;
+  linked UUID;
+BEGIN
+  uid := auth.uid();
+  SELECT linked_id INTO linked FROM profiles WHERE id = uid AND deleted_at IS NULL;
+  RETURN COALESCE(linked, uid);
+END;
+$$;
+
+-- 登录账号（验证密码，通过 linked_id 关联，不迁移数据）
 CREATE OR REPLACE FUNCTION login_username(p_username TEXT, p_password_hash TEXT)
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  old_user UUID;
-  new_user UUID;
+  target_user UUID;
+  current_user UUID;
 BEGIN
-  new_user := auth.uid();
+  current_user := auth.uid();
 
-  SELECT id INTO old_user FROM profiles
+  SELECT id INTO target_user FROM profiles
   WHERE username = p_username AND password_hash = p_password_hash AND deleted_at IS NULL;
 
-  IF old_user IS NULL THEN
+  IF target_user IS NULL THEN
     RETURN json_build_object('error', '用户名或密码错误');
   END IF;
 
-  IF old_user = new_user THEN
-    RETURN json_build_object('user_id', new_user);
+  IF target_user = current_user THEN
+    RETURN json_build_object('user_id', current_user);
   END IF;
 
-  -- 确保新用户有 profile（外键约束要求）
-  INSERT INTO profiles (id, nickname)
-  VALUES (new_user, 'temp')
-  ON CONFLICT (id) DO NOTHING;
+  -- 设置 linked_id，指向目标用户
+  INSERT INTO profiles (id, nickname, linked_id)
+  VALUES (current_user, 'linked', target_user)
+  ON CONFLICT (id) DO UPDATE SET linked_id = target_user;
 
-  -- 迁移：把旧用户的所有数据改为新用户的UUID
-  UPDATE posts SET user_id = new_user WHERE user_id = old_user;
-  UPDATE post_likes SET user_id = new_user WHERE user_id = old_user;
-  UPDATE post_comments SET user_id = new_user WHERE user_id = old_user;
-  UPDATE friendships SET user_id = new_user WHERE user_id = old_user;
-  UPDATE friendships SET friend_id = new_user WHERE friend_id = old_user;
-  UPDATE user_data SET user_id = new_user WHERE user_id = old_user;
-  UPDATE bind_codes SET user_id = new_user WHERE user_id = old_user;
-
-  -- 删除新用户的临时profile
-  DELETE FROM profiles WHERE id = new_user AND username IS NULL;
-
-  -- 迁移旧profile到新UUID
-  UPDATE profiles SET id = new_user WHERE id = old_user;
-
-  RETURN json_build_object('user_id', new_user);
+  RETURN json_build_object('user_id', target_user);
 END;
 $$;
 

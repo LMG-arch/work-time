@@ -242,6 +242,11 @@ async function getMyProfile() {
     if (error) { console.error('[Supabase] getMyProfile insert error:', error); return null; }
     profile = data;
   }
+  // Follow linked_id for multi-device support
+  if (profile.linked_id && profile.linked_id !== user.id) {
+    const linkedProfile = await getProfile(profile.linked_id);
+    if (linkedProfile) return linkedProfile;
+  }
   return profile;
 }
 
