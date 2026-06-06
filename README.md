@@ -123,6 +123,7 @@
 1. 在 Supabase Dashboard 左侧菜单，点击 **SQL Editor**
 2. 点击 **New query**
 3. 复制以下全部 SQL 粘贴到编辑器中：
+![SQL Editor](docs/screenshots/sql-editor.png)
 
 ```sql
 -- 上班日历 - 好友圈数据库初始化
