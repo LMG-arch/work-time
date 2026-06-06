@@ -648,27 +648,32 @@ MIT
 
 ### v3.1.1 (2026-06-06) — Bug 修复与安全改进
 - **新功能**：头像上传 — 点击设置页头像选择本地图片，压缩后上传到 Supabase Storage，好友圈同步显示
-- **关键修复**：admin 控件（清除云端数据、回收站）不在设置页显示 — `isAdmin()` 在 Supabase 初始化前执行导致永远返回 false，改为 DOMContentLoaded 后延迟调用
-- **关键修复**：account linking 后所有写入操作（发帖、点赞、评论、加好友）静默失败 — 客户端使用 `auth.uid()` 但 RLS 使用 `get_effective_user_id()`，新增 `getEffectiveUserId()` 统一使用
-- **关键修复**：管理员函数（重置/恢复/清空/统计）在 account linking 后报错"仅管理员可操作" — 服务端改用 `get_effective_user_id()` 检查权限（⚠️ 已有数据库需重新执行 SQL）
-- **关键修复**：颜色选择器、标签输入、待办弹窗、图片上传按钮无响应 — `setupColorPicker/setupTagInputs/setupTodoModal/setupPostImagePicker` 从未被调用
+- **新功能**：选择性清除/恢复数据 — 回收站勾选 动态/评论/点赞/好友/用户 单独操作，显示每项服务器占用大小
+- **新功能**：通知震动 — 打卡提醒和待办提醒独立渠道，自定义震动模式
+- **关键修复**：好友圈加载崩溃 — `getFeedPosts` 中 `user.id` 未定义导致 ReferenceError，整个好友圈无法加载
+- **关键修复**：用户身份随机跳转 — session 过期时不再创建新匿名用户，改用保存的凭据自动恢复身份
+- **关键修复**：admin 控件（清除云端数据、回收站）不在设置页显示 — `isAdmin()` 在 Supabase 初始化前执行导致永远返回 false
+- **关键修复**：account linking 后所有写入操作（发帖、点赞、评论、加好友）静默失败 — 新增 `getEffectiveUserId()` 统一使用
+- **关键修复**：管理员函数在 account linking 后报错"仅管理员可操作" — 服务端改用 `get_effective_user_id()` + 移除 `deleted_at` 过滤
+- **关键修复**：颜色选择器、标签输入、待办弹窗、图片上传按钮无响应
 - **关键修复**：添加待办、保存备注、发布/取消动态按钮无事件绑定
-- **修复**：退出登录重新登录后设置页 ID/用户名显示错误 — `updateAccountUI` 改用 `getMyProfile()` 跟随 `linked_id` 链
-- **修复**：头像点击无反应 — 文件输入框与头像内容分离，避免 innerHTML 替换时丢失
-- **修复**：holidays.js 重复键 `2026-09-27`（中秋节被国庆调休覆盖）— 合并为 `中秋节/国庆调休`
-- **修复**：supabase-setup.sql 中 `get_effective_user_id()` 函数定义在引用它的 RLS 策略之后 — 移至策略之前
-- **修复**：Supabase CDN fallback 使用 `document.write()` 可能清空页面 — 改为同步 script 标签 + onerror 回调
-- **修复**：sendFriendRequest 未过滤 `deleted_at`，导致无法重新添加已删除的好友
-- **修复**：Android 通知注册 `actionTypeId`，显示「已打卡」操作按钮，点击自动确认打卡
+- **修复**：退出登录重新登录后设置页 ID/用户名显示错误
+- **修复**：头像点击无反应 — 文件输入框与头像内容分离
+- **修复**：退出登录后输入框无法交互 — 强制重置 disabled 状态
+- **修复**：数据同步只推送不拉取 — `autoSyncPush` 改为完整 `syncCalendarData`
+- **修复**：holidays.js 重复键 `2026-09-27`
+- **修复**：Supabase CDN fallback 使用 `document.write()` 可能清空页面
+- **修复**：sendFriendRequest 未过滤 `deleted_at`
+- **修复**：Android 通知注册 `actionTypeId`，显示「已打卡」操作按钮
 - **修复**：通知排期从 7 天扩展到 30 天
 - **修复**：通知 ID 碰撞风险
 - **修复**：Electron 待办通知双重弹窗
-- **改进**：`initSocial()` 调用添加 `await`，确保初始化顺序正确
-- **改进**：Windows 安装包体积从 158MB 精简到 108MB，排除 android/ 和多余语言文件
-- **文档**：README SQL 与 supabase-setup.sql 完全同步，内嵌完整 SQL 便于复制
-- **文档**：添加 Supabase 配置截图
-- **文档**：更新项目结构，补充 `set-icon.js`、启动脚本等
-- **文档**：`.gitignore` 添加 `.claude/`
+- **改进**：好友圈 likes/comments 并行查询 + 60 秒缓存 TTL，减少加载时间
+- **改进**：`getFriendIds` 接受预计算 uid 参数，减少冗余请求
+- **改进**：Windows 安装包体积从 158MB 精简到 108MB
+- **清理**：删除废弃的 `bind_codes` 表和验证码函数（已被账号登录替代）
+- **文档**：README SQL 完全同步，添加 Supabase 配置截图
+- **文档**：更新项目结构，`.gitignore` 添加 `.claude/`
 
 ### v3.1.0 (2026-06-06) — 全面重构
 - **代码拆分**：renderer.js (2004行) 拆分为 6 个模块：calendar.js、todos.js、reminders.js、stats.js、settings.js、utils.js
