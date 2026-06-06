@@ -291,9 +291,9 @@ SECURITY DEFINER
 AS $$
 DECLARE
   target_user UUID;
-  current_user UUID;
+  curr UUID;
 BEGIN
-  current_user := auth.uid();
+  curr := auth.uid();
 
   SELECT id INTO target_user FROM profiles
   WHERE username = p_username AND password_hash = p_password_hash AND deleted_at IS NULL;
@@ -302,13 +302,13 @@ BEGIN
     RETURN json_build_object('error', '用户名或密码错误');
   END IF;
 
-  IF target_user = current_user THEN
-    RETURN json_build_object('user_id', current_user);
+  IF target_user = curr THEN
+    RETURN json_build_object('user_id', curr);
   END IF;
 
   -- 设置 linked_id，指向目标用户
   INSERT INTO profiles (id, nickname, linked_id)
-  VALUES (current_user, 'linked', target_user)
+  VALUES (curr, 'linked', target_user)
   ON CONFLICT (id) DO UPDATE SET linked_id = target_user;
 
   RETURN json_build_object('user_id', target_user);
