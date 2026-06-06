@@ -228,6 +228,8 @@ function bindPostEvents(container) {
       const ok = await deletePost(btn.dataset.id);
       if (ok) {
         showToast('已删除');
+        // Invalidate feed cache so deleted post doesn't reappear
+        try { localStorage.removeItem(FEED_CACHE_KEY); localStorage.removeItem(FEED_CACHE_TIME_KEY); } catch {}
         renderSocialView();
       }
     });
