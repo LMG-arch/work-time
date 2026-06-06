@@ -1684,6 +1684,123 @@ function setupEventListeners() {
     showToast(current ? '已关闭开机自启' : '已开启开机自启');
   });
 
+  // ===== Data Sync Settings =====
+  (async () => {
+    const syncToggleBtn = document.getElementById('sync-toggle-btn');
+    const syncNowBtn = document.getElementById('sync-now-btn');
+    const bindUserInput = document.getElementById('bind-user-input');
+    const bindUserBtn = document.getElementById('bind-user-btn');
+    const bindStatus = document.getElementById('bind-user-status');
+
+    // Check if Supabase is configured
+    const config = getSupabaseConfig();
+    const hasSupabase = config.url && config.key;
+
+    if (!hasSupabase) {
+      syncToggleBtn.disabled = true;
+      syncNowBtn.disabled = true;
+      bindUserBtn.disabled = true;
+      syncToggleBtn.textContent = '需先配置服务';
+      return;
+    }
+
+    // Init Supabase if needed
+    if (!sb) sb = initSupabase();
+
+    function updateSyncToggleBtn() {
+      const enabled = isSyncEnabled();
+      syncToggleBtn.textContent = enabled ? '自动同步：开启' : '自动同步：关闭';
+      syncToggleBtn.style.borderColor = enabled ? 'var(--accent)' : '';
+      syncToggleBtn.style.color = enabled ? 'var(--accent)' : '';
+    }
+    updateSyncToggleBtn();
+
+    syncToggleBtn.addEventListener('click', () => {
+      const next = !isSyncEnabled();
+      setSyncEnabled(next);
+      updateSyncToggleBtn();
+      showToast(next ? '已开启自动同步' : '已关闭自动同步');
+      if (next) {
+        // First enable: do a full sync
+        syncCalendarData().then(r => {
+          if (r.error) showToast('同步失败: ' + r.error);
+          else showToast('同步完成 ✓');
+        });
+      }
+    });
+
+    syncNowBtn.addEventListener('click', async () => {
+      syncNowBtn.disabled = true;
+      syncNowBtn.textContent = '同步中...';
+      try {
+        const result = await syncCalendarData();
+        if (result.error) {
+          showToast('同步失败: ' + result.error);
+        } else {
+          showToast('同步完成 ✓');
+          // Reload data into memory
+          if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
+          if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
+          if (typeof allReminders !== 'undefined') allReminders = await window.calendarAPI.getReminders();
+        }
+      } finally {
+        syncNowBtn.disabled = false;
+        syncNowBtn.textContent = '立即同步';
+      }
+    });
+
+    // Show current bound user info
+    const boundId = getBoundUserId();
+    if (boundId) {
+      try {
+        const profile = await getProfile(boundId);
+        if (profile && profile.display_id) {
+          bindStatus.textContent = `当前绑定：ID ${profile.display_id} (${profile.nickname})`;
+        }
+      } catch {}
+    }
+
+    bindUserBtn.addEventListener('click', async () => {
+      const displayId = bindUserInput.value.trim();
+      if (!displayId) { showToast('请输入数字ID'); return; }
+
+      bindUserBtn.disabled = true;
+      bindUserBtn.textContent = '绑定中...';
+      try {
+        // Look up the target user
+        const targetProfile = await getProfileByDisplayId(displayId);
+        if (!targetProfile) {
+          showToast('找不到该用户');
+          return;
+        }
+
+        // Sign in as the target user's session
+        // We need to bind our local session to this user
+        // Save the target user's UUID as our bound user
+        setBoundUserId(targetProfile.id);
+        _currentUserId = targetProfile.id;
+
+        // Pull their calendar data
+        const pullResult = await pullCalendarData();
+        if (pullResult.error) {
+          showToast('绑定成功，但数据拉取失败: ' + pullResult.error);
+        } else {
+          showToast(`已绑定到 ID ${displayId} (${targetProfile.nickname})`);
+          // Reload data
+          if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
+          if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
+          if (typeof allReminders !== 'undefined') allReminders = await window.calendarAPI.getReminders();
+        }
+
+        bindStatus.textContent = `当前绑定：ID ${displayId} (${targetProfile.nickname})`;
+        bindUserInput.value = '';
+      } finally {
+        bindUserBtn.disabled = false;
+        bindUserBtn.textContent = '绑定';
+      }
+    });
+  })();
+
   // Close modals on backdrop click
   document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {

@@ -39,6 +39,7 @@
         store.days[date] = { status, note, tags: tags || [], color: color || '' };
       }
       saveStore(store);
+      if (typeof autoSyncPush === 'function') autoSyncPush();
       return { success: true };
     },
 
@@ -57,6 +58,7 @@
       todo.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       store.todos.push(todo);
       saveStore(store);
+      if (typeof autoSyncPush === 'function') autoSyncPush();
       return todo;
     },
 
@@ -66,6 +68,7 @@
       if (idx >= 0) {
         Object.assign(store.todos[idx], updates);
         saveStore(store);
+        if (typeof autoSyncPush === 'function') autoSyncPush();
         return store.todos[idx];
       }
       return null;
@@ -75,6 +78,7 @@
       const store = getStore();
       store.todos = store.todos.filter(t => t.id !== id);
       saveStore(store);
+      if (typeof autoSyncPush === 'function') autoSyncPush();
       return { success: true };
     },
 
@@ -163,6 +167,7 @@
 
     async saveReminders(reminders) {
       localStorage.setItem('calendar-reminders', JSON.stringify(reminders));
+      if (typeof autoSyncPush === 'function') autoSyncPush();
       return { success: true };
     },
 
@@ -176,6 +181,7 @@
       if (!records[date]) records[date] = {};
       records[date][reminderId] = { confirmed: true, at: new Date().toISOString() };
       localStorage.setItem(key, JSON.stringify(records));
+      if (typeof autoSyncPush === 'function') autoSyncPush();
       return { success: true };
     },
 

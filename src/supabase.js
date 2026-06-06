@@ -423,3 +423,112 @@ async function emptyTrash() {
   const { error } = await sb.rpc('empty_trash');
   return { error: error ? error.message : null };
 }
+
+// ===== Calendar Data Sync =====
+
+const SYNC_ENABLED_KEY = 'calendar-sync-enabled';
+
+function isSyncEnabled() {
+  return localStorage.getItem(SYNC_ENABLED_KEY) === 'true';
+}
+
+function setSyncEnabled(enabled) {
+  localStorage.setItem(SYNC_ENABLED_KEY, enabled ? 'true' : 'false');
+}
+
+// Collect all calendar data from localStorage
+function collectCalendarData() {
+  const data = {};
+  try { data.workData = JSON.parse(localStorage.getItem('work-calendar-data')); } catch {}
+  try { data.reminders = JSON.parse(localStorage.getItem('calendar-reminders')); } catch {}
+  try { data.reminderRecords = JSON.parse(localStorage.getItem('calendar-reminder-records')); } catch {}
+  try { data.theme = localStorage.getItem('calendar-theme'); } catch {}
+  return data;
+}
+
+// Apply synced data to localStorage
+function applyCalendarData(data) {
+  if (!data) return;
+  if (data.workData) localStorage.setItem('work-calendar-data', JSON.stringify(data.workData));
+  if (data.reminders) localStorage.setItem('calendar-reminders', JSON.stringify(data.reminders));
+  if (data.reminderRecords) localStorage.setItem('calendar-reminder-records', JSON.stringify(data.reminderRecords));
+  if (data.theme) localStorage.setItem('calendar-theme', data.theme);
+}
+
+// Push local data to cloud
+async function pushCalendarData() {
+  if (!sb) return { error: '未连接' };
+  const user = await ensureSession();
+  if (!user) return { error: '未登录' };
+  const data = collectCalendarData();
+  const { error } = await sb.from('user_data').upsert({
+    user_id: user.id,
+    data: data,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' });
+  return { error: error ? error.message : null };
+}
+
+// Pull cloud data to local
+async function pullCalendarData() {
+  if (!sb) return { error: '未连接' };
+  const user = await ensureSession();
+  if (!user) return { error: '未登录' };
+  const { data, error } = await sb.from('user_data').select('data').eq('user_id', user.id).maybeSingle();
+  if (error) return { error: error.message };
+  if (data && data.data) {
+    applyCalendarData(data.data);
+    return { error: null, pulled: true };
+  }
+  return { error: null, pulled: false };
+}
+
+// Smart sync: pull cloud data, merge with local, push back
+async function syncCalendarData() {
+  if (!sb) return { error: '未连接' };
+  const user = await ensureSession();
+  if (!user) return { error: '未登录' };
+
+  // Get cloud data
+  const { data: cloudRow, error: fetchErr } = await sb.from('user_data')
+    .select('data, updated_at').eq('user_id', user.id).maybeSingle();
+  if (fetchErr) return { error: fetchErr.message };
+
+  const localData = collectCalendarData();
+
+  if (cloudRow && cloudRow.data) {
+    // Cloud has data - merge: cloud wins for conflicts, but merge days map
+    const cloudData = cloudRow.data;
+    if (cloudData.workData && localData.workData) {
+      // Merge days: newer entries win (by comparing keys, cloud takes priority)
+      const mergedDays = { ...localData.workData.days, ...cloudData.workData.days };
+      cloudData.workData.days = mergedDays;
+      // Merge todos: combine by id, cloud version wins
+      const todoMap = {};
+      if (localData.workData.todos) localData.workData.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
+      if (cloudData.workData.todos) cloudData.workData.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
+      cloudData.workData.todos = Object.values(todoMap);
+    }
+    applyCalendarData(cloudData);
+  }
+
+  // Push merged/local data to cloud
+  const pushData = collectCalendarData();
+  const { error: pushErr } = await sb.from('user_data').upsert({
+    user_id: user.id,
+    data: pushData,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' });
+
+  return { error: pushErr ? pushErr.message : null };
+}
+
+// Auto-sync: push if enabled (called after data changes)
+async function autoSyncPush() {
+  if (!isSyncEnabled() || !sb) return;
+  try {
+    await pushCalendarData();
+  } catch (e) {
+    console.log('[Sync] Auto-push failed:', e.message);
+  }
+}

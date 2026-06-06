@@ -52,12 +52,20 @@ CREATE TABLE IF NOT EXISTS friendships (
   UNIQUE(user_id, friend_id)
 );
 
+-- 用户数据同步表（日历/待办/提醒等本地数据云端备份）
+CREATE TABLE IF NOT EXISTS user_data (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  data JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 启用 RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: 所有人可读，本人可写
 CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
@@ -87,6 +95,11 @@ CREATE POLICY "friendships_update" ON friendships FOR UPDATE
   USING (auth.uid() = friend_id);
 CREATE POLICY "friendships_delete" ON friendships FOR DELETE
   USING (auth.uid() = user_id OR auth.uid() = friend_id);
+
+-- User Data: 本人可读写
+CREATE POLICY "user_data_select" ON user_data FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "user_data_insert" ON user_data FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "user_data_update" ON user_data FOR UPDATE USING (auth.uid() = user_id);
 
 -- 管理员重置函数（软删除，保留数据可恢复）
 CREATE OR REPLACE FUNCTION reset_all_data()

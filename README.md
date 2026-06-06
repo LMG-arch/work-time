@@ -52,8 +52,16 @@
 - 个人主页，简单数字ID分享（从1开始）
 - 数据通过 Supabase 免费云服务同步
 - 图片通过 Supabase Storage 存储（免费1GB）
+- **本地缓存**：好友动态秒开，后台静默刷新
 - **管理员重置**：数字ID为1的用户可重置服务器全部数据（所有用户），其他用户不显示此功能
 - **回收站**：重置的数据移入回收站，管理员可恢复或永久删除
+
+### 数据同步
+- 日历、待办、提醒等本地数据可同步到 Supabase 云端
+- 可选功能，需在设置中手动开启并配置 Supabase 服务
+- 支持**用户绑定**：输入其他设备的数字ID，共享同一用户数据
+- 开启自动同步后，每次数据变更自动上传云端
+- 登录时自动从云端拉取最新数据
 
 ### 设置
 - 数据导出（JSON 格式）
@@ -61,6 +69,8 @@
 - **14 种主题风格**：经典、暗黑、清新、粉色、紫色、商务、海洋、日落、玫瑰金、森林、咖啡、薰衣草、薄荷、石板
 - 开机自启开关（桌面端）
 - 好友圈服务配置
+- 数据同步开关与手动同步
+- 用户绑定（跨设备共享数据）
 
 ## 界面导航
 
@@ -163,12 +173,20 @@ CREATE TABLE IF NOT EXISTS friendships (
   UNIQUE(user_id, friend_id)
 );
 
+-- 用户数据同步表（日历/待办/提醒等本地数据云端备份）
+CREATE TABLE IF NOT EXISTS user_data (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  data JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 启用行级安全策略
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: 所有人可读，本人可写
 CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
@@ -197,6 +215,11 @@ CREATE POLICY "friendships_insert" ON friendships FOR INSERT WITH CHECK (auth.ui
 CREATE POLICY "friendships_update" ON friendships FOR UPDATE USING (auth.uid() = friend_id);
 CREATE POLICY "friendships_delete" ON friendships FOR DELETE
   USING (auth.uid() = user_id OR auth.uid() = friend_id);
+
+-- User Data: 本人可读写
+CREATE POLICY "user_data_select" ON user_data FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "user_data_insert" ON user_data FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "user_data_update" ON user_data FOR UPDATE USING (auth.uid() = user_id);
 
 -- 管理员重置函数（软删除，保留数据可恢复）
 CREATE OR REPLACE FUNCTION reset_all_data()
@@ -400,6 +423,12 @@ MIT
 ---
 
 ## 更新日志
+
+### v2.3 (2026-06-06)
+- 好友动态本地缓存：进入好友页秒开，后台静默刷新
+- 数据同步功能：日历/待办/提醒等数据可同步到 Supabase 云端
+- 用户绑定：输入数字ID绑定已有账号，跨设备共享数据
+- 自动同步：开启后每次数据变更自动上传，登录时自动拉取
 
 ### v2.2 (2026-06-06)
 - 「清除云端数据」改为管理员专属功能：仅数字ID为1的用户可见

@@ -82,30 +82,70 @@ async function renderSocialTabContent() {
 
 // ===== Feed =====
 
-async function renderFeed(container) {
-  container.innerHTML = '<div class="social-loading">加载中...</div>';
-  feedPosts = await getFeedPosts(20, 0);
-  feedOffset = 0;
+// Feed cache helpers
+const FEED_CACHE_KEY = 'social-feed-cache';
 
+function getCachedFeed() {
+  try {
+    const raw = localStorage.getItem(FEED_CACHE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function setCachedFeed(posts) {
+  try {
+    localStorage.setItem(FEED_CACHE_KEY, JSON.stringify(posts));
+  } catch {}
+}
+
+function renderFeedPosts(container, posts) {
   let html = '';
-  if (feedPosts.length === 0) {
+  if (posts.length === 0) {
     html = '<div class="social-empty">暂无动态<br><span class="social-empty-sub">发布一条动态或添加好友吧</span></div>';
   } else {
     html += '<div class="feed-list">';
-    for (const post of feedPosts) {
+    for (const post of posts) {
       html += renderPostCard(post);
     }
     html += '</div>';
   }
-
-  // Floating add button
   html += '<button class="fab-btn" id="fab-add-post">✎</button>';
   container.innerHTML = html;
-
-  // Event listeners
   bindPostEvents(container);
   const fab = document.getElementById('fab-add-post');
   if (fab) fab.addEventListener('click', openPostModal);
+}
+
+async function renderFeed(container) {
+  // 1. Show cached data instantly
+  const cached = getCachedFeed();
+  if (cached && cached.length > 0) {
+    feedPosts = cached;
+    feedOffset = 0;
+    renderFeedPosts(container, feedPosts);
+  } else {
+    container.innerHTML = '<div class="social-loading">加载中...</div>';
+  }
+
+  // 2. Fetch fresh data in background
+  try {
+    const fresh = await getFeedPosts(20, 0);
+    feedPosts = fresh;
+    feedOffset = 0;
+    setCachedFeed(fresh);
+    // Re-render only if container still shows feed tab
+    const tabContent = document.getElementById('social-tab-content');
+    if (tabContent && socialTab === 'feed') {
+      renderFeedPosts(tabContent, feedPosts);
+    }
+  } catch (e) {
+    console.log('[Feed] Background refresh failed:', e.message);
+    // If no cache was shown, show error
+    if (!cached || cached.length === 0) {
+      container.innerHTML = '<div class="social-empty">加载失败，请检查网络</div>';
+    }
+  }
 }
 
 function renderPostCard(post) {
@@ -518,5 +558,15 @@ async function initSocial() {
   if (user) {
     setBoundUserId(user.id);
     _currentUserId = user.id;
+
+    // Auto-pull calendar data on login if sync enabled
+    if (typeof isSyncEnabled === 'function' && isSyncEnabled()) {
+      try {
+        await pullCalendarData();
+        console.log('[Social] Calendar data synced from cloud');
+      } catch (e) {
+        console.log('[Social] Calendar sync failed:', e.message);
+      }
+    }
   }
 }
