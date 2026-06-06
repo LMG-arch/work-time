@@ -228,7 +228,8 @@
           </div>
           <div id="account-logged-in" style="display:none;">
             <div style="display:flex;align-items:center;gap:12px;">
-              <div id="account-avatar" class="post-avatar avatar-placeholder" style="width:40px;height:40px;font-size:18px;cursor:pointer;position:relative;overflow:hidden;" title="点击更换头像">
+              <div style="position:relative;width:40px;height:40px;cursor:pointer;" title="点击更换头像">
+                <div id="account-avatar" class="post-avatar avatar-placeholder" style="width:40px;height:40px;font-size:18px;pointer-events:none;"></div>
                 <input type="file" id="avatar-upload-input" accept="image/*" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;">
               </div>
               <div>

@@ -71,8 +71,10 @@ async function updateAccountUI() {
     const avatarEl = document.getElementById('account-avatar');
     if (profile && profile.avatar) {
       avatarEl.innerHTML = `<img src="${escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      avatarEl.classList.remove('avatar-placeholder');
     } else {
       avatarEl.textContent = nickname[0];
+      avatarEl.classList.add('avatar-placeholder');
     }
     document.getElementById('account-nickname').textContent = nickname;
     document.getElementById('account-id').textContent = `ID: ${displayId} | ${savedUsername}`;
