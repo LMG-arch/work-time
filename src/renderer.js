@@ -3,11 +3,6 @@ let selectedDate = null;
 let allData = {};
 let allTodos = [];
 let currentView = 'calendar';
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 let todoFilter = 'all';
 let holidayData = null;
 let allReminders = [];
@@ -35,30 +30,7 @@ const THEMES = [
   { id: 'slate',   name: '石板', color: '#546e7a' },
 ];
 
-// --- Date helpers ---
-
-function isCapacitorPlatform() {
-  return typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
-}
-
-function formatDateCN(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  const weekDay = WEEKDAYS_CN[d.getDay()];
-  const parts = dateStr.split('-');
-  return `${parts[0]}年${parseInt(parts[1])}月${parseInt(parts[2])}日 星期${weekDay}`;
-}
-
-function dateToStr(year, month, day) {
-  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function getDaysInMonth(year, month) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function getFirstDayOfWeek(year, month) {
-  return (new Date(year, month, 1).getDay() + 6) % 7;
-}
+// --- Date helpers (defined in utils.js) ---
 
 function updateMonthLabel() {
   const lunar = Lunar.getMonthLunarInfo(currentYear, currentMonth);
@@ -441,10 +413,7 @@ function isReminderConfirmed(reminderId, dateStr) {
   return records && records[reminderId] && records[reminderId].confirmed;
 }
 
-function getTodayStr() {
-  const today = new Date();
-  return dateToStr(today.getFullYear(), today.getMonth(), today.getDate());
-}
+// getTodayStr defined in utils.js
 
 function renderClockinView() {
   updateMonthLabel();
@@ -485,12 +454,12 @@ function renderClockinView() {
     }
 
     card.innerHTML = `
-      <div class="reminder-time">${r.time}</div>
+      <div class="reminder-time">${escapeHtml(r.time)}</div>
       <div class="reminder-info">
-        <span class="reminder-label">${r.label}</span>
-        <span class="reminder-status">${statusText}</span>
+        <span class="reminder-label">${escapeHtml(r.label)}</span>
+        <span class="reminder-status">${escapeHtml(statusText)}</span>
       </div>
-      <button class="reminder-confirm-btn ${btnClass}" data-id="${r.id}" ${btnDisabled ? 'disabled' : ''}>${btnText}</button>
+      <button class="reminder-confirm-btn ${escapeHtml(btnClass)}" data-id="${escapeAttr(r.id)}" ${btnDisabled ? 'disabled' : ''}>${escapeHtml(btnText)}</button>
     `;
     container.appendChild(card);
   }
@@ -542,7 +511,7 @@ function renderClockinHistory() {
     for (const r of allReminders) {
       if (!r.enabled) continue;
       const confirmed = records[r.id] && records[r.id].confirmed;
-      html += `<span class="history-record ${confirmed ? 'confirmed' : 'unconfirmed'}">${r.label} ${confirmed ? '✓' : '✗'}</span>`;
+      html += `<span class="history-record ${confirmed ? 'confirmed' : 'unconfirmed'}">${escapeHtml(r.label)} ${confirmed ? '✓' : '✗'}</span>`;
     }
     html += '</div>';
     item.innerHTML = html;
@@ -594,10 +563,10 @@ function renderReminderSettings() {
     const item = document.createElement('div');
     item.className = 'reminder-setting-item';
     item.innerHTML = `
-      <input type="time" class="setting-time-input" value="${r.time}" data-id="${r.id}">
-      <input type="text" class="setting-label-input" value="${r.label}" data-id="${r.id}" maxlength="10">
+      <input type="time" class="setting-time-input" value="${escapeAttr(r.time)}" data-id="${escapeAttr(r.id)}">
+      <input type="text" class="setting-label-input" value="${escapeAttr(r.label)}" data-id="${escapeAttr(r.id)}" maxlength="10">
       <label class="toggle-switch">
-        <input type="checkbox" ${r.enabled ? 'checked' : ''} data-id="${r.id}">
+        <input type="checkbox" ${r.enabled ? 'checked' : ''} data-id="${escapeAttr(r.id)}">
         <span class="toggle-slider"></span>
       </label>
     `;
@@ -1108,7 +1077,7 @@ function renderTagList(tags) {
   for (const tag of tags) {
     const chip = document.createElement('span');
     chip.className = 'tag-chip';
-    chip.innerHTML = `<span class="tag-text">${tag}</span><span class="tag-remove" data-tag="${tag}">&times;</span>`;
+    chip.innerHTML = `<span class="tag-text">${escapeHtml(tag)}</span><span class="tag-remove" data-tag="${escapeAttr(tag)}">&times;</span>`;
     list.appendChild(chip);
   }
   list.querySelectorAll('.tag-remove').forEach(btn => {
@@ -1284,7 +1253,7 @@ function renderStats() {
       <div class="theme-title">标签统计</div>
       <div class="tag-stats-list">`;
     for (const [tag, count] of sortedTags) {
-      html += `<div class="tag-stat-item"><span class="tag-chip static">${tag}</span><span class="tag-stat-count">${count}次</span></div>`;
+      html += `<div class="tag-stat-item"><span class="tag-chip static">${escapeHtml(tag)}</span><span class="tag-stat-count">${count}次</span></div>`;
     }
     html += '</div></div>';
   }
@@ -1328,19 +1297,7 @@ function loadTheme() {
   document.body.dataset.theme = saved;
 }
 
-// --- Toast ---
-
-function showToast(msg) {
-  let toast = document.getElementById('toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'toast';
-    toast.className = 'toast';
-    document.querySelector('.app').appendChild(toast);
-  }
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 1800);
+// --- Toast (defined in utils.js) ---
 }
 
 // --- Month change ---
@@ -1589,7 +1546,7 @@ function setupEventListeners() {
     const panel = document.createElement('div');
     panel.id = 'diag-panel';
     panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:90%;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-size:13px;white-space:pre-line;line-height:1.8;color:var(--text);';
-    panel.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px;">🔍 诊断结果</div><div>' + message.replace(/\n/g, '<br>') + '</div>' +
+    panel.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px;">🔍 诊断结果</div><div>' + escapeHtml(message).replace(/\n/g, '<br>') + '</div>' +
       '<button id="diag-close" style="margin-top:16px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);cursor:pointer;font-size:13px;">关闭</button>';
     document.body.appendChild(panel);
     document.getElementById('diag-close').addEventListener('click', () => panel.remove());

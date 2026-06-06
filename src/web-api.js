@@ -19,7 +19,11 @@
   }
 
   function saveStore(store) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch (e) {
+      console.error('[Storage] saveStore failed:', e.message);
+    }
   }
 
   function getStore() {
@@ -91,14 +95,11 @@
     // --- Export ---
     async exportData() {
       const store = getStore();
-      // Include reminders, records, and supabase config in export
       let reminders = null;
       let reminderRecords = {};
-      let supabaseConfig = null;
       try { reminders = JSON.parse(localStorage.getItem('calendar-reminders')); } catch {}
       try { reminderRecords = JSON.parse(localStorage.getItem('calendar-reminder-records')) || {}; } catch {}
-      try { supabaseConfig = JSON.parse(localStorage.getItem('supabase-config')); } catch {}
-      const exportData = { ...store, reminders, reminderRecords, supabaseConfig };
+      const exportData = { ...store, reminders, reminderRecords };
       const json = JSON.stringify(exportData, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);

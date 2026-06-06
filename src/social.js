@@ -148,13 +148,6 @@ async function renderFeed(container) {
   }
 }
 
-function sanitizeUrl(url) {
-  if (!url) return '';
-  const s = String(url);
-  if (s.startsWith('https://') || s.startsWith('http://')) return s;
-  return '';
-}
-
 function renderPostCard(post) {
   const time = formatTime(post.created_at);
   const safeAvatar = sanitizeUrl(post.profile.avatar);
@@ -371,9 +364,10 @@ async function renderFriends(container) {
     html += '<div class="social-empty">暂无好友<br><span class="social-empty-sub">输入好友的数字ID添加</span></div>';
   } else {
     for (const f of friendsList) {
-      const avatar = f.avatar
-        ? `<img src="${f.avatar}" class="post-avatar">`
-        : `<div class="post-avatar avatar-placeholder">${(f.nickname || '?')[0]}</div>`;
+      const safeAvatar = sanitizeUrl(f.avatar);
+      const avatar = safeAvatar
+        ? `<img src="${safeAvatar}" class="post-avatar">`
+        : `<div class="post-avatar avatar-placeholder">${escapeHtml((f.nickname || '?')[0])}</div>`;
       html += `<div class="friend-item">
         <div class="friend-info">
           ${avatar}
@@ -452,9 +446,10 @@ async function renderProfile(container) {
     return;
   }
 
-  const avatar = profile.avatar
-    ? `<img src="${profile.avatar}" class="profile-avatar-img">`
-    : `<div class="profile-avatar-placeholder">${(profile.nickname || '?')[0]}</div>`;
+  const safeProfileAvatar = sanitizeUrl(profile.avatar);
+  const avatar = safeProfileAvatar
+    ? `<img src="${safeProfileAvatar}" class="profile-avatar-img">`
+    : `<div class="profile-avatar-placeholder">${escapeHtml((profile.nickname || '?')[0])}</div>`;
 
   const myDisplayId = profile.display_id || '未分配';
   let html = `<div class="profile-card">
@@ -509,11 +504,6 @@ function formatTime(isoStr) {
   if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
   if (diff < 604800000) return Math.floor(diff / 86400000) + '天前';
   return `${d.getMonth() + 1}月${d.getDate()}日`;
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ===== Setup Check =====
