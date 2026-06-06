@@ -455,7 +455,7 @@ async function scheduleReminderNotifications() {
         console.warn('[Notifications] Web notification error:', notifErr.message);
       }
     }
-  }, 30000);
+  }, 10000);
 }
 
 // --- Todo Reminders ---
@@ -558,5 +558,5 @@ function scheduleTodoReminders() {
         }
       }
     }
-  }, 30000);
+  }, 10000);
 }

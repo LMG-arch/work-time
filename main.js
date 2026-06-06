@@ -302,7 +302,7 @@ function scheduleReminders() {
   checkReminders();
 
   // Check every 30 seconds
-  const timer = setInterval(checkReminders, 30000);
+  const timer = setInterval(checkReminders, 10000);
   reminderTimers.push(timer);
 }
 
