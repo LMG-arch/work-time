@@ -59,7 +59,7 @@
 ### 数据同步
 - 日历、待办、提醒等本地数据可同步到 Supabase 云端
 - 可选功能，需在设置中手动开启并配置 Supabase 服务
-- 支持**用户绑定**：输入其他设备的数字ID，共享同一用户数据
+- 支持**用户绑定**：通过验证码机制安全绑定，防止他人冒用
 - 开启自动同步后，每次数据变更自动上传云端
 - 登录时自动从云端拉取最新数据
 
@@ -180,6 +180,13 @@ CREATE TABLE IF NOT EXISTS user_data (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 绑定验证码表
+CREATE TABLE IF NOT EXISTS bind_codes (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  code TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
 -- 启用行级安全策略
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
@@ -187,6 +194,7 @@ ALTER TABLE post_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bind_codes ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: 所有人可读，本人可写
 CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
@@ -220,6 +228,11 @@ CREATE POLICY "friendships_delete" ON friendships FOR DELETE
 CREATE POLICY "user_data_select" ON user_data FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "user_data_insert" ON user_data FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "user_data_update" ON user_data FOR UPDATE USING (auth.uid() = user_id);
+
+-- Bind Codes: 本人可读写
+CREATE POLICY "bind_codes_select" ON bind_codes FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "bind_codes_insert" ON bind_codes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "bind_codes_update" ON bind_codes FOR UPDATE USING (auth.uid() = user_id);
 
 -- 管理员重置函数（软删除，保留数据可恢复）
 CREATE OR REPLACE FUNCTION reset_all_data()
@@ -279,6 +292,30 @@ BEGIN
   RETURN QUERY SELECT 'comments'::text, (SELECT COUNT(*) FROM post_comments WHERE deleted_at IS NOT NULL);
   RETURN QUERY SELECT 'likes'::text, (SELECT COUNT(*) FROM post_likes WHERE deleted_at IS NOT NULL);
   RETURN QUERY SELECT 'friendships'::text, (SELECT COUNT(*) FROM friendships WHERE deleted_at IS NOT NULL);
+END;
+$$;
+
+-- 生成绑定验证码（6位数字，5分钟有效）
+CREATE OR REPLACE FUNCTION generate_bind_code()
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE code TEXT;
+BEGIN
+  code := lpad(floor(random() * 1000000)::text, 6, '0');
+  INSERT INTO bind_codes (user_id, code, expires_at)
+  VALUES (auth.uid(), code, NOW() + INTERVAL '5 minutes')
+  ON CONFLICT (user_id) DO UPDATE SET code = EXCLUDED.code, expires_at = EXCLUDED.expires_at;
+  RETURN code;
+END;
+$$;
+
+-- 验证绑定验证码
+CREATE OR REPLACE FUNCTION verify_bind_code(target_user_id UUID, input_code TEXT)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE valid BOOLEAN;
+BEGIN
+  SELECT EXISTS(SELECT 1 FROM bind_codes WHERE user_id = target_user_id AND code = input_code AND expires_at > NOW()) INTO valid;
+  IF valid THEN DELETE FROM bind_codes WHERE user_id = target_user_id; END IF;
+  RETURN valid;
 END;
 $$;
 
@@ -427,7 +464,7 @@ MIT
 ### v2.3 (2026-06-06)
 - 好友动态本地缓存：进入好友页秒开，后台静默刷新
 - 数据同步功能：日历/待办/提醒等数据可同步到 Supabase 云端
-- 用户绑定：输入数字ID绑定已有账号，跨设备共享数据
+- 用户绑定：通过验证码安全验证，防止他人冒用账号
 - 自动同步：开启后每次数据变更自动上传，登录时自动拉取
 
 ### v2.2 (2026-06-06)
