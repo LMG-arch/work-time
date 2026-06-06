@@ -116,6 +116,8 @@
    - **Project URL**: 类似 `https://xxxxxxxx.supabase.co`
    - **anon public key**: 类似 `sb-eyJhbGxxxxxxxxxxxnR5cCI6IkpXVCJ9.xxxxx...`
 
+   ![Supabase 配置示例](docs/screenshots/image-3.png)
+
 ### 第四步：创建数据库表
 
 1. 在 Supabase Dashboard 左侧菜单，点击 **SQL Editor**
@@ -468,10 +470,10 @@ CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_i
 
 ### 第五步：开启匿名登录
 
-1. 在 Supabase Dashboard 左侧菜单，点击 **Authentication**
-2. 点击 **Providers** 选项卡
+1. 在 Supabase Dashboard 左侧菜单，点击 **Authentication**![Authentication 菜单](docs/screenshots/image.png)
+2. 点击 **Providers** 选项卡![Providers 选项卡](docs/screenshots/image-1.png)
 3. 找到 **Allow anonymous sign-ins**，将开关**打开**
-4. 点击 **Save** 保存
+4. 点击 **Save** 保存![开启匿名登录](docs/screenshots/image-2.png)
 
 > 💡 账号系统基于匿名认证 + 数据库函数实现，用户名和密码哈希存储在 profiles 表中，无需配置邮箱服务。
 
