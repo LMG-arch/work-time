@@ -27,6 +27,9 @@ function renderSettingsView() {
 
   // Auto-launch button
   updateAutoLaunchBtn();
+
+  // Refresh account info (avatar, nickname, ID)
+  if (typeof updateAccountUI === 'function') updateAccountUI();
 }
 
 function setTheme(themeId) {

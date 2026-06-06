@@ -271,6 +271,23 @@ async function updateProfile(updates) {
   return data;
 }
 
+// Upload avatar image and update profile
+async function uploadAvatar(file) {
+  if (!sb) return { error: '未连接' };
+  const profile = await getMyProfile();
+  if (!profile) return { error: '未登录' };
+  const compressed = await compressImage(file, 400, 0.8);
+  const ext = compressed.name.split('.').pop() || 'jpg';
+  const path = `avatars/${profile.id}-${Date.now()}.${ext}`;
+  const { error: uploadErr } = await sb.storage.from('post-images').upload(path, compressed, { upsert: true });
+  if (uploadErr) return { error: uploadErr.message };
+  const urlData = sb.storage.from('post-images').getPublicUrl(path);
+  const avatarUrl = urlData.data.publicUrl;
+  const { error: updateErr } = await sb.from('profiles').update({ avatar: avatarUrl }).eq('id', profile.id);
+  if (updateErr) return { error: updateErr.message };
+  return { url: avatarUrl };
+}
+
 // ===== Posts =====
 
 // Compress image: max width 1200px, JPEG quality 0.7

@@ -55,6 +55,36 @@ function switchView(view) {
   if (view === 'social') renderSocialView();
 }
 
+// ===== Account UI =====
+
+async function updateAccountUI() {
+  const loggedOut = document.getElementById('account-logged-out');
+  const loggedIn = document.getElementById('account-logged-in');
+  const savedUsername = getSavedUsername();
+  const user = await getCurrentUser();
+  if (user && savedUsername) {
+    loggedOut.style.display = 'none';
+    loggedIn.style.display = '';
+    const profile = await getMyProfile();
+    const nickname = profile ? profile.nickname : savedUsername;
+    const displayId = profile ? profile.display_id : '-';
+    const avatarEl = document.getElementById('account-avatar');
+    if (profile && profile.avatar) {
+      avatarEl.innerHTML = `<img src="${escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    } else {
+      avatarEl.textContent = nickname[0];
+    }
+    document.getElementById('account-nickname').textContent = nickname;
+    document.getElementById('account-id').textContent = `ID: ${displayId} | ${savedUsername}`;
+  } else {
+    loggedOut.style.display = '';
+    loggedIn.style.display = 'none';
+    document.getElementById('reg-username').value = '';
+    document.getElementById('reg-password').value = '';
+    document.getElementById('auth-status').textContent = '';
+  }
+}
+
 // ===== Event Listeners =====
 
 function setupEventListeners() {
@@ -212,26 +242,6 @@ function setupEventListeners() {
     if (!config.url || !config.key) return;
     if (!sb) sb = initSupabase();
 
-    async function updateAccountUI() {
-      const savedUsername = getSavedUsername();
-      const user = await getCurrentUser();
-      if (user && savedUsername) {
-        loggedOut.style.display = 'none';
-        loggedIn.style.display = '';
-        const profile = await getProfile(user.id);
-        const nickname = profile ? profile.nickname : savedUsername;
-        const displayId = profile ? profile.display_id : '-';
-        document.getElementById('account-avatar').textContent = nickname[0];
-        document.getElementById('account-nickname').textContent = nickname;
-        document.getElementById('account-id').textContent = `ID: ${displayId} | ${savedUsername}`;
-      } else {
-        loggedOut.style.display = '';
-        loggedIn.style.display = 'none';
-        regUsername.value = '';
-        regPassword.value = '';
-        authStatus.textContent = '';
-      }
-    }
     updateAccountUI();
 
     regBtn.addEventListener('click', async () => {
@@ -273,6 +283,22 @@ function setupEventListeners() {
       await logoutAccount();
       updateAccountUI();
       showToast('已退出登录');
+    });
+
+    // Avatar upload
+    document.getElementById('avatar-upload-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { showToast('图片不能超过5MB'); e.target.value = ''; return; }
+      showToast('正在上传头像...');
+      const result = await uploadAvatar(file);
+      if (result.error) { showToast('上传失败: ' + result.error); }
+      else {
+        const avatarEl = document.getElementById('account-avatar');
+        avatarEl.innerHTML = `<img src="${escapeHtml(result.url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        showToast('头像已更新 ✓');
+      }
+      e.target.value = '';
     });
   })();
 
