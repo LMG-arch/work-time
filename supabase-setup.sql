@@ -90,7 +90,8 @@ DECLARE
   linked UUID;
 BEGIN
   uid := auth.uid();
-  SELECT linked_id INTO linked FROM profiles WHERE id = uid AND deleted_at IS NULL;
+  -- 不过滤 deleted_at：清除数据后匿名用户 profile 会被软删除，但仍需读取 linked_id
+  SELECT linked_id INTO linked FROM profiles WHERE id = uid;
   RETURN COALESCE(linked, uid);
 END;
 $$;

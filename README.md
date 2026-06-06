@@ -218,7 +218,7 @@ DECLARE
   linked UUID;
 BEGIN
   uid := auth.uid();
-  SELECT linked_id INTO linked FROM profiles WHERE id = uid AND deleted_at IS NULL;
+  SELECT linked_id INTO linked FROM profiles WHERE id = uid;
   RETURN COALESCE(linked, uid);
 END;
 $$;
