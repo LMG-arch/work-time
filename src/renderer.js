@@ -1694,28 +1694,14 @@ function setupEventListeners() {
   (async () => {
     const syncToggleBtn = document.getElementById('sync-toggle-btn');
     const syncNowBtn = document.getElementById('sync-now-btn');
-    const genCodeBtn = document.getElementById('gen-bind-code-btn');
-    const codeDisplay = document.getElementById('bind-code-display');
-    const codeText = document.getElementById('bind-code-text');
-    const bindIdInput = document.getElementById('bind-id-input');
-    const bindCodeInput = document.getElementById('bind-code-input');
-    const bindConfirmBtn = document.getElementById('bind-confirm-btn');
-    const bindStatus = document.getElementById('bind-user-status');
 
-    // Check if Supabase is configured
     const config = getSupabaseConfig();
-    const hasSupabase = config.url && config.key;
-
-    if (!hasSupabase) {
+    if (!config.url || !config.key) {
       syncToggleBtn.disabled = true;
       syncNowBtn.disabled = true;
-      genCodeBtn.disabled = true;
-      bindConfirmBtn.disabled = true;
       syncToggleBtn.textContent = '需先配置服务';
       return;
     }
-
-    // Init Supabase if needed
     if (!sb) sb = initSupabase();
 
     function updateSyncToggleBtn() {
@@ -1744,9 +1730,8 @@ function setupEventListeners() {
       syncNowBtn.textContent = '同步中...';
       try {
         const result = await syncCalendarData();
-        if (result.error) {
-          showToast('同步失败: ' + result.error);
-        } else {
+        if (result.error) showToast('同步失败: ' + result.error);
+        else {
           showToast('同步完成 ✓');
           if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
           if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
@@ -1755,88 +1740,6 @@ function setupEventListeners() {
       } finally {
         syncNowBtn.disabled = false;
         syncNowBtn.textContent = '立即同步';
-      }
-    });
-
-    // Show current bound user info
-    const boundId = getBoundUserId();
-    if (boundId) {
-      try {
-        const profile = await getProfile(boundId);
-        if (profile && profile.display_id) {
-          bindStatus.textContent = `当前绑定：ID ${profile.display_id} (${profile.nickname})`;
-        }
-      } catch {}
-    }
-
-    // Generate bind code (for the TARGET device)
-    genCodeBtn.addEventListener('click', async () => {
-      genCodeBtn.disabled = true;
-      genCodeBtn.textContent = '生成中...';
-      try {
-        const result = await generateBindCode();
-        if (result.error) {
-          showToast('生成失败: ' + result.error);
-          return;
-        }
-        codeText.textContent = result.code;
-        codeDisplay.style.display = 'block';
-        showToast('验证码已生成');
-      } finally {
-        genCodeBtn.disabled = false;
-        genCodeBtn.textContent = '生成验证码';
-      }
-    });
-
-    // Bind with code (for the NEW device)
-    bindConfirmBtn.addEventListener('click', async () => {
-      const displayId = bindIdInput.value.trim();
-      const code = bindCodeInput.value.trim();
-      if (!displayId) { showToast('请输入数字ID'); return; }
-      if (!code || code.length !== 6) { showToast('请输入6位验证码'); return; }
-
-      bindConfirmBtn.disabled = true;
-      bindConfirmBtn.textContent = '验证中...';
-      try {
-        // Look up target user
-        const targetProfile = await getProfileByDisplayId(displayId);
-        if (!targetProfile) {
-          showToast('找不到该用户');
-          return;
-        }
-
-        // Verify the code
-        const verifyResult = await verifyBindCode(targetProfile.id, code);
-        if (verifyResult.error) {
-          showToast('验证失败: ' + verifyResult.error);
-          return;
-        }
-        if (!verifyResult.valid) {
-          showToast('验证码错误或已过期');
-          return;
-        }
-
-        // Code verified - bind to this user
-        setBoundUserId(targetProfile.id);
-        _currentUserId = targetProfile.id;
-
-        // Pull their calendar data
-        const pullResult = await pullCalendarData();
-        if (pullResult.error) {
-          showToast('绑定成功，但数据拉取失败: ' + pullResult.error);
-        } else {
-          showToast(`已绑定到 ID ${displayId} (${targetProfile.nickname})`);
-          if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
-          if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
-          if (typeof allReminders !== 'undefined') allReminders = await window.calendarAPI.getReminders();
-        }
-
-        bindStatus.textContent = `当前绑定：ID ${displayId} (${targetProfile.nickname})`;
-        bindIdInput.value = '';
-        bindCodeInput.value = '';
-      } finally {
-        bindConfirmBtn.disabled = false;
-        bindConfirmBtn.textContent = '绑定设备';
       }
     });
   })();

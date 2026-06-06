@@ -269,29 +269,10 @@
         </div>
         <div class="settings-group">
           <div class="settings-group-title">数据同步</div>
-          <div class="settings-hint">将日历、待办、提醒等数据同步到云端，换设备可恢复（需先配置好友圈服务）</div>
+          <div class="settings-hint">登录同一账号即可多端同步，数据变更自动上传云端</div>
           <div class="settings-btn-row" style="margin-top:8px;">
             <button id="sync-toggle-btn" class="settings-action-btn">自动同步：关闭</button>
             <button id="sync-now-btn" class="settings-action-btn">立即同步</button>
-          </div>
-          <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
-            <div class="settings-hint" style="margin-bottom:8px;">跨设备绑定：在本设备生成验证码，在新设备输入完成绑定</div>
-            <div class="settings-btn-row" style="margin-bottom:12px;">
-              <button id="gen-bind-code-btn" class="settings-action-btn">生成验证码</button>
-            </div>
-            <div id="bind-code-display" style="display:none;text-align:center;margin-bottom:12px;">
-              <div style="font-size:28px;font-weight:700;letter-spacing:6px;color:var(--accent);" id="bind-code-text"></div>
-              <div class="settings-hint">验证码 5 分钟内有效，请在新设备输入</div>
-            </div>
-            <div style="border-top:1px solid var(--border);padding-top:12px;">
-              <div class="settings-hint" style="margin-bottom:8px;">在新设备上绑定：输入本设备的数字ID和验证码</div>
-              <div style="display:flex;gap:8px;margin-bottom:8px;">
-                <input id="bind-id-input" class="settings-input" placeholder="数字ID" style="flex:1;">
-                <input id="bind-code-input" class="settings-input" placeholder="验证码" style="flex:1;" maxlength="6">
-              </div>
-              <button id="bind-confirm-btn" class="settings-action-btn full">绑定设备</button>
-            </div>
-            <div id="bind-user-status" class="settings-hint" style="margin-top:8px;"></div>
           </div>
         </div>
         <div class="settings-group">

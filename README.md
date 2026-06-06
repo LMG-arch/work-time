@@ -59,7 +59,7 @@
 ### 数据同步
 - 日历、待办、提醒等本地数据可同步到 Supabase 云端
 - 可选功能，需在设置中手动开启并配置 Supabase 服务
-- 支持**用户绑定**：通过验证码机制安全绑定，防止他人冒用
+- **多端同步**：登录同一账号，多台设备共享数据
 - 开启自动同步后，每次数据变更自动上传云端
 - 登录时自动从云端拉取最新数据
 
@@ -71,8 +71,7 @@
 - **导航栏自定义**：可关闭好友圈、统计等功能入口
 - 开机自启开关（桌面端）
 - 好友圈服务配置
-- 数据同步开关与手动同步
-- 用户绑定（跨设备共享数据）
+- 数据同步开关与手动同步（登录同一账号自动多端同步）
 
 ## 界面导航
 
@@ -132,6 +131,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   avatar TEXT DEFAULT '',
   username TEXT UNIQUE,
   password_hash TEXT,
+  linked_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   deleted_at TIMESTAMPTZ
 );
@@ -184,13 +184,6 @@ CREATE TABLE IF NOT EXISTS user_data (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 绑定验证码表
-CREATE TABLE IF NOT EXISTS bind_codes (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  code TEXT NOT NULL,
-  expires_at TIMESTAMPTZ NOT NULL
-);
-
 -- 启用行级安全策略
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
@@ -198,45 +191,50 @@ ALTER TABLE post_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_data ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bind_codes ENABLE ROW LEVEL SECURITY;
+
+-- 有效用户ID函数（支持多端登录 linked_id 关联）
+CREATE OR REPLACE FUNCTION get_effective_user_id()
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+DECLARE uid UUID; linked UUID;
+BEGIN
+  uid := auth.uid();
+  SELECT linked_id INTO linked FROM profiles WHERE id = uid AND deleted_at IS NULL;
+  RETURN COALESCE(linked, uid);
+END;
+$$;
 
 -- Profiles: 所有人可读，本人可写
 CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
 CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id OR get_effective_user_id() = id);
 
--- Posts: 所有人可读，本人可写和删除
+-- Posts: 所有人可读，有效用户可写删
 CREATE POLICY "posts_select" ON posts FOR SELECT USING (true);
-CREATE POLICY "posts_insert" ON posts FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "posts_delete" ON posts FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "posts_insert" ON posts FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
+CREATE POLICY "posts_delete" ON posts FOR DELETE USING (get_effective_user_id() = user_id);
 
--- Likes: 所有人可读，本人可写和删除
+-- Likes: 所有人可读，有效用户可写删
 CREATE POLICY "likes_select" ON post_likes FOR SELECT USING (true);
-CREATE POLICY "likes_insert" ON post_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "likes_delete" ON post_likes FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "likes_insert" ON post_likes FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
+CREATE POLICY "likes_delete" ON post_likes FOR DELETE USING (get_effective_user_id() = user_id);
 
--- Comments: 所有人可读，本人可写和删除
+-- Comments: 所有人可读，有效用户可写删
 CREATE POLICY "comments_select" ON post_comments FOR SELECT USING (true);
-CREATE POLICY "comments_insert" ON post_comments FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "comments_delete" ON post_comments FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "comments_insert" ON post_comments FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
+CREATE POLICY "comments_delete" ON post_comments FOR DELETE USING (get_effective_user_id() = user_id);
 
--- Friendships: 相关用户可读，本人可写
+-- Friendships: 有效用户相关可读写
 CREATE POLICY "friendships_select" ON friendships FOR SELECT
-  USING (auth.uid() = user_id OR auth.uid() = friend_id);
-CREATE POLICY "friendships_insert" ON friendships FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "friendships_update" ON friendships FOR UPDATE USING (auth.uid() = friend_id);
+  USING (get_effective_user_id() = user_id OR get_effective_user_id() = friend_id);
+CREATE POLICY "friendships_insert" ON friendships FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
+CREATE POLICY "friendships_update" ON friendships FOR UPDATE USING (get_effective_user_id() = friend_id);
 CREATE POLICY "friendships_delete" ON friendships FOR DELETE
-  USING (auth.uid() = user_id OR auth.uid() = friend_id);
+  USING (get_effective_user_id() = user_id OR get_effective_user_id() = friend_id);
 
--- User Data: 本人可读写
-CREATE POLICY "user_data_select" ON user_data FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "user_data_insert" ON user_data FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "user_data_update" ON user_data FOR UPDATE USING (auth.uid() = user_id);
-
--- Bind Codes: 本人可读写
-CREATE POLICY "bind_codes_select" ON bind_codes FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "bind_codes_insert" ON bind_codes FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "bind_codes_update" ON bind_codes FOR UPDATE USING (auth.uid() = user_id);
+-- User Data: 有效用户可读写
+CREATE POLICY "user_data_select" ON user_data FOR SELECT USING (get_effective_user_id() = user_id);
+CREATE POLICY "user_data_insert" ON user_data FOR INSERT WITH CHECK (get_effective_user_id() = user_id);
+CREATE POLICY "user_data_update" ON user_data FOR UPDATE USING (get_effective_user_id() = user_id);
 
 -- 管理员重置函数（软删除，保留数据可恢复）
 CREATE OR REPLACE FUNCTION reset_all_data()
@@ -356,26 +354,18 @@ END;
 $$;
 
 -- 登录账号（验证密码，迁移数据到当前匿名session）
+-- 登录账号（验证密码，通过 linked_id 关联，不迁移数据）
 CREATE OR REPLACE FUNCTION login_username(p_username TEXT, p_password_hash TEXT)
-RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE old_user UUID; new_user UUID;
+RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$$
+DECLARE target_user UUID; curr UUID;
 BEGIN
-  new_user := auth.uid();
-  SELECT id INTO old_user FROM profiles WHERE username = p_username AND password_hash = p_password_hash AND deleted_at IS NULL;
-  IF old_user IS NULL THEN RETURN json_build_object('error', '用户名或密码错误'); END IF;
-  IF old_user = new_user THEN RETURN json_build_object('user_id', new_user); END IF;
-  INSERT INTO profiles (id, nickname) VALUES (new_user, 'temp') ON CONFLICT (id) DO NOTHING;
-  UPDATE posts SET user_id = new_user WHERE user_id = old_user;
-  UPDATE post_likes SET user_id = new_user WHERE user_id = old_user;
-  UPDATE post_comments SET user_id = new_user WHERE user_id = old_user;
-  UPDATE friendships SET user_id = new_user WHERE user_id = old_user;
-  UPDATE friendships SET friend_id = new_user WHERE friend_id = old_user;
-  UPDATE user_data SET user_id = new_user WHERE user_id = old_user;
-  UPDATE bind_codes SET user_id = new_user WHERE user_id = old_user;
-  DELETE FROM profiles WHERE id = new_user AND username IS NULL;
-  UPDATE profiles SET id = new_user WHERE id = old_user;
-  UPDATE profiles SET id = new_user WHERE id = old_user;
-  RETURN json_build_object('user_id', new_user);
+  curr := auth.uid();
+  SELECT id INTO target_user FROM profiles WHERE username = p_username AND password_hash = p_password_hash AND deleted_at IS NULL;
+  IF target_user IS NULL THEN RETURN json_build_object('error', '用户名或密码错误'); END IF;
+  IF target_user = curr THEN RETURN json_build_object('user_id', curr); END IF;
+  INSERT INTO profiles (id, nickname, linked_id) VALUES (curr, 'linked', target_user)
+  ON CONFLICT (id) DO UPDATE SET linked_id = target_user;
+  RETURN json_build_object('user_id', target_user);
 END;
 $$;
 ```
@@ -445,7 +435,8 @@ $$;
 1. **设置** → **数据同步**
 2. 点击 **自动同步：开启**
 3. 之后每次修改日历、待办、提醒等数据，都会自动上传云端
-4. 换设备登录后，自动从云端拉取最新数据
+4. 换设备登录同一账号，自动从云端拉取最新数据
+5. 多台设备同时在线，数据通过云端实时同步
 
 ### 导航栏自定义
 
@@ -464,6 +455,7 @@ $$;
 - 图片上传需要在 SQL Editor 中执行存储桶相关 SQL（见上方第四步）
 - 账号用户名全局唯一，注册后不可修改
 - 忘记密码暂不支持找回，请牢记密码
+- 多端登录同一账号即可同步数据，无需额外配置
 
 ---
 
@@ -549,6 +541,15 @@ MIT
 ---
 
 ## 更新日志
+
+### v3.0.0 (2026-06-06) — 多端同步
+- **多端同步**：登录同一账号，多台设备共享好友圈和日历数据
+- **账号登录**：用户名+密码注册，数据通过 `linked_id` 关联，不再迁移数据
+- **记住登录**：重启 App 自动恢复会话
+- **移除验证码绑定**：改用账号登录实现跨设备，交互更简洁
+- **自动同步**：开启后数据变更自动上传，登录时自动拉取
+- 修复跨设备登录外键约束冲突
+- 修复 Android 白屏问题（supabase.min.js 路径）
 
 ### v2.6.0 (2026-06-06) — 记住登录
 - **记住登录**：注册/登录后保存凭据，App 重启自动恢复会话，无需重新登录

@@ -662,26 +662,6 @@ async function pullCalendarData() {
   return { error: null, pulled: false };
 }
 
-// ===== Bind Verification =====
-
-async function generateBindCode() {
-  if (!sb) return { error: '未连接' };
-  const user = await ensureSession();
-  if (!user) return { error: '未登录' };
-  const { data, error } = await sb.rpc('generate_bind_code');
-  if (error) return { error: error.message };
-  return { code: data };
-}
-
-async function verifyBindCode(targetUserId, inputCode) {
-  if (!sb) return { error: '未连接' };
-  const user = await ensureSession();
-  if (!user) return { error: '未登录' };
-  const { data, error } = await sb.rpc('verify_bind_code', { target_user_id: targetUserId, input_code: inputCode });
-  if (error) return { error: error.message };
-  return { valid: data };
-}
-
 // Smart sync: pull cloud data, merge with local, push back
 let _syncing = false;
 async function syncCalendarData() {
