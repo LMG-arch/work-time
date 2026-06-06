@@ -466,10 +466,22 @@ async function getProfileByDisplayId(displayId) {
 // ===== Admin =====
 
 async function isAdmin() {
-  const user = await getCurrentUser();
-  if (!user) return false;
-  const profile = await getProfile(user.id);
-  return profile && profile.display_id === 1;
+  // Try with current session
+  const user = await ensureSession();
+  if (user) {
+    const profile = await getProfile(user.id);
+    if (profile && profile.display_id === 1) return true;
+  }
+  // Fallback: check if saved username has display_id=1 profile
+  const savedUsername = getSavedUsername();
+  if (savedUsername && sb) {
+    try {
+      const { data } = await sb.from('profiles')
+        .select('display_id').eq('username', savedUsername).is('deleted_at', null).maybeSingle();
+      if (data && data.display_id === 1) return true;
+    } catch {}
+  }
+  return false;
 }
 
 // ===== Data Cleanup =====
