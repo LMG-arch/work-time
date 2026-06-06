@@ -114,9 +114,14 @@ async function registerAccount(username, password) {
   if (!username || username.length < 2) return { error: '用户名至少2个字符' };
   if (!password || password.length < 4) return { error: '密码至少4个字符' };
 
-  // Ensure we have an anonymous session
-  const user = await ensureSession();
-  if (!user) return { error: '无法创建会话' };
+  // Use existing session if available, otherwise create one
+  let user = await getCurrentUser();
+  if (!user) {
+    const { data, error } = await sb.auth.signInAnonymously();
+    if (error) return { error: '创建会话失败: ' + error.message };
+    user = data.user;
+    setBoundUserId(user.id);
+  }
 
   const pwHash = await hashPassword(password);
   const { data, error } = await sb.rpc('register_username', {
@@ -135,9 +140,14 @@ async function loginAccount(username, password) {
   if (!sb) return { error: '未配置服务' };
   if (!username || !password) return { error: '请输入用户名和密码' };
 
-  // Ensure we have an anonymous session for the RPC call
-  const currentUser = await ensureSession();
-  if (!currentUser) return { error: '无法创建会话' };
+  // Use existing session if available, otherwise create one
+  let currentUser = await getCurrentUser();
+  if (!currentUser) {
+    const { data, error } = await sb.auth.signInAnonymously();
+    if (error) return { error: '创建会话失败: ' + error.message };
+    currentUser = data.user;
+    setBoundUserId(currentUser.id);
+  }
 
   const pwHash = await hashPassword(password);
   const { data, error } = await sb.rpc('login_username', {
@@ -147,7 +157,6 @@ async function loginAccount(username, password) {
   if (error) return { error: error.message };
   if (data && data.error) return { error: data.error };
 
-  // Data migrated to current anonymous user's UUID
   const userId = data.user_id;
   localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
   setBoundUserId(userId);
