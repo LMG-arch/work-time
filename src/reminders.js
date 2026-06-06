@@ -1,0 +1,444 @@
+// reminders.js — Clock-in, reminders, notifications
+
+async function loadReminders() {
+  allReminders = await window.calendarAPI.getReminders();
+}
+
+async function loadReminderRecords() {
+  allReminderRecords = await window.calendarAPI.getAllReminderRecords();
+}
+
+function getReminderRecordsForDate(dateStr) {
+  return allReminderRecords[dateStr] || {};
+}
+
+function isReminderConfirmed(reminderId, dateStr) {
+  const records = allReminderRecords[dateStr];
+  return records && records[reminderId] && records[reminderId].confirmed;
+}
+
+// getTodayStr defined in utils.js
+
+function renderClockinView() {
+  updateMonthLabel();
+  const todayStr = getTodayStr();
+  document.getElementById('clockin-today-label').textContent = formatDateCN(todayStr);
+
+  // Today's reminders
+  const container = document.getElementById('clockin-today-reminders');
+  container.innerHTML = '';
+
+  const now = new Date();
+  const currentTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+  for (const r of allReminders) {
+    if (!r.enabled) continue;
+    const confirmed = isReminderConfirmed(r.id, todayStr);
+    const isPast = currentTime >= r.time;
+
+    const card = document.createElement('div');
+    card.className = 'reminder-card' + (confirmed ? ' confirmed' : '');
+
+    let statusText, btnClass, btnText, btnDisabled;
+    if (confirmed) {
+      statusText = '已确认打卡';
+      btnClass = 'confirmed';
+      btnText = '✓ 已打卡';
+      btnDisabled = true;
+    } else if (isPast) {
+      statusText = '待确认';
+      btnClass = 'pending';
+      btnText = '确认打卡';
+      btnDisabled = false;
+    } else {
+      statusText = '未到时间';
+      btnClass = 'waiting';
+      btnText = '等待中';
+      btnDisabled = true;
+    }
+
+    card.innerHTML = `
+      <div class="reminder-time">${escapeHtml(r.time)}</div>
+      <div class="reminder-info">
+        <span class="reminder-label">${escapeHtml(r.label)}</span>
+        <span class="reminder-status">${escapeHtml(statusText)}</span>
+      </div>
+      <button class="reminder-confirm-btn ${escapeHtml(btnClass)}" data-id="${escapeAttr(r.id)}" ${btnDisabled ? 'disabled' : ''}>${escapeHtml(btnText)}</button>
+    `;
+    container.appendChild(card);
+  }
+
+  // Bind confirm buttons
+  container.querySelectorAll('.reminder-confirm-btn.pending').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const rid = btn.dataset.id;
+      await window.calendarAPI.confirmReminder(todayStr, rid);
+      if (!allReminderRecords[todayStr]) allReminderRecords[todayStr] = {};
+      allReminderRecords[todayStr][rid] = { confirmed: true, at: new Date().toISOString() };
+      renderClockinView();
+      renderCalendar();
+      showToast('打卡成功 ✓');
+    });
+  });
+
+  // History
+  renderClockinHistory();
+}
+
+function renderClockinHistory() {
+  const historyContainer = document.getElementById('clockin-history');
+  historyContainer.innerHTML = '';
+
+  // Get last 7 days
+  const days = [];
+  const today = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(dateToStr(d.getFullYear(), d.getMonth(), d.getDate()));
+  }
+
+  let hasRecords = false;
+  for (const dateStr of days) {
+    const records = allReminderRecords[dateStr];
+    if (!records || Object.keys(records).length === 0) continue;
+    hasRecords = true;
+
+    const d = new Date(dateStr + 'T00:00:00');
+    const weekday = WEEKDAYS_CN[d.getDay()];
+    const parts = dateStr.split('-');
+
+    const item = document.createElement('div');
+    item.className = 'history-item';
+
+    let html = `<div class="history-date">${parseInt(parts[1])}月${parseInt(parts[2])}日 周${weekday}</div><div class="history-records">`;
+    for (const r of allReminders) {
+      if (!r.enabled) continue;
+      const confirmed = records[r.id] && records[r.id].confirmed;
+      html += `<span class="history-record ${confirmed ? 'confirmed' : 'unconfirmed'}">${escapeHtml(r.label)} ${confirmed ? '✓' : '✗'}</span>`;
+    }
+    html += '</div>';
+    item.innerHTML = html;
+    historyContainer.appendChild(item);
+  }
+
+  if (!hasRecords) {
+    historyContainer.innerHTML = '<div class="empty-tip">暂无打卡记录</div>';
+  }
+
+  // Render todo section below clockin
+  renderTodoView();
+}
+
+function renderReminderSettings() {
+  const list = document.getElementById('reminder-settings-list');
+  list.innerHTML = '';
+
+  for (const r of allReminders) {
+    const item = document.createElement('div');
+    item.className = 'reminder-setting-item';
+    item.innerHTML = `
+      <input type="time" class="setting-time-input" value="${escapeAttr(r.time)}" data-id="${escapeAttr(r.id)}">
+      <input type="text" class="setting-label-input" value="${escapeAttr(r.label)}" data-id="${escapeAttr(r.id)}" maxlength="10">
+      <label class="toggle-switch">
+        <input type="checkbox" ${r.enabled ? 'checked' : ''} data-id="${escapeAttr(r.id)}">
+        <span class="toggle-slider"></span>
+      </label>
+    `;
+    list.appendChild(item);
+  }
+}
+
+function openReminderSettings() {
+  renderReminderSettings();
+  document.getElementById('reminder-modal').style.display = 'flex';
+}
+
+function closeReminderSettings() {
+  document.getElementById('reminder-modal').style.display = 'none';
+}
+
+async function saveReminderSettings() {
+  const items = document.querySelectorAll('.reminder-setting-item');
+  const updated = [];
+  items.forEach(item => {
+    const timeInput = item.querySelector('.setting-time-input');
+    const labelInput = item.querySelector('.setting-label-input');
+    const toggle = item.querySelector('input[type="checkbox"]');
+    updated.push({
+      id: timeInput.dataset.id,
+      label: labelInput.value.trim() || '打卡',
+      time: timeInput.value,
+      enabled: toggle.checked
+    });
+  });
+  allReminders = updated;
+  await window.calendarAPI.saveReminders(updated);
+  closeReminderSettings();
+  renderClockinView();
+  scheduleReminderNotifications();
+  scheduleTodoReminders();
+  showToast('提醒设置已保存');
+}
+
+function getClockinStatusForDate(dateStr) {
+  const enabled = allReminders.filter(r => r.enabled);
+  if (enabled.length === 0) return null;
+  const records = allReminderRecords[dateStr] || {};
+  const confirmed = enabled.filter(r => records[r.id] && records[r.id].confirmed);
+  if (confirmed.length === 0) return null;
+  return { confirmed: confirmed.length, total: enabled.length };
+}
+
+async function scheduleReminderNotifications() {
+  if (reminderNotifTimer) clearInterval(reminderNotifTimer);
+
+  const enabled = allReminders.filter(r => r.enabled);
+  if (enabled.length === 0) return;
+
+  // Capacitor Android local notifications
+  const isCapacitor = isCapacitorPlatform();
+  if (isCapacitor) {
+    try {
+      const { LocalNotifications } = window.Capacitor.Plugins;
+      if (!LocalNotifications) {
+        console.warn('[Notifications] Capacitor LocalNotifications plugin not found. Run: npx cap sync android');
+        return;
+      }
+
+      // Request permissions
+      let perm;
+      try {
+        perm = await LocalNotifications.requestPermissions();
+      } catch (permErr) {
+        console.warn('[Notifications] Permission request failed:', permErr.message);
+        showToast('请在系统设置中允许通知权限');
+        return;
+      }
+      if (perm.display !== 'granted') {
+        console.warn('[Notifications] Permission denied:', perm.display);
+        showToast('请在系统设置中开启通知权限，否则无法收到打卡提醒');
+        return;
+      }
+
+      // Cancel all existing scheduled notifications
+      try {
+        const pending = await LocalNotifications.getPending();
+        if (pending.notifications && pending.notifications.length > 0) {
+          await LocalNotifications.cancel({ notifications: pending.notifications });
+        }
+      } catch (cancelErr) {
+        console.warn('[Notifications] Cancel pending error:', cancelErr.message);
+      }
+
+      // Create notification channel (Android 8+)
+      try {
+        await LocalNotifications.createChannel({
+          id: 'clockin-reminders',
+          name: '打卡提醒',
+          description: '上班日历的打卡签到提醒',
+          importance: 5, // High
+          visibility: 1, // Public
+          sound: 'default',
+          vibration: true,
+          light: true
+        });
+      } catch (channelErr) {
+        console.warn('[Notifications] Create channel error:', channelErr.message);
+      }
+
+      // Schedule notifications for the next 7 days
+      const notifications = [];
+      let notifId = Date.now() % 10000; // Use timestamp to avoid ID conflicts
+      const today = new Date();
+
+      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        const targetDate = new Date(today);
+        targetDate.setDate(targetDate.getDate() + dayOffset);
+        const dateStr = dateToStr(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+
+        for (const r of enabled) {
+          // Skip if already confirmed
+          if (isReminderConfirmed(r.id, dateStr)) continue;
+
+          const [hh, mm] = r.time.split(':');
+          const scheduleDate = new Date(targetDate);
+          scheduleDate.setHours(parseInt(hh), parseInt(mm), 0, 0);
+
+          // Skip if already past
+          if (scheduleDate <= new Date()) continue;
+
+          notifications.push({
+            id: notifId++,
+            title: '上班日历 · 打卡提醒',
+            body: `⏰ ${r.label} (${r.time})`,
+            schedule: { at: scheduleDate, allowWhileIdle: true },
+            smallIcon: 'ic_launcher',
+            largeIcon: 'ic_launcher_round',
+            extra: { reminderId: r.id, date: dateStr },
+            channelId: 'clockin-reminders',
+            actionTypeId: 'clockin-action'
+          });
+        }
+      }
+
+      if (notifications.length > 0) {
+        await LocalNotifications.schedule({ notifications });
+        console.log('[Notifications] Scheduled', notifications.length, 'notifications for next 7 days');
+      } else {
+        console.log('[Notifications] All reminders already confirmed or past, nothing to schedule');
+      }
+    } catch (e) {
+      console.error('[Notifications] Capacitor scheduling error:', e);
+      showToast('通知设置失败: ' + (e.message || '未知错误'));
+    }
+    return;
+  }
+
+  // Web browser notifications (Electron renderer / browser)
+  if (!('Notification' in window)) return;
+
+  if (Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // Electron main process handles notifications via IPC
+  // Web/Capacitor: use browser Notification API as fallback
+  const isElectron = typeof window.calendarAPI?.saveReminders === 'function' && !isCapacitor;
+  if (isElectron) return;
+
+  // Fallback: use Web Notification in browser
+  if (Notification.permission !== 'granted') return;
+
+  reminderNotifTimer = setInterval(() => {
+    if (Notification.permission !== 'granted') return;
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${hh}:${mm}`;
+    const todayStr = getTodayStr();
+
+    for (const r of enabled) {
+      if (r.time !== currentTime) continue;
+      if (isReminderConfirmed(r.id, todayStr)) continue;
+
+      try {
+        const notif = new Notification('上班日历 · 打卡提醒', {
+          body: `⏰ ${r.label} (${r.time})`,
+          icon: 'assets/icon.png',
+          tag: 'reminder-' + r.id,
+          requireInteraction: true
+        });
+
+        notif.onclick = () => {
+          window.focus();
+          switchView('clockin');
+        };
+      } catch (notifErr) {
+        console.warn('[Notifications] Web notification error:', notifErr.message);
+      }
+    }
+  }, 30000);
+}
+
+// --- Todo Reminders ---
+
+let todoRemindTimer = null;
+
+function scheduleTodoReminders() {
+  if (todoRemindTimer) clearInterval(todoRemindTimer);
+
+  // Check every 30 seconds
+  todoRemindTimer = setInterval(() => {
+    const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
+    if (todosWithRemind.length === 0) return;
+
+    const now = new Date();
+    const todayStr = getTodayStr();
+    const currentHh = String(now.getHours()).padStart(2, '0');
+    const currentMm = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${currentHh}:${currentMm}`;
+
+    for (const todo of todosWithRemind) {
+      if (todo.done) continue;
+
+      // Determine the target date and time for this todo
+      let targetDate = null;
+      let targetTime = todo.remindTime || '09:00';
+
+      if (todo.type === 'once') {
+        targetDate = todo.date;
+      } else if (todo.type === 'weekly') {
+        const weekday = now.getDay();
+        if ((todo.weekdays || []).includes(weekday)) {
+          targetDate = todayStr;
+        }
+      }
+
+      if (!targetDate || targetDate !== todayStr) continue;
+
+      // Calculate the remind time
+      const [th, tm] = targetTime.split(':').map(Number);
+      let remindMinutes = th * 60 + tm;
+      if (todo.remind !== 'same') {
+        remindMinutes -= parseInt(todo.remind) || 0;
+      }
+      if (remindMinutes < 0) remindMinutes = 0;
+
+      const remindH = Math.floor(remindMinutes / 60);
+      const remindM = remindMinutes % 60;
+      const remindTimeStr = `${String(remindH).padStart(2, '0')}:${String(remindM).padStart(2, '0')}`;
+
+      if (remindTimeStr !== currentTime) continue;
+
+      // Check if already reminded for this date
+      const remindKey = `todo-reminded-${todo.id}-${todayStr}`;
+      if (localStorage.getItem(remindKey)) continue;
+
+      // Mark as reminded
+      localStorage.setItem(remindKey, '1');
+
+      // Send notification
+      const isCap = isCapacitorPlatform();
+      if (isCap) {
+        try {
+          const { LocalNotifications } = window.Capacitor.Plugins;
+          if (LocalNotifications) {
+            LocalNotifications.schedule({
+              notifications: [{
+                id: Date.now() % 100000,
+                title: '上班日历 · 待办提醒',
+                body: `📋 ${todo.text} (${targetTime})`,
+                schedule: { at: new Date() },
+                smallIcon: 'ic_launcher',
+                channelId: 'clockin-reminders'
+              }]
+            });
+          }
+        } catch (e) {
+          console.warn('[TodoRemind] Capacitor notification error:', e);
+        }
+      } else if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          const notif = new Notification('上班日历 · 待办提醒', {
+            body: `📋 ${todo.text} (${targetTime})`,
+            icon: 'assets/icon.png',
+            tag: 'todo-' + todo.id,
+            requireInteraction: true
+          });
+          notif.onclick = () => {
+            window.focus();
+            switchView('clockin');
+          };
+        } catch (e) {
+          console.warn('[TodoRemind] Web notification error:', e);
+        }
+      }
+
+      // Also notify Electron main process
+      if (window.calendarAPI?.notifyTodo) {
+        window.calendarAPI.notifyTodo(todo.text, targetTime);
+      }
+    }
+  }, 30000);
+}
