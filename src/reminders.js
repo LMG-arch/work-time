@@ -275,6 +275,17 @@ async function scheduleReminderNotifications() {
         return;
       }
 
+      // Check exact alarm permission (Android 12+) — without this, alarms are delayed ~15min
+      try {
+        const exactPerm = await LocalNotifications.checkExactNotificationSetting();
+        if (exactPerm && exactPerm.exact_alarm !== 'granted') {
+          showToast('⚠️ 请开启"精确闹钟"权限，否则提醒会延迟15分钟！');
+          await LocalNotifications.changeExactNotificationSetting();
+        }
+      } catch (exactErr) {
+        console.warn('[Notifications] Exact alarm check error:', exactErr.message);
+      }
+
       // Register action type for clock-in confirmation
       try {
         await LocalNotifications.registerActionTypes({
