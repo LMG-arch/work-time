@@ -46,38 +46,45 @@ function initSupabase() {
 
 // ===== Auth =====
 
-async function signIn() {
-  if (!sb) return null;
-  const { data, error } = await sb.auth.signInAnonymously();
-  if (error) return null;
-  return data.user;
-}
-
-async function getCurrentUser() {
-  if (!sb) return null;
-  try {
-    const { data } = await sb.auth.getUser();
-    return data.user;
-  } catch {
-    return null;
-  }
-}
-
-// Ensure we have a valid session, re-auth if needed
-// Tries to restore bound user first, then creates new anonymous user
+// Robust session restoration: try multiple methods before creating new user
 async function ensureSession() {
   if (!sb) return null;
-  let user = await getCurrentUser();
-  if (user) {
-    setBoundUserId(user.id);
-    return user;
-  }
-  // Session expired, sign in again
-  user = await signIn();
-  if (user) {
-    setBoundUserId(user.id);
-  }
-  return user;
+
+  // Method 1: getUser() — checks token, auto-refreshes if possible
+  try {
+    const { data } = await sb.auth.getUser();
+    if (data.user) {
+      setBoundUserId(data.user.id);
+      return data.user;
+    }
+  } catch {}
+
+  // Method 2: getSession() — reads stored session directly, may succeed when getUser fails
+  try {
+    const { data } = await sb.auth.getSession();
+    if (data.session && data.session.user) {
+      // Try to refresh this session
+      const { data: refreshed } = await sb.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token
+      });
+      if (refreshed.user) {
+        setBoundUserId(refreshed.user.id);
+        return refreshed.user;
+      }
+    }
+  } catch {}
+
+  // Method 3: Create new anonymous user (last resort)
+  try {
+    const { data, error } = await sb.auth.signInAnonymously();
+    if (!error && data.user) {
+      setBoundUserId(data.user.id);
+      return data.user;
+    }
+  } catch {}
+
+  return null;
 }
 
 // ===== Profile =====

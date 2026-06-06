@@ -531,33 +531,12 @@ async function initSocial() {
   }
   if (!sb) return;
 
-  // Try to restore session (Supabase auto-restores from localStorage)
-  let user = await getCurrentUser();
-
-  if (!user) {
-    // No valid session, try to restore from Supabase stored session
-    try {
-      const { data } = await sb.auth.getSession();
-      if (data.session && data.session.user) {
-        user = data.session.user;
-        console.log('[Social] Restored session for user:', user.id.slice(0, 8));
-      }
-    } catch (e) {
-      console.log('[Social] Session restore failed:', e.message);
-    }
-  }
-
-  if (!user) {
-    // All restore attempts failed, create new anonymous user
-    user = await signIn();
-    if (user) {
-      console.log('[Social] New anonymous user created:', user.id.slice(0, 8));
-    }
-  }
+  // Use improved session restoration (tries multiple methods before creating new user)
+  const user = await ensureSession();
 
   if (user) {
-    setBoundUserId(user.id);
     _currentUserId = user.id;
+    console.log('[Social] User session:', user.id.slice(0, 8));
 
     // Auto-pull calendar data on login if sync enabled
     if (typeof isSyncEnabled === 'function' && isSyncEnabled()) {
@@ -568,5 +547,7 @@ async function initSocial() {
         console.log('[Social] Calendar sync failed:', e.message);
       }
     }
+  } else {
+    console.warn('[Social] Failed to establish session');
   }
 }
