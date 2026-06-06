@@ -130,6 +130,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   display_id SERIAL UNIQUE,
   nickname TEXT NOT NULL DEFAULT '',
   avatar TEXT DEFAULT '',
+  username TEXT UNIQUE,
+  password_hash TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   deleted_at TIMESTAMPTZ
 );
@@ -339,31 +341,54 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('post-images', 'post-imag
 CREATE POLICY "post_images_select" ON storage.objects FOR SELECT USING (bucket_id = 'post-images');
 CREATE POLICY "post_images_insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'post-images');
 CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_id = 'post-images');
+
+-- 注册账号（用户名+密码哈希，绑定到当前匿名用户）
+CREATE OR REPLACE FUNCTION register_username(p_username TEXT, p_password_hash TEXT)
+RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE existing_id UUID;
+BEGIN
+  SELECT id INTO existing_id FROM profiles WHERE username = p_username AND deleted_at IS NULL;
+  IF existing_id IS NOT NULL THEN RETURN json_build_object('error', '用户名已存在'); END IF;
+  UPDATE profiles SET username = p_username, password_hash = p_password_hash WHERE id = auth.uid();
+  IF NOT FOUND THEN INSERT INTO profiles (id, nickname, username, password_hash) VALUES (auth.uid(), p_username, p_username, p_password_hash); END IF;
+  RETURN json_build_object('user_id', auth.uid());
+END;
+$$;
+
+-- 登录账号（验证密码，迁移数据到当前匿名session）
+CREATE OR REPLACE FUNCTION login_username(p_username TEXT, p_password_hash TEXT)
+RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE old_user UUID; new_user UUID;
+BEGIN
+  new_user := auth.uid();
+  SELECT id INTO old_user FROM profiles WHERE username = p_username AND password_hash = p_password_hash AND deleted_at IS NULL;
+  IF old_user IS NULL THEN RETURN json_build_object('error', '用户名或密码错误'); END IF;
+  IF old_user = new_user THEN RETURN json_build_object('user_id', new_user); END IF;
+  UPDATE posts SET user_id = new_user WHERE user_id = old_user;
+  UPDATE post_likes SET user_id = new_user WHERE user_id = old_user;
+  UPDATE post_comments SET user_id = new_user WHERE user_id = old_user;
+  UPDATE friendships SET user_id = new_user WHERE user_id = old_user;
+  UPDATE friendships SET friend_id = new_user WHERE friend_id = old_user;
+  UPDATE user_data SET user_id = new_user WHERE user_id = old_user;
+  UPDATE bind_codes SET user_id = new_user WHERE user_id = old_user;
+  DELETE FROM profiles WHERE id = new_user AND username IS NULL;
+  UPDATE profiles SET id = new_user WHERE id = old_user;
+  RETURN json_build_object('user_id', new_user);
+END;
+$$;
 ```
 
 4. 点击右下角 **Run** 按钮执行
 5. 看到 `Success. No rows returned` 表示成功
 
-### 第五步：开启登录方式
-
-需要开启两种登录方式：**匿名登录**（好友圈基础功能）和**邮箱注册**（账号系统）。
-
-#### 5a. 开启匿名登录
+### 第五步：开启匿名登录
 
 1. 在 Supabase Dashboard 左侧菜单，点击 **Authentication**
 2. 点击 **Providers** 选项卡
 3. 找到 **Allow anonymous sign-ins**，将开关**打开**
 4. 点击 **Save** 保存
 
-#### 5b. 开启邮箱注册
-
-1. 同样在 **Authentication** → **Providers** 页面
-2. 找到 **Email** 邮箱认证方式
-3. 确保 **Enable Email Signups** 开关**打开**
-4. **Confirm email**（邮箱验证）建议**关闭**（本项目不需要邮箱验证）
-5. 点击 **Save** 保存
-
-> 💡 账号注册使用虚拟邮箱格式 `用户名@workcalendar.local`，不需要真实邮箱。注册后 UUID 固定绑定到账号，不会再变化。
+> 💡 账号系统基于匿名认证 + 数据库函数实现，用户名和密码哈希存储在 profiles 表中，无需配置邮箱服务。
 
 ### 第六步：在 App 中配置
 
@@ -397,10 +422,12 @@ CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_i
 
 1. 完成上方「好友圈配置教程」的全部步骤（确保 Supabase 服务已配置好）
 2. 打开 App → **设置** → **账号** 区域
-3. 输入**用户名**（2-20个字符，支持英文、数字、下划线）
+3. 输入**用户名**（2-20个字符，支持中英文、数字、下划线）
 4. 输入**密码**（至少4个字符）
 5. 点击 **注册**
 6. 显示「注册成功」即完成
+
+> 注册时会自动创建匿名会话并绑定用户名，密码以 SHA-256 哈希存储，不明文保存。
 
 ### 登录（换设备）
 
@@ -431,7 +458,7 @@ CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_i
 - Supabase 免费额度：50,000 月活用户、500MB 数据库、1GB 存储空间，日常使用完全够用
 - Anon Key 是公开密钥，安全的，不会泄露数据（有行级安全策略保护）
 - 一个 Supabase 项目可以多人共用，每个人只需要在 App 里填相同的 URL 和 Key
-- 需要开启 **Allow anonymous sign-ins**（匿名登录）和 **Email Signups**（邮箱注册）
+- 需要开启 **Allow anonymous sign-ins**（匿名登录）
 - 图片上传需要在 SQL Editor 中执行存储桶相关 SQL（见上方第四步）
 - 账号用户名全局唯一，注册后不可修改
 - 忘记密码暂不支持找回，请牢记密码

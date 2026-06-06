@@ -100,66 +100,62 @@ async function ensureSession() {
 
 const ACCOUNT_USERNAME_KEY = 'social-account-username';
 
-function usernameToEmail(username) {
-  // Convert username to valid email: encode non-ascii, keep case
-  let safe = '';
-  for (let i = 0; i < username.length; i++) {
-    const c = username[i];
-    if (/[a-zA-Z0-9_-]/.test(c)) {
-      safe += c;
-    } else {
-      safe += 'x' + c.charCodeAt(0).toString(16);
-    }
-  }
-  return safe + '@workcalendar.local';
+// Simple SHA-256 hash for passwords (browser Web Crypto API)
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + '_workcalendar_salt');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function registerAccount(username, password) {
   if (!sb) return { error: '未配置服务' };
-  if (!username || !password) return { error: '请输入用户名和密码' };
-  if (username.length < 2) return { error: '用户名至少2个字符' };
-  if (password.length < 4) return { error: '密码至少4个字符' };
+  if (!username || username.length < 2) return { error: '用户名至少2个字符' };
+  if (!password || password.length < 4) return { error: '密码至少4个字符' };
 
-  // Sign out any existing session first to avoid conflicts
-  try { await sb.auth.signOut(); } catch {}
+  // Ensure we have an anonymous session
+  const user = await ensureSession();
+  if (!user) return { error: '无法创建会话' };
 
-  const email = usernameToEmail(username);
-  const { data, error } = await sb.auth.signUp({ email, password });
-  if (error) {
-    if (error.message.includes('already registered') || error.message.includes('already been registered')) {
-      return { error: '用户名已存在，请直接登录' };
-    }
-    return { error: error.message };
-  }
-  if (data.user) {
-    localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
-    setBoundUserId(data.user.id);
-    if (typeof _currentUserId !== 'undefined') _currentUserId = data.user.id;
-  }
-  return { user: data.user };
+  const pwHash = await hashPassword(password);
+  const { data, error } = await sb.rpc('register_username', {
+    p_username: username,
+    p_password_hash: pwHash
+  });
+  if (error) return { error: error.message };
+  if (data && data.error) return { error: data.error };
+
+  localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
+  if (typeof _currentUserId !== 'undefined') _currentUserId = user.id;
+  return { user: { id: user.id } };
 }
 
 async function loginAccount(username, password) {
   if (!sb) return { error: '未配置服务' };
   if (!username || !password) return { error: '请输入用户名和密码' };
 
-  // Sign out any existing session first
-  try { await sb.auth.signOut(); } catch {}
+  // Ensure we have an anonymous session for the RPC call
+  const currentUser = await ensureSession();
+  if (!currentUser) return { error: '无法创建会话' };
 
-  const email = usernameToEmail(username);
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) return { error: '用户名或密码错误' };
-  if (data.user) {
-    localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
-    setBoundUserId(data.user.id);
-    if (typeof _currentUserId !== 'undefined') _currentUserId = data.user.id;
-  }
-  return { user: data.user };
+  const pwHash = await hashPassword(password);
+  const { data, error } = await sb.rpc('login_username', {
+    p_username: username,
+    p_password_hash: pwHash
+  });
+  if (error) return { error: error.message };
+  if (data && data.error) return { error: data.error };
+
+  // Data migrated to current anonymous user's UUID
+  const userId = data.user_id;
+  localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
+  setBoundUserId(userId);
+  if (typeof _currentUserId !== 'undefined') _currentUserId = userId;
+  return { user: { id: userId } };
 }
 
 async function logoutAccount() {
-  if (!sb) return;
-  await sb.auth.signOut();
   localStorage.removeItem(ACCOUNT_USERNAME_KEY);
   localStorage.removeItem('social-bound-user-id');
   if (typeof _currentUserId !== 'undefined') _currentUserId = null;

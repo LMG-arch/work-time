@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   display_id SERIAL UNIQUE,
   nickname TEXT NOT NULL DEFAULT '',
   avatar TEXT DEFAULT '',
+  username TEXT UNIQUE,
+  password_hash TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   deleted_at TIMESTAMPTZ
 );
@@ -237,6 +239,74 @@ BEGIN
 END;
 $$;
 
+-- 注册账号（用户名+密码哈希，绑定到当前匿名用户）
+CREATE OR REPLACE FUNCTION register_username(p_username TEXT, p_password_hash TEXT)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  existing_id UUID;
+BEGIN
+  SELECT id INTO existing_id FROM profiles WHERE username = p_username AND deleted_at IS NULL;
+  IF existing_id IS NOT NULL THEN
+    RETURN json_build_object('error', '用户名已存在');
+  END IF;
+
+  UPDATE profiles SET username = p_username, password_hash = p_password_hash
+  WHERE id = auth.uid();
+
+  IF NOT FOUND THEN
+    INSERT INTO profiles (id, nickname, username, password_hash)
+    VALUES (auth.uid(), p_username, p_username, p_password_hash);
+  END IF;
+
+  RETURN json_build_object('user_id', auth.uid());
+END;
+$$;
+
+-- 登录账号（验证密码，迁移数据到当前匿名session）
+CREATE OR REPLACE FUNCTION login_username(p_username TEXT, p_password_hash TEXT)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  old_user UUID;
+  new_user UUID;
+BEGIN
+  new_user := auth.uid();
+
+  SELECT id INTO old_user FROM profiles
+  WHERE username = p_username AND password_hash = p_password_hash AND deleted_at IS NULL;
+
+  IF old_user IS NULL THEN
+    RETURN json_build_object('error', '用户名或密码错误');
+  END IF;
+
+  IF old_user = new_user THEN
+    RETURN json_build_object('user_id', new_user);
+  END IF;
+
+  -- 迁移：把旧用户的所有数据改为新用户的UUID
+  UPDATE posts SET user_id = new_user WHERE user_id = old_user;
+  UPDATE post_likes SET user_id = new_user WHERE user_id = old_user;
+  UPDATE post_comments SET user_id = new_user WHERE user_id = old_user;
+  UPDATE friendships SET user_id = new_user WHERE user_id = old_user;
+  UPDATE friendships SET friend_id = new_user WHERE friend_id = old_user;
+  UPDATE user_data SET user_id = new_user WHERE user_id = old_user;
+  UPDATE bind_codes SET user_id = new_user WHERE user_id = old_user;
+
+  -- 删除新用户的空profile（如果存在）
+  DELETE FROM profiles WHERE id = new_user AND username IS NULL;
+
+  -- 迁移旧profile到新UUID
+  UPDATE profiles SET id = new_user WHERE id = old_user;
+
+  RETURN json_build_object('user_id', new_user);
+END;
+$$;
+
 -- 索引
 CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_time ON posts(created_at DESC);
@@ -244,6 +314,7 @@ CREATE INDEX IF NOT EXISTS idx_likes_post ON post_likes(post_id);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_username ON profiles(username) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_profiles_deleted ON profiles(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_posts_deleted ON posts(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_likes_deleted ON post_likes(deleted_at);
