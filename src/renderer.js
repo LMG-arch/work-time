@@ -491,7 +491,22 @@ async function setupAdminControls() {
       return tables.map(t => TABLES.find(x => x.key === t)?.label || t).join('、');
     }
 
-    // Clear button — always selective
+    // Insert checkboxes BEFORE the clear button
+    const container = clearBtn.parentElement;
+    const selectorDiv = document.createElement('div');
+    selectorDiv.style.cssText = 'margin-bottom:8px;';
+    selectorDiv.innerHTML = `
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">勾选数据类型（不勾选 = 全部）</div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px 10px;">
+        ${TABLES.map(t => `<label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+          <input type="checkbox" class="trash-check" data-table="${t.key}" style="width:14px;height:14px;">${t.label}
+          <span id="data-size-${t.key}" style="color:var(--text3);font-size:11px;"></span>
+        </label>`).join('')}
+      </div>
+    `;
+    container.insertBefore(selectorDiv, clearBtn);
+
+    // Clear button — selective
     clearBtn.addEventListener('click', async () => {
       const label = getSelectedLabel();
       if (!confirm(`⚠️ 即将清除以下数据：${label}\n\n数据会移入回收站，可从回收站恢复。\n\n继续吗？`)) return;
@@ -503,20 +518,12 @@ async function setupAdminControls() {
       else { showToast('数据已移入回收站 ✓'); updateTrashStats(); }
     });
 
-    const container = clearBtn.parentElement;
+    // Trash section below
     const trashSection = document.createElement('div');
     trashSection.id = 'trash-section';
     trashSection.style.cssText = 'margin-top:12px;border-top:1px solid var(--border);padding-top:12px;';
     trashSection.innerHTML = `
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🗑️ 数据管理</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">勾选要操作的数据类型，不勾选则操作全部</div>
-      <div id="trash-checkboxes" style="display:flex;flex-direction:column;gap:3px;margin-bottom:10px;">
-        ${TABLES.map(t => `<label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;padding:2px 0;">
-          <input type="checkbox" class="trash-check" data-table="${t.key}" style="width:14px;height:14px;">
-          <span style="min-width:50px;">${t.label}</span>
-          <span id="trash-size-${t.key}" style="color:var(--text3);font-size:11px;"></span>
-        </label>`).join('')}
-      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🗑️ 回收站</div>
       <div id="trash-stats" class="settings-hint" style="margin-bottom:8px;">加载中...</div>
       <div style="display:flex;gap:8px;">
         <button id="trash-restore-btn" class="settings-action-btn" style="flex:1;">恢复数据</button>
@@ -529,31 +536,28 @@ async function setupAdminControls() {
       const statsEl = document.getElementById('trash-stats');
       if (!statsEl) return;
       const [stats, sizes] = await Promise.all([getTrashStats(), getTrashSizes()]);
-      if (!stats || stats.total === 0) {
-        statsEl.textContent = '回收站为空';
-        TABLES.forEach(t => { const el = document.getElementById(`trash-size-${t.key}`); if (el) el.textContent = ''; });
-        return;
+      // Update size labels next to checkboxes
+      if (sizes) {
+        const sizeMap = {};
+        sizes.forEach(s => { sizeMap[s.table_name] = { count: Number(s.deleted_count), size: s.total_size }; });
+        TABLES.forEach(t => {
+          const el = document.getElementById(`data-size-${t.key}`);
+          if (el && sizeMap[t.key]) {
+            const info = sizeMap[t.key];
+            const parts2 = [info.size];
+            if (info.count > 0) parts2.push(`回收站${info.count}条`);
+            el.textContent = `(${parts2.join(', ')})`;
+          }
+        });
       }
+      if (!stats || stats.total === 0) { statsEl.textContent = '回收站为空'; return; }
       const parts = [];
       if (stats.profiles) parts.push(`${stats.profiles} 个用户`);
       if (stats.posts) parts.push(`${stats.posts} 条动态`);
       if (stats.comments) parts.push(`${stats.comments} 条评论`);
       if (stats.likes) parts.push(`${stats.likes} 个点赞`);
       if (stats.friendships) parts.push(`${stats.friendships} 条好友关系`);
-      statsEl.textContent = `回收站共 ${stats.total} 条：${parts.join('、')}`;
-      if (sizes) {
-        const sizeMap = {};
-        sizes.forEach(s => { sizeMap[s.table_name] = { count: Number(s.deleted_count), size: s.total_size }; });
-        TABLES.forEach(t => {
-          const el = document.getElementById(`trash-size-${t.key}`);
-          if (el && sizeMap[t.key]) {
-            const info = sizeMap[t.key];
-            const parts2 = [info.size];
-            if (info.count > 0) parts2.push(`回收站${info.count}条`);
-            el.textContent = parts2.join(' · ');
-          }
-        });
-      }
+      statsEl.textContent = `共 ${stats.total} 条：${parts.join('、')}`;
     }
     updateTrashStats();
 
@@ -566,7 +570,6 @@ async function setupAdminControls() {
       if (result.error) showToast('恢复失败: ' + result.error);
       else {
         showToast('数据已恢复 ✓');
-        // Reload data into memory and refresh UI
         if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
         if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
         if (typeof renderCalendar === 'function') renderCalendar();
