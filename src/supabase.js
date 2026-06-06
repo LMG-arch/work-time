@@ -716,7 +716,12 @@ function setSyncEnabled(enabled) {
 // Collect all calendar data from localStorage
 function collectCalendarData() {
   const data = {};
-  try { data.workData = JSON.parse(localStorage.getItem('work-calendar-data')); } catch {}
+  try {
+    const store = JSON.parse(localStorage.getItem('work-calendar-data'));
+    if (store) {
+      data.workData = { days: store.days || {}, todos: store.todos || [] };
+    }
+  } catch {}
   try { data.reminders = JSON.parse(localStorage.getItem('calendar-reminders')); } catch {}
   try { data.reminderRecords = JSON.parse(localStorage.getItem('calendar-reminder-records')); } catch {}
   try { data.theme = localStorage.getItem('calendar-theme'); } catch {}
@@ -726,7 +731,21 @@ function collectCalendarData() {
 // Apply synced data to localStorage
 function applyCalendarData(data) {
   if (!data) return;
-  if (data.workData) localStorage.setItem('work-calendar-data', JSON.stringify(data.workData));
+  // Merge into work-calendar-data (the main store used by web-api.js)
+  try {
+    const store = JSON.parse(localStorage.getItem('work-calendar-data')) || { days: {}, todos: [] };
+    if (data.workData) {
+      if (data.workData.days) store.days = { ...store.days, ...data.workData.days };
+      if (data.workData.todos) {
+        const todoMap = {};
+        (store.todos || []).forEach(t => { if (t && t.id) todoMap[t.id] = t; });
+        data.workData.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
+        store.todos = Object.values(todoMap);
+      }
+    }
+    localStorage.setItem('work-calendar-data', JSON.stringify(store));
+  } catch {}
+  // Also write to separate keys (used by reminders.js and other modules)
   if (data.reminders) localStorage.setItem('calendar-reminders', JSON.stringify(data.reminders));
   if (data.reminderRecords) localStorage.setItem('calendar-reminder-records', JSON.stringify(data.reminderRecords));
   if (data.theme) localStorage.setItem('calendar-theme', data.theme);

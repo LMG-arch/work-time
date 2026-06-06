@@ -565,10 +565,15 @@ async function initSocial() {
     if (restored) console.log('[Social] Account restored');
   }
 
-  // Auto-pull calendar data on login if sync enabled
+  // Auto-sync calendar data on login if sync enabled
   if (typeof isSyncEnabled === 'function' && isSyncEnabled()) {
     try {
-      await pullCalendarData();
+      await syncCalendarData();
+      // Reload in-memory data after sync
+      if (typeof allData !== 'undefined') allData = await window.calendarAPI.getAllData();
+      if (typeof allTodos !== 'undefined') allTodos = await window.calendarAPI.getTodos();
+      if (typeof allReminders !== 'undefined') allReminders = await window.calendarAPI.getReminders();
+      if (typeof renderCalendar === 'function') renderCalendar();
       console.log('[Social] Calendar data synced from cloud');
     } catch (e) {
       console.log('[Social] Calendar sync failed:', e.message);
