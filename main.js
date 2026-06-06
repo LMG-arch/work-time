@@ -221,7 +221,9 @@ function registerIPC() {
       const notification = new Notification({
         title: '上班日历 · 待办提醒',
         body: `📋 ${text} (${time})`,
-        ...iconOpts
+        ...iconOpts,
+        silent: false,
+        requireInteraction: true
       });
       notification.on('click', () => {
         if (win) { win.show(); win.focus(); }
@@ -271,7 +273,9 @@ function scheduleReminders() {
         const notification = new Notification({
           title: '上班日历 · 打卡提醒',
           body: `⏰ ${r.label} (${r.time})\n点击确认打卡`,
-          ...iconOpts
+          ...iconOpts,
+          silent: false,
+          requireInteraction: true
         });
 
         notification.on('click', () => {

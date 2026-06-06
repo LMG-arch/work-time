@@ -137,13 +137,23 @@ function renderReminderSettings() {
   for (const r of allReminders) {
     const item = document.createElement('div');
     item.className = 'reminder-setting-item';
+    const sound = r.sound !== false;
+    const vibrate = r.vibrate !== false;
     item.innerHTML = `
       <input type="time" class="setting-time-input" value="${escapeAttr(r.time)}" data-id="${escapeAttr(r.id)}">
       <input type="text" class="setting-label-input" value="${escapeAttr(r.label)}" data-id="${escapeAttr(r.id)}" maxlength="10">
-      <label class="toggle-switch">
-        <input type="checkbox" ${r.enabled ? 'checked' : ''} data-id="${escapeAttr(r.id)}">
-        <span class="toggle-slider"></span>
-      </label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:2px;" title="声音">
+          <input type="checkbox" class="setting-sound-check" data-id="${escapeAttr(r.id)}" ${sound ? 'checked' : ''} style="width:12px;height:12px;">🔔
+        </label>
+        <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:2px;" title="震动">
+          <input type="checkbox" class="setting-vibrate-check" data-id="${escapeAttr(r.id)}" ${vibrate ? 'checked' : ''} style="width:12px;height:12px;">📳
+        </label>
+        <label class="toggle-switch">
+          <input type="checkbox" ${r.enabled ? 'checked' : ''} data-id="${escapeAttr(r.id)}">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     `;
     list.appendChild(item);
   }
@@ -158,18 +168,62 @@ function closeReminderSettings() {
   document.getElementById('reminder-modal').style.display = 'none';
 }
 
+async function sendTestNotification() {
+  const isCapacitor = isCapacitorPlatform();
+  if (isCapacitor) {
+    try {
+      const { LocalNotifications } = window.Capacitor.Plugins;
+      if (!LocalNotifications) { showToast('通知插件未加载'); return; }
+      const perm = await LocalNotifications.requestPermissions();
+      if (perm.display !== 'granted') { showToast('请在系统设置中开启通知权限'); return; }
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: 999999,
+          title: '上班日历 · 测试通知',
+          body: '🔔 如果你看到这条通知，说明通知功能正常！',
+          schedule: { at: new Date(Date.now() + 1000) },
+          smallIcon: 'ic_launcher',
+          channelId: 'clockin-reminders',
+          sound: 'default',
+          vibrate: true
+        }]
+      });
+      showToast('测试通知已发送，1秒后弹出');
+    } catch (e) {
+      showToast('通知发送失败: ' + e.message);
+    }
+  } else if (window.calendarAPI?.notifyTodo) {
+    window.calendarAPI.notifyTodo('测试通知 - 如果你看到这条通知，说明通知功能正常！', '现在');
+    showToast('测试通知已发送');
+  } else if ('Notification' in window) {
+    if (Notification.permission !== 'granted') await Notification.requestPermission();
+    if (Notification.permission === 'granted') {
+      new Notification('上班日历 · 测试通知', { body: '🔔 如果你看到这条通知，说明通知功能正常！' });
+      showToast('测试通知已发送');
+    } else {
+      showToast('通知权限被拒绝');
+    }
+  } else {
+    showToast('当前环境不支持通知');
+  }
+}
+
 async function saveReminderSettings() {
   const items = document.querySelectorAll('.reminder-setting-item');
   const updated = [];
   items.forEach(item => {
     const timeInput = item.querySelector('.setting-time-input');
     const labelInput = item.querySelector('.setting-label-input');
-    const toggle = item.querySelector('input[type="checkbox"]');
+    const toggle = item.querySelector('.toggle-switch input[type="checkbox"]');
+    const soundCheck = item.querySelector('.setting-sound-check');
+    const vibrateCheck = item.querySelector('.setting-vibrate-check');
     updated.push({
       id: timeInput.dataset.id,
       label: labelInput.value.trim() || '打卡',
       time: timeInput.value,
-      enabled: toggle.checked
+      enabled: toggle.checked,
+      sound: soundCheck ? soundCheck.checked : true,
+      vibrate: vibrateCheck ? vibrateCheck.checked : true
     });
   });
   allReminders = updated;
@@ -271,15 +325,24 @@ async function scheduleReminderNotifications() {
       try {
         await LocalNotifications.createChannel({
           id: 'clockin-reminders',
-          name: '打卡提醒',
-          description: '上班日历的打卡签到提醒',
+          name: '打卡提醒（有声）',
+          description: '上班日历的打卡签到提醒（带声音和震动）',
           importance: 5, // High (heads-up popup)
           visibility: 1, // Public
           sound: 'default',
           vibration: true,
-          vibrationPattern: [0, 500, 200, 500, 200, 500], // 震-停-震-停-震
+          vibrationPattern: [0, 500, 200, 500, 200, 500],
           light: true,
           lightColor: '#FF0000'
+        });
+        await LocalNotifications.createChannel({
+          id: 'clockin-silent',
+          name: '打卡提醒（静音）',
+          description: '上班日历的打卡签到提醒（无声音）',
+          importance: 4, // Default
+          visibility: 1,
+          sound: null,
+          vibration: false
         });
         await LocalNotifications.createChannel({
           id: 'todo-reminders',
@@ -318,6 +381,8 @@ async function scheduleReminderNotifications() {
           // Skip if already past
           if (scheduleDate <= new Date()) continue;
 
+          const withSound = r.sound !== false;
+          const withVibrate = r.vibrate !== false;
           notifications.push({
             id: notifId++,
             title: '上班日历 · 打卡提醒',
@@ -326,10 +391,10 @@ async function scheduleReminderNotifications() {
             smallIcon: 'ic_launcher',
             largeIcon: 'ic_launcher_round',
             extra: { reminderId: r.id, date: dateStr },
-            channelId: 'clockin-reminders',
+            channelId: withSound ? 'clockin-reminders' : 'clockin-silent',
             actionTypeId: 'clockin-action',
-            sound: 'default',
-            vibrate: true
+            sound: withSound ? 'default' : null,
+            vibrate: withVibrate
           });
         }
       }

@@ -219,6 +219,7 @@ function setupEventListeners() {
   document.getElementById('clockin-settings-btn').addEventListener('click', openReminderSettings);
   document.getElementById('reminder-modal-cancel').addEventListener('click', closeReminderSettings);
   document.getElementById('reminder-modal-save').addEventListener('click', saveReminderSettings);
+  document.getElementById('reminder-test-btn').addEventListener('click', sendTestNotification);
 
   // Auto-launch toggle
   const autoLaunchBtn = document.getElementById('auto-launch-btn');
