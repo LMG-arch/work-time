@@ -237,10 +237,49 @@ function exportStatsAsImage(stats) {
   ctx.fillStyle = '#ccc'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
   ctx.fillText('上班日历 · ' + new Date().toLocaleDateString('zh-CN'), W / 2, H - 15);
 
-  // Download
-  const link = document.createElement('a');
-  link.download = `上班日历_${currentYear}年${currentMonth + 1}月统计.png`;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
-  showToast('统计图片已导出');
+  // Export image
+  const fileName = `上班日历_${currentYear}年${currentMonth + 1}月统计.png`;
+
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+    // Android: share image (user can save to gallery)
+    try {
+      const { Filesystem, Share } = window.Capacitor.Plugins;
+
+      // Convert canvas to blob
+      const dataUrl = canvas.toDataURL('image/png');
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], fileName, { type: 'image/png' });
+
+      if (Share) {
+        await Share.share({
+          title: '上班日历统计',
+          text: `${currentYear}年${currentMonth + 1}月考勤统计`,
+          files: [file]
+        });
+      } else if (Filesystem) {
+        // Fallback: save to app directory
+        const base64Data = dataUrl.split(',')[1];
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: 'DOCUMENTS'
+        });
+        showToast('图片已保存，可从文件管理器查看');
+      }
+    } catch (e) {
+      console.error('[Stats] Export error:', e);
+      if (e.message && e.message.includes('canceled')) {
+        // User canceled share, do nothing
+      } else {
+        showToast('导出失败，请截图保存');
+      }
+    }
+  } else {
+    // Web/Electron: download via link
+    const link = document.createElement('a');
+    link.download = fileName;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('统计图片已导出');
+  }
 }

@@ -1,12 +1,12 @@
 {
-  "version": "3.2.2",
-  "versionCode": 18,
+  "version": "3.2.3",
+  "versionCode": 19,
   "releaseDate": "2026-06-09",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.2.2/work-calendar-v3.2.2.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.2.3/work-calendar-v3.2.3.apk",
   "changelog": [
-    "修复安卓端前往系统设置按钮无响应问题",
-    "使用多种方式尝试打开应用设置页面",
-    "优化统计页面：长按可导出并分享统计卡片图片"
+    "修复通知ID超出Java int范围导致设置失败",
+    "修复统计图片导出 — 支持分享保存到相册",
+    "安装文件系统插件支持文件操作"
   ],
   "forceUpdate": false
 }

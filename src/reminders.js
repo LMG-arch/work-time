@@ -4,9 +4,9 @@ async function loadReminders() {
   allReminders = await window.calendarAPI.getReminders();
 }
 
-// 生成不重复的通知 ID（避免碰撞）
+// 生成不重复的通知 ID（Java int 范围：-2147483648 ~ 2147483647）
 function generateNotifId() {
-  return Math.floor(Date.now() / 1000) * 1000 + Math.floor(Math.random() * 1000);
+  return Math.floor(Date.now() / 1000) % 2000000000 + Math.floor(Math.random() * 1000);
 }
 
 async function loadReminderRecords() {
