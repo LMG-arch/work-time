@@ -55,6 +55,16 @@ Android 构建需要 `JAVA_HOME` 和 `ANDROID_HOME` 环境变量，然后在 `an
 
 **版本管理**：每次修改代码后，必须更新文档并推送到 GitHub 进行版本管理。提交信息使用中文，格式参考 git log 中的约定（如 `fix:`、`feat:` 前缀）。
 
+**版本发布流程**：每次发布新版本必须完成以下步骤：
+1. 更新 `package.json` 中的版本号
+2. 更新 `android/app/build.gradle` 中的 `versionCode`（+1）和 `versionName`
+3. 更新 `version.json` 中的版本号、下载链接和更新日志
+4. 更新 `README.md` 中的更新日志
+5. 构建签名 APK：`cd android && ./gradlew assembleRelease`
+6. 复制 APK 并重命名为 `work-calendar-v{版本号}.apk`
+7. 创建 GitHub Release 并上传 APK：`gh release create v{版本号} --title "v{版本号}" work-calendar-v{版本号}.apk`
+8. 推送代码到 GitHub
+
 **工作流程**：所有操作都在 Claude Code 技能（superpowers）指导下进行，遵循技能流程规范。
 
 **代码风格**：

@@ -11,7 +11,7 @@
 - 每日状态标记：上班、休息、出差
 - 8 种颜色标记，自定义标签（最多 8 个，含加班/迟到/远程/外勤等快捷标签）
 - 备注记录，每日待办事项
-- 中国法定节假日和调休日自动识别（2025-2026）
+- 中国法定节假日和调休日自动识别（2025-2027）
 - 点击已选中的日期可收起详情面板
 
 ### 打卡提醒
@@ -72,6 +72,21 @@
 - 开机自启开关（桌面端）
 - 好友圈服务配置
 - 数据同步开关与手动同步（登录同一账号自动多端同步）
+- **应用更新**：安卓端支持应用内检查更新，自动检测新版本并引导下载安装
+
+### 打卡页面
+- **喝水记录**：每日喝水打卡，支持 +/- 按钮计数，记录每日饮水量
+- **更多状态类型**：上班、休息、出差、请假、年假、病假、事假（休息日自动跳过打卡提醒）
+- **标签自动补全**：输入标签时自动显示历史标签建议，支持 Tab 键快速补全
+
+### 待办管理（增强）
+- **待办编辑**：支持编辑已有待办内容，无需删除重建
+- **农历待办**：支持按农历日期设置待办，适合传统节日提醒
+
+### 好友圈（增强）
+- **下拉刷新**：下拉触发刷新，松手加载最新动态
+- **无限滚动**：滑到底部自动加载更多历史动态
+- **好友申请红点**：好友标签显示未处理申请数量
 
 ## 界面导航
 
@@ -564,6 +579,26 @@ CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_i
 | 通知 | Electron Notification API / Capacitor LocalNotifications |
 | 好友圈后端 | Supabase (PostgreSQL + Auth) |
 | 农历 | 寿星万年历算法 (1900-2100) |
+| 应用更新 | GitHub Releases + version.json 版本检查 |
+
+## 应用更新（安卓端）
+
+安卓端支持应用内自动检查更新：
+
+1. **自动检查**：每次启动应用，5 秒后静默检查是否有新版本
+2. **手动检查**：设置页面点击"检查更新"按钮
+3. **更新流程**：发现新版本 → 弹窗显示更新日志 → 点击"立即更新" → 跳转浏览器下载 APK
+
+更新检查通过 GitHub 上的 `version.json` 文件实现，该文件包含最新版本号、APK 下载链接和更新日志。
+
+### 发版流程
+
+1. 更新 `package.json` 版本号
+2. 更新 `android/app/build.gradle` 中的 `versionCode` 和 `versionName`
+3. 更新 `version.json` 中的版本信息
+4. 更新 `README.md` 更新日志
+5. 构建签名 APK 并上传到 GitHub Release
+6. 推送代码到 GitHub
 
 ## 安装运行
 
@@ -589,12 +624,14 @@ npm install
 # 同步到 Android 项目
 npx cap sync android
 
-# 使用 JDK 21 构建 APK
+# 使用 JDK 21 构建签名 APK（需要配置 local.properties 签名信息）
 cd android
-JAVA_HOME="C:/Program Files/Java/jdk-21" ./gradlew assembleDebug
+JAVA_HOME="C:/Program Files/Java/jdk-21" ./gradlew assembleRelease
 ```
 
-生成的 APK 位于 `android/app/build/outputs/apk/debug/app-debug.apk`
+生成的签名 APK 位于 `android/app/build/outputs/apk/release/app-release.apk`
+
+> **注意**：构建签名 APK 需要在 `android/local.properties` 中配置签名信息，详见 CLAUDE.md。
 
 ## 项目结构
 
@@ -605,22 +642,24 @@ JAVA_HOME="C:/Program Files/Java/jdk-21" ./gradlew assembleDebug
 │   ├── renderer.js         # 入口：全局状态、路由、事件监听、初始化
 │   ├── calendar.js         # 日历网格、日期导航、详情面板
 │   ├── todos.js            # 待办 CRUD、弹窗、提醒
-│   ├── reminders.js        # 打卡视图、提醒设置、通知调度
-│   ├── stats.js            # 月度统计视图
+│   ├── reminders.js        # 打卡视图、提醒设置、通知调度、喝水记录
+│   ├── stats.js            # 月度统计视图、统计导出
 │   ├── settings.js         # 设置视图、主题、开机自启
-│   ├── social.js           # 好友圈 UI
+│   ├── social.js           # 好友圈 UI、下拉刷新、无限滚动
 │   ├── supabase.js         # Supabase API（认证、社交、同步、管理员）
-│   ├── web-api.js          # localStorage 数据层
+│   ├── web-api.js          # localStorage 数据层、平台适配
+│   ├── updater.js          # 应用更新检查（版本比较、更新弹窗）
 │   ├── styles.css          # 主样式
 │   ├── social.css          # 好友圈样式
 │   ├── lunar.js            # 农历转换库（寿星万年历）
-│   ├── holidays.js         # 节假日数据
+│   ├── holidays.js         # 节假日数据（2025-2027）
 │   └── lib/
 │       └── supabase.min.js # Supabase JS 本地库
 ├── main.js                 # Electron 主进程
 ├── preload.js              # Electron 预加载脚本
 ├── set-icon.js             # 打包后设置 .exe 图标
 ├── supabase-setup.sql      # 数据库初始化 SQL（完整版，含索引和存储桶）
+├── version.json            # 版本信息（用于应用内更新检查）
 ├── android/                # Capacitor Android 项目
 ├── assets/                 # 应用图标
 ├── capacitor.config.json   # Capacitor 配置
@@ -637,6 +676,7 @@ JAVA_HOME="C:/Program Files/Java/jdk-21" ./gradlew assembleDebug
 | `POST_NOTIFICATIONS` | 发送通知（打卡提醒、待办提醒） |
 | `SCHEDULE_EXACT_ALARM` | 精确定时提醒 |
 | `RECEIVE_BOOT_COMPLETED` | 开机启动提醒 |
+| `REQUEST_INSTALL_PACKAGES` | 应用内更新下载 APK |
 
 ## License
 
@@ -645,6 +685,24 @@ MIT
 ---
 
 ## 更新日志
+
+### v3.1.8 (2026-06-06) — 新功能与自动更新
+- **新功能**：待办编辑 — 点击 ✎ 按钮编辑已有待办，无需删除重建
+- **新功能**：更多状态类型 — 请假、年假、病假、事假，统计页同步显示
+- **新功能**：标签自动补全 — 输入时自动显示历史标签建议，Tab 键快速补全
+- **新功能**：下拉刷新 — 好友圈下拉触发刷新
+- **新功能**：无限滚动 — 滑到底部自动加载更多历史动态
+- **新功能**：好友申请红点 — 好友标签显示未处理申请数量
+- **新功能**：喝水记录 — 打卡页面添加喝水计数器
+- **新功能**：统计导出 — 一键将月度统计导出为 PNG 图片
+- **新功能**：应用内更新检查 — 启动时自动检查新版本，设置页手动检查
+- **新数据**：2027 年中国法定节假日
+- **修复**：休息日/请假等非工作日自动跳过打卡提醒
+- **修复**：好友圈删除帖子后缓存未清除导致帖子仍然显示
+
+### v3.1.7 (2026-06-06) — 打包优化
+- **改进**：APK 签名配置，使用 apksigner v2/v3 签名方案
+- **改进**：构建脚本优化
 
 ### v3.1.6 (2026-06-06) — 智能同步修复
 - **关键修复**：同步后数据被恢复 — 使用"墓碑"机制标记删除，同步时正确处理删除操作
