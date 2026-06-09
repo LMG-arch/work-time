@@ -539,26 +539,17 @@ async function scheduleReminderNotifications() {
       console.error('[Notifications] Capacitor scheduling error:', e);
       showToast('通知设置失败: ' + (e.message || '未知错误'));
     }
-    return;
+    // 不 return，继续执行下面的轮询兜底逻辑
   }
 
-  // Web browser notifications (Electron renderer / browser)
-  if (!('Notification' in window)) return;
+  // === 轮询兜底：所有平台都运行 ===
+  // 每 10 秒检查一次，如果当前时间到了提醒时间，立即发通知
+  // 预调度可能被系统延迟，轮询确保不会漏掉
+  if (reminderNotifTimer) clearInterval(reminderNotifTimer);
 
-  if (Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
-
-  // Electron main process handles notifications via IPC
-  // Web/Capacitor: use browser Notification API as fallback
   const isElectron = typeof window.calendarAPI?.saveReminders === 'function' && !isCapacitor;
-  if (isElectron) return;
-
-  // Fallback: use Web Notification in browser
-  if (Notification.permission !== 'granted') return;
 
   reminderNotifTimer = setInterval(() => {
-    if (Notification.permission !== 'granted') return;
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
@@ -569,23 +560,68 @@ async function scheduleReminderNotifications() {
       if (r.time !== currentTime) continue;
       if (isReminderConfirmed(r.id, todayStr)) continue;
 
-      try {
-        const notif = new Notification('上班日历 · 打卡提醒', {
-          body: `⏰ ${r.label} (${r.time})`,
-          icon: 'assets/icon.png',
-          tag: 'reminder-' + r.id,
-          requireInteraction: true
-        });
+      // 防止同一分钟内重复通知：用 localStorage 标记
+      const notifKey = `notif-sent-${r.id}-${todayStr}-${currentTime}`;
+      if (localStorage.getItem(notifKey)) continue;
+      localStorage.setItem(notifKey, '1');
+      // 2 分钟后清除标记
+      setTimeout(() => localStorage.removeItem(notifKey), 120000);
 
-        notif.onclick = () => {
-          window.focus();
-          switchView('clockin');
-        };
-      } catch (notifErr) {
-        console.warn('[Notifications] Web notification error:', notifErr.message);
+      const isCap = isCapacitorPlatform();
+      if (isCap) {
+        // Capacitor: 发即时本地通知
+        try {
+          const { LocalNotifications } = window.Capacitor.Plugins;
+          if (LocalNotifications) {
+            LocalNotifications.schedule({
+              notifications: [{
+                id: generateNotifId(),
+                title: '上班日历 · 打卡提醒',
+                body: `⏰ ${r.label} (${r.time})`,
+                schedule: { at: new Date() },
+                smallIcon: 'ic_launcher',
+                channelId: 'clockin-reminders',
+                sound: 'default',
+                vibrate: true,
+                actionTypeId: 'clockin-action',
+                extra: { reminderId: r.id, date: todayStr }
+              }]
+            });
+            console.log('[Polling] Sent instant notification for', r.label, currentTime);
+          }
+        } catch (e) {
+          console.warn('[Polling] Capacitor notification error:', e.message);
+        }
+      } else if (isElectron) {
+        // Electron: 通过 IPC 通知主进程
+        try {
+          if (window.calendarAPI?.notifyTodo) {
+            window.calendarAPI.notifyTodo(r.label, r.time);
+          }
+        } catch (e) {
+          console.warn('[Polling] Electron notification error:', e.message);
+        }
+      } else if ('Notification' in window && Notification.permission === 'granted') {
+        // Web browser fallback
+        try {
+          const notif = new Notification('上班日历 · 打卡提醒', {
+            body: `⏰ ${r.label} (${r.time})`,
+            icon: 'assets/icon.png',
+            tag: 'reminder-' + r.id,
+            requireInteraction: true
+          });
+          notif.onclick = () => { window.focus(); switchView('clockin'); };
+        } catch (e) {
+          console.warn('[Polling] Web notification error:', e.message);
+        }
       }
     }
   }, 10000);
+
+  // 请求 Web 通知权限（非 Electron、非 Capacitor 时需要）
+  if (!isCapacitor && !isElectron && 'Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
 }
 
 // --- Todo Reminders ---
@@ -595,7 +631,7 @@ let todoRemindTimer = null;
 function scheduleTodoReminders() {
   if (todoRemindTimer) clearInterval(todoRemindTimer);
 
-  // Check every 30 seconds
+  // Check every 10 seconds for timely reminders
   todoRemindTimer = setInterval(() => {
     const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
     if (todosWithRemind.length === 0) return;

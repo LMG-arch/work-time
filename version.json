@@ -1,6 +1,6 @@
 {
-  "versionCode": 16,
-  "versionName": "3.2.0",
-  "apkUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.2.0/work-calendar-v3.2.0.apk",
-  "changelog": "修复：通知不稳定问题 — 通知ID碰撞、后台被系统节流、权限检查优化\n新功能：应用从后台恢复时自动重新调度通知\n新功能：电池优化引导，确保后台通知正常"
+  "versionCode": 17,
+  "versionName": "3.2.1",
+  "apkUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.2.1/work-calendar-v3.2.1.apk",
+  "changelog": "修复：打卡通知延迟问题 — 添加实时轮询兜底，每10秒检查一次，确保准时通知\n优化：预调度+轮询双保险机制，预调度被系统延迟时轮询立即补发"
 }
