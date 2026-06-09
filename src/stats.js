@@ -140,13 +140,14 @@ function renderStats() {
   const exportBtn = document.getElementById('export-stats-btn');
   if (exportBtn) {
     exportBtn.addEventListener('click', () => {
-      exportStatsAsImage(workDays, restDays, tripDays, leaveDays, annualDays, sickDays, personalDays, noStatus, sortedTags, dayRecords, holidayCount, workdayCount);
+      exportStatsAsImage({ workDays, restDays, tripDays, leaveDays, annualDays, sickDays, personalDays, noStatus, sortedTags, dayRecords, holidayCount, workdayCount });
     });
   }
 }
 
 // 导出统计为图片
-function exportStatsAsImage(workDays, restDays, tripDays, leaveDays, annualDays, sickDays, personalDays, noStatus, sortedTags, dayRecords, holidayCount, workdayCount) {
+function exportStatsAsImage(stats) {
+  const { workDays, restDays, tripDays, leaveDays, annualDays, sickDays, personalDays, noStatus, sortedTags, dayRecords, holidayCount, workdayCount } = stats;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const W = 400;

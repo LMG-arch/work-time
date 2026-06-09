@@ -277,8 +277,9 @@ function setupTodoModal() {
         const dateVal = document.getElementById('todo-date-input').value;
         if (!dateVal) { showToast('请选择日期'); return; }
         updates.date = dateVal;
-        delete updates.lunarMonth;
-        delete updates.lunarDay;
+        // 显式清除 lunar 字段（delete 对新对象无效，需要显式设为 null 让 updateTodo 合并时覆盖）
+        updates.lunarMonth = null;
+        updates.lunarDay = null;
       }
       if (!_editingTodoId) updates.done = false;
     } else {

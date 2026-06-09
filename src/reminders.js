@@ -28,10 +28,13 @@ function renderClockinView() {
   const container = document.getElementById('clockin-today-reminders');
   container.innerHTML = '';
 
-  // 检查今天是否标记为休息日
+  // 检查今天是否标记为非工作日（休息/请假/年假/病假/事假）
   const todayData = allData[todayStr];
-  if (todayData && todayData.status === 'rest') {
-    container.innerHTML = '<div class="rest-day-skip">😴 今天是休息日，不需要打卡</div>';
+  const nonWorkStatuses = ['rest', 'leave', 'annual', 'sick', 'personal'];
+  if (todayData && nonWorkStatuses.includes(todayData.status)) {
+    const statusLabel = STATUS_LABELS[todayData.status] || '休息';
+    container.innerHTML = `<div class="rest-day-skip">😴 今天是${statusLabel}日，不需要打卡</div>`;
+    renderWaterTracker();
     renderClockinHistory();
     return;
   }
@@ -462,10 +465,8 @@ async function scheduleReminderNotifications() {
         console.warn('[Notifications] Create channel error:', channelErr.message);
       }
 
-      // 检查今天是否是休息日，如果是则跳过当天的打卡提醒
-      const todayStr = getTodayStr();
-      const todayData = allData[todayStr];
-      const isRestDay = todayData && todayData.status === 'rest';
+      // 非工作日状态列表，这些日期跳过打卡通知
+      const nonWorkStatuses = ['rest', 'leave', 'annual', 'sick', 'personal'];
 
       // Schedule notifications for the next 30 days
       const notifications = [];
@@ -477,9 +478,9 @@ async function scheduleReminderNotifications() {
         targetDate.setDate(targetDate.getDate() + dayOffset);
         const dateStr = dateToStr(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
 
-        // 检查目标日期是否是休息日
+        // 检查目标日期是否是非工作日
         const dayData = allData[dateStr];
-        if (dayData && dayData.status === 'rest') continue;
+        if (dayData && nonWorkStatuses.includes(dayData.status)) continue;
 
         for (const r of enabled) {
           // Skip if already confirmed

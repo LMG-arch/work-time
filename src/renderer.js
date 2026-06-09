@@ -65,6 +65,8 @@ async function refreshAllData() {
     renderCalendar();
     if (currentView === 'clockin') renderClockinView();
     if (currentView === 'stats') renderStats();
+    // 如果当前在日历视图且详情面板打开，刷新待办列表
+    if (currentView === 'calendar' && selectedDate) renderTodoList(selectedDate);
   } catch (e) {
     console.error('[refreshAllData] Failed:', e.message);
   }

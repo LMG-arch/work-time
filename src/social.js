@@ -131,7 +131,11 @@ function renderFeedPosts(container, posts) {
   html += '<button class="fab-btn" id="fab-add-post">✎</button>';
   container.innerHTML = html;
   bindPostEvents(container);
-  setupFeedPullToRefresh(container);
+  // 只在首次渲染时注册下拉刷新/无限滚动监听器，防止重复注册
+  if (!container._feedListenersAttached) {
+    container._feedListenersAttached = true;
+    setupFeedPullToRefresh(container);
+  }
   const fab = document.getElementById('fab-add-post');
   if (fab) fab.addEventListener('click', openPostModal);
 }
@@ -253,17 +257,21 @@ async function loadMoreFeedPosts(container) {
   feedList.appendChild(indicator);
 
   try {
-    feedOffset += 20;
-    const more = await getFeedPosts(20, feedOffset);
+    const more = await getFeedPosts(20, feedOffset + 20);
     if (more.length > 0) {
+      feedOffset += 20;
       feedPosts = feedPosts.concat(more);
+      // 收集新添加的帖子元素，只给新帖子绑定事件
+      const newPostEls = [];
       for (const post of more) {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = renderPostCard(post);
-        feedList.insertBefore(tempDiv.firstChild, indicator);
+        const newEl = tempDiv.firstChild;
+        feedList.insertBefore(newEl, indicator);
+        newPostEls.push(newEl);
       }
-      // Rebind events for new posts
-      bindPostEvents(container);
+      // 只给新帖子绑定事件，不影响已有帖子
+      bindPostEventsForElements(container, newPostEls);
     } else {
       indicator.textContent = '没有更多了';
       setTimeout(() => indicator.remove(), 1500);
@@ -309,43 +317,48 @@ function renderPostCard(post) {
 }
 
 function bindPostEvents(container) {
-  container.querySelectorAll('.like-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const postId = btn.dataset.id;
-      const liked = await toggleLike(postId);
-      const post = feedPosts.find(p => p.id === postId);
-      if (post) {
-        post.liked = liked;
-        post.likeCount = Math.max(0, (post.likeCount || 0) + (liked ? 1 : -1));
-        btn.className = 'post-action-btn like-btn' + (liked ? ' liked' : '');
-        btn.innerHTML = `${liked ? '❤' : '♡'} ${post.likeCount || ''}`;
-      }
-    });
-  });
+  bindPostEventsForElements(container, [container]);
+}
 
-  container.querySelectorAll('.comment-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const postId = btn.dataset.id;
-      const panel = document.getElementById(`comments-${postId}`);
-      if (panel.style.display === 'none') {
-        panel.style.display = '';
-        await renderCommentsPanel(postId, panel);
-      } else {
-        panel.style.display = 'none';
-      }
+function bindPostEventsForElements(container, elements) {
+  elements.forEach(el => {
+    el.querySelectorAll('.like-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const postId = btn.dataset.id;
+        const liked = await toggleLike(postId);
+        const post = feedPosts.find(p => p.id === postId);
+        if (post) {
+          post.liked = liked;
+          post.likeCount = Math.max(0, (post.likeCount || 0) + (liked ? 1 : -1));
+          btn.className = 'post-action-btn like-btn' + (liked ? ' liked' : '');
+          btn.innerHTML = `${liked ? '❤' : '♡'} ${post.likeCount || ''}`;
+        }
+      });
     });
-  });
 
-  container.querySelectorAll('.post-delete').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (!confirm('确定删除这条动态？')) return;
-      const ok = await deletePost(btn.dataset.id);
-      if (ok) {
-        showToast('已删除');
-        // Invalidate feed cache so deleted post doesn't reappear
-        try { localStorage.removeItem(FEED_CACHE_KEY); localStorage.removeItem(FEED_CACHE_TIME_KEY); } catch {}
-        renderSocialView();
-      }
+    el.querySelectorAll('.comment-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const postId = btn.dataset.id;
+        const panel = document.getElementById(`comments-${postId}`);
+        if (panel.style.display === 'none') {
+          panel.style.display = '';
+          await renderCommentsPanel(postId, panel);
+        } else {
+          panel.style.display = 'none';
+        }
+      });
+    });
+
+    el.querySelectorAll('.post-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('确定删除这条动态？')) return;
+        const ok = await deletePost(btn.dataset.id);
+        if (ok) {
+          showToast('已删除');
+          try { localStorage.removeItem(FEED_CACHE_KEY); localStorage.removeItem(FEED_CACHE_TIME_KEY); } catch {}
+          renderSocialView();
+        }
+      });
     });
   });
 }
