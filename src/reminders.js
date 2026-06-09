@@ -4,6 +4,11 @@ async function loadReminders() {
   allReminders = await window.calendarAPI.getReminders();
 }
 
+// 生成不重复的通知 ID（避免碰撞）
+function generateNotifId() {
+  return Math.floor(Date.now() / 1000) * 1000 + Math.floor(Math.random() * 1000);
+}
+
 async function loadReminderRecords() {
   allReminderRecords = await window.calendarAPI.getAllReminderRecords();
 }
@@ -350,14 +355,16 @@ async function scheduleReminderNotifications() {
         return;
       }
 
-      // Request permissions
+      // Check permissions first, only request if not granted
       let perm;
       try {
-        perm = await LocalNotifications.requestPermissions();
+        perm = await LocalNotifications.checkPermissions();
+        if (perm.display !== 'granted') {
+          perm = await LocalNotifications.requestPermissions();
+        }
       } catch (permErr) {
-        console.warn('[Notifications] Permission request failed:', permErr.message);
-        showToast('请在系统设置中允许通知权限');
-        return;
+        console.warn('[Notifications] Permission check/request failed:', permErr.message);
+        try { perm = await LocalNotifications.requestPermissions(); } catch { perm = { display: 'denied' }; }
       }
       if (perm.display !== 'granted') {
         console.warn('[Notifications] Permission denied:', perm.display);
@@ -470,7 +477,6 @@ async function scheduleReminderNotifications() {
 
       // Schedule notifications for the next 30 days
       const notifications = [];
-      let notifId = Math.floor(Date.now() / 1000) % 1000000;
       const today = new Date();
 
       for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
@@ -496,7 +502,7 @@ async function scheduleReminderNotifications() {
           const withSound = r.sound !== false;
           const withVibrate = r.vibrate !== false;
           notifications.push({
-            id: notifId++,
+            id: generateNotifId(),
             title: '上班日历 · 打卡提醒',
             body: `⏰ ${r.label} (${r.time})`,
             schedule: { at: scheduleDate, allowWhileIdle: true },
@@ -516,6 +522,18 @@ async function scheduleReminderNotifications() {
         console.log('[Notifications] Scheduled', notifications.length, 'notifications for next 30 days');
       } else {
         console.log('[Notifications] All reminders already confirmed or past, nothing to schedule');
+      }
+
+      // 定期重新调度：应用从后台恢复时重新调度通知
+      // 防止系统清除已调度的通知
+      if (!window._notifRescheduleRegistered) {
+        window._notifRescheduleRegistered = true;
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            console.log('[Notifications] App resumed, rescheduling notifications');
+            scheduleReminderNotifications();
+          }
+        });
       }
     } catch (e) {
       console.error('[Notifications] Capacitor scheduling error:', e);
@@ -635,7 +653,7 @@ function scheduleTodoReminders() {
           if (LocalNotifications) {
             LocalNotifications.schedule({
               notifications: [{
-                id: Math.floor(Date.now() / 1000) % 1000000 + 500000,
+                id: generateNotifId(),
                 title: '上班日历 · 待办提醒',
                 body: `📋 ${todo.text} (${targetTime})`,
                 schedule: { at: new Date() },

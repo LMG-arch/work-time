@@ -77,6 +77,7 @@ async function checkAndroidPermissions() {
     { name: '通知权限', desc: '打卡提醒和待办提醒', key: 'notification' },
     { name: '精确闹钟', desc: '准时提醒不延迟', key: 'exact-alarm' },
     { name: '后台弹出界面', desc: '后台收到通知时显示', key: 'overlay' },
+    { name: '电池优化', desc: '关闭省电限制，确保后台通知正常', key: 'battery' },
     { name: '安装应用', desc: '应用内更新下载安装', key: 'install' },
   ];
 
@@ -118,6 +119,7 @@ async function checkAndroidPermissions() {
 
   // These can't be checked via API, mark as "建议开启"
   updatePermStatus('overlay', null);
+  updatePermStatus('battery', null);
   updatePermStatus('install', null);
 
   // Open system settings button

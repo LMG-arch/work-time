@@ -1,6 +1,6 @@
 {
-  "versionCode": 15,
-  "versionName": "3.1.9",
-  "apkUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.1.9/work-calendar-v3.1.9.apk",
-  "changelog": "修复：统计页面不显示数据（变量名冲突）\n新功能：安卓权限引导页，检查通知/精确闹钟/后台弹出/安装应用权限\n修复：添加后台弹出界面和安装应用权限声明"
+  "versionCode": 16,
+  "versionName": "3.2.0",
+  "apkUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.2.0/work-calendar-v3.2.0.apk",
+  "changelog": "修复：通知不稳定问题 — 通知ID碰撞、后台被系统节流、权限检查优化\n新功能：应用从后台恢复时自动重新调度通知\n新功能：电池优化引导，确保后台通知正常"
 }
