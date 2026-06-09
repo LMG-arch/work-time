@@ -167,20 +167,20 @@ function exportStatsAsImage(stats) {
 
   y += 30;
   ctx.textAlign = 'left'; ctx.font = '14px sans-serif';
-  const stats = [
+  const statCards = [
     { label: '上班', value: workDays, color: '#4CAF50' },
     { label: '休息', value: restDays, color: '#2196F3' },
     { label: '出差', value: tripDays, color: '#FF9800' },
   ];
-  if (leaveDays) stats.push({ label: '请假', value: leaveDays, color: '#9C27B0' });
-  if (annualDays) stats.push({ label: '年假', value: annualDays, color: '#00BCD4' });
-  if (sickDays) stats.push({ label: '病假', value: sickDays, color: '#FF5722' });
-  if (personalDays) stats.push({ label: '事假', value: personalDays, color: '#795548' });
-  stats.push({ label: '未记录', value: noStatus, color: '#999' });
+  if (leaveDays) statCards.push({ label: '请假', value: leaveDays, color: '#9C27B0' });
+  if (annualDays) statCards.push({ label: '年假', value: annualDays, color: '#00BCD4' });
+  if (sickDays) statCards.push({ label: '病假', value: sickDays, color: '#FF5722' });
+  if (personalDays) statCards.push({ label: '事假', value: personalDays, color: '#795548' });
+  statCards.push({ label: '未记录', value: noStatus, color: '#999' });
 
-  const cardW = (W - 40) / Math.min(stats.length, 4);
-  for (let i = 0; i < stats.length; i++) {
-    const s = stats[i];
+  const cardW = (W - 40) / Math.min(statCards.length, 4);
+  for (let i = 0; i < statCards.length; i++) {
+    const s = statCards[i];
     const col = i % 4;
     const row = Math.floor(i / 4);
     const cx = 20 + col * cardW;

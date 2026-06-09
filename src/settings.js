@@ -30,6 +30,9 @@ function renderSettingsView() {
 
   // Refresh account info (avatar, nickname, ID)
   if (typeof updateAccountUI === 'function') updateAccountUI();
+
+  // Android permissions check
+  checkAndroidPermissions();
 }
 
 function setTheme(themeId) {
@@ -48,4 +51,106 @@ async function updateAutoLaunchBtn() {
   if (!btn) return;
   btn.classList.toggle('toggle-active', enabled);
   btn.textContent = enabled ? '✓ 开机自启已开启' : '开机自启';
+}
+
+// Android permissions check
+async function checkAndroidPermissions() {
+  const group = document.getElementById('android-perms-group');
+  if (!group || !isCapacitorPlatform()) return;
+
+  group.style.display = '';
+
+  // Collapsible toggle
+  const toggle = document.getElementById('perms-toggle');
+  const content = document.getElementById('perms-content');
+  if (toggle && content) {
+    toggle.onclick = () => {
+      const shown = content.style.display !== 'none';
+      content.style.display = shown ? 'none' : '';
+    };
+  }
+
+  const list = document.getElementById('perms-list');
+  if (!list) return;
+
+  const perms = [
+    { name: '通知权限', desc: '打卡提醒和待办提醒', key: 'notification' },
+    { name: '精确闹钟', desc: '准时提醒不延迟', key: 'exact-alarm' },
+    { name: '后台弹出界面', desc: '后台收到通知时显示', key: 'overlay' },
+    { name: '安装应用', desc: '应用内更新下载安装', key: 'install' },
+  ];
+
+  list.innerHTML = '';
+  for (const p of perms) {
+    const item = document.createElement('div');
+    item.className = 'perm-item';
+    item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);';
+    item.innerHTML = `
+      <div>
+        <div style="font-size:13px;font-weight:500;">${p.name}</div>
+        <div style="font-size:11px;color:var(--text-secondary);">${p.desc}</div>
+      </div>
+      <span class="perm-status" data-key="${p.key}" style="font-size:12px;padding:2px 8px;border-radius:4px;">检查中...</span>
+    `;
+    list.appendChild(item);
+  }
+
+  // Check permissions
+  try {
+    const { LocalNotifications } = window.Capacitor.Plugins;
+
+    // Notification permission
+    if (LocalNotifications) {
+      const perm = await LocalNotifications.checkPermissions();
+      updatePermStatus('notification', perm.display === 'granted');
+
+      // Exact alarm
+      if (LocalNotifications.checkExactNotificationSetting) {
+        try {
+          const exact = await LocalNotifications.checkExactNotificationSetting();
+          updatePermStatus('exact-alarm', exact.exact_alarm === 'granted');
+        } catch { updatePermStatus('exact-alarm', false); }
+      }
+    }
+  } catch (e) {
+    console.warn('[Settings] Permission check error:', e);
+  }
+
+  // These can't be checked via API, mark as "建议开启"
+  updatePermStatus('overlay', null);
+  updatePermStatus('install', null);
+
+  // Open system settings button
+  const openBtn = document.getElementById('open-app-settings-btn');
+  if (openBtn) {
+    openBtn.onclick = async () => {
+      try {
+        const { App } = window.Capacitor.Plugins;
+        if (App && App.openUrl) {
+          // Android: open app settings page
+          await App.openUrl({ url: 'package:' + (await App.getInfo()).id });
+        }
+      } catch (e) {
+        showToast('请手动前往系统设置 > 应用管理 > 上班日历 > 权限');
+      }
+    };
+  }
+}
+
+function updatePermStatus(key, granted) {
+  const el = document.querySelector(`.perm-status[data-key="${key}"]`);
+  if (!el) return;
+  if (granted === null) {
+    el.textContent = '建议开启';
+    el.style.background = 'var(--warning, #ff9800)';
+    el.style.color = '#fff';
+  } else if (granted) {
+    el.textContent = '✓ 已开启';
+    el.style.background = 'var(--success, #4caf50)';
+    el.style.color = '#fff';
+  } else {
+    el.textContent = '未开启';
+    el.style.background = 'var(--danger, #e53935)';
+    el.style.color = '#fff';
+  }
 }
