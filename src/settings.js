@@ -128,12 +128,40 @@ async function checkAndroidPermissions() {
     openBtn.onclick = async () => {
       try {
         const { App } = window.Capacitor.Plugins;
+        const appId = 'com.workcalendar.app';
+
+        // Method 1: Try App.openUrl with package scheme
         if (App && App.openUrl) {
-          // Android: open app settings page
-          await App.openUrl({ url: 'package:' + (await App.getInfo()).id });
+          try {
+            await App.openUrl({ url: `package:${appId}` });
+            return;
+          } catch (e1) {
+            console.warn('[Settings] package: scheme failed:', e1);
+          }
         }
+
+        // Method 2: Try Android intent URI
+        try {
+          const intentUrl = `intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;package=${appId};end`;
+          window.open(intentUrl, '_system');
+          return;
+        } catch (e2) {
+          console.warn('[Settings] intent URI failed:', e2);
+        }
+
+        // Method 3: Try market scheme (opens Play Store page)
+        try {
+          window.open(`market://details?id=${appId}`, '_system');
+          return;
+        } catch (e3) {
+          console.warn('[Settings] market scheme failed:', e3);
+        }
+
+        // Fallback: show manual instructions
+        showToast('请手动前往：系统设置 > 应用管理 > 上班日历 > 权限');
       } catch (e) {
-        showToast('请手动前往系统设置 > 应用管理 > 上班日历 > 权限');
+        console.error('[Settings] Open settings error:', e);
+        showToast('请手动前往：系统设置 > 应用管理 > 上班日历 > 权限');
       }
     };
   }

@@ -1,6 +1,12 @@
 {
-  "versionCode": 17,
-  "versionName": "3.2.1",
-  "apkUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.2.1/work-calendar-v3.2.1.apk",
-  "changelog": "修复：打卡通知延迟问题 — 添加实时轮询兜底，每10秒检查一次，确保准时通知\n优化：预调度+轮询双保险机制，预调度被系统延迟时轮询立即补发"
+  "version": "3.2.2",
+  "versionCode": 18,
+  "releaseDate": "2026-06-09",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.2.2/work-calendar-v3.2.2.apk",
+  "changelog": [
+    "修复安卓端前往系统设置按钮无响应问题",
+    "使用多种方式尝试打开应用设置页面",
+    "优化统计页面：长按可导出并分享统计卡片图片"
+  ],
+  "forceUpdate": false
 }
