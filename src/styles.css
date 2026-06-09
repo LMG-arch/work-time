@@ -1365,3 +1365,54 @@ button:active::after {
   font-size: 8px;
   font-weight: 700;
 }
+
+/* Update modal */
+.update-modal-content {
+  background: var(--card); border-radius: 16px;
+  padding: 28px 24px; width: 320px; max-width: 90vw;
+  border: 1px solid var(--border);
+  animation: slideUp 0.25s ease;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  text-align: center;
+}
+
+.update-icon {
+  font-size: 48px; margin-bottom: 12px;
+}
+
+.update-title {
+  font-size: 18px; font-weight: 700; color: var(--text);
+  margin-bottom: 14px;
+}
+
+.update-changelog {
+  font-size: 13px; color: var(--text2); line-height: 1.7;
+  text-align: left; max-height: 200px; overflow-y: auto;
+  background: var(--hover); border-radius: 10px;
+  padding: 12px; margin-bottom: 18px;
+  scrollbar-width: thin;
+}
+
+.update-actions {
+  display: flex; gap: 10px;
+}
+
+.update-btn {
+  flex: 1; padding: 10px 0; border-radius: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  border: none; transition: all 0.2s;
+  font-family: inherit;
+}
+
+.update-later {
+  background: var(--hover); color: var(--text2);
+  border: 1px solid var(--border);
+}
+
+.update-later:hover { background: var(--border); }
+
+.update-download {
+  background: var(--accent); color: #fff;
+}
+
+.update-download:hover { opacity: 0.85; }

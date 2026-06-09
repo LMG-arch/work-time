@@ -221,6 +221,21 @@
 
     async setAutoLaunch() {
       return { success: true };
+    },
+
+    // --- App version ---
+    async getAppVersion() {
+      // Capacitor 环境
+      if (window.Capacitor && window.Capacitor.Plugins) {
+        try {
+          const { App } = window.Capacitor.Plugins;
+          if (App && App.getInfo) {
+            const info = await App.getInfo();
+            return { versionName: info.version, versionCode: parseInt(info.build) || 0 };
+          }
+        } catch {}
+      }
+      return { versionName: '3.1.8', versionCode: 14 };
     }
   };
 })();

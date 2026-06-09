@@ -247,6 +247,14 @@ function setupEventListeners() {
     showToast(current ? '已关闭开机自启' : '已开启开机自启');
   });
 
+  // Check update button
+  const checkUpdateBtn = document.getElementById('check-update-btn');
+  if (checkUpdateBtn) {
+    checkUpdateBtn.addEventListener('click', () => {
+      if (typeof manualCheckUpdate === 'function') manualCheckUpdate();
+    });
+  }
+
   // ===== Account Registration / Login =====
   (async () => {
     const loggedOut = document.getElementById('account-logged-out');
@@ -696,4 +704,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const autoBtn = document.getElementById('auto-launch-btn');
     if (autoBtn) autoBtn.parentElement.style.display = 'none';
   }
+
+  // 启动时自动检查更新
+  if (typeof autoCheckUpdate === 'function') autoCheckUpdate();
 });

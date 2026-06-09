@@ -1,0 +1,6 @@
+{
+  "versionCode": 14,
+  "versionName": "3.1.8",
+  "apkUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.1.8/work-calendar-v3.1.8.apk",
+  "changelog": "新功能：待办编辑、更多状态类型、好友圈无限滚动/下拉刷新、好友申请红点、标签自动补全、喝水记录、休息日跳过打卡、2027节假日、统计导出图片\nBug修复：事件监听器重复注册、通知调度、CSS重复声明等10个问题"
+}
