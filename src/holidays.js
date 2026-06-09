@@ -1,4 +1,4 @@
-// 中国法定节假日数据 2025-2026
+// 中国法定节假日数据 2025-2027
 // type: "holiday" = 放假, "workday" = 调休上班
 const HOLIDAYS = {
   // ===== 2025 =====
@@ -83,6 +83,51 @@ const HOLIDAYS = {
   "2026-10-07": { name: "国庆节", type: "holiday" },
   "2026-09-27": { name: "中秋节/国庆调休", type: "workday" },
   "2026-10-10": { name: "国庆调休", type: "workday" },
+
+  // ===== 2027 =====
+  // 元旦
+  "2027-01-01": { name: "元旦", type: "holiday" },
+  "2027-01-02": { name: "元旦", type: "holiday" },
+  "2027-01-03": { name: "元旦", type: "holiday" },
+  // 春节 (2027年2月6日除夕)
+  "2027-02-06": { name: "除夕", type: "holiday" },
+  "2027-02-07": { name: "春节", type: "holiday" },
+  "2027-02-08": { name: "春节", type: "holiday" },
+  "2027-02-09": { name: "春节", type: "holiday" },
+  "2027-02-10": { name: "春节", type: "holiday" },
+  "2027-02-11": { name: "春节", type: "holiday" },
+  "2027-02-12": { name: "春节", type: "holiday" },
+  "2027-01-31": { name: "春节调休", type: "workday" },
+  "2027-02-14": { name: "春节调休", type: "workday" },
+  // 清明节
+  "2027-04-03": { name: "清明节", type: "holiday" },
+  "2027-04-04": { name: "清明节", type: "holiday" },
+  "2027-04-05": { name: "清明节", type: "holiday" },
+  // 劳动节
+  "2027-05-01": { name: "劳动节", type: "holiday" },
+  "2027-05-02": { name: "劳动节", type: "holiday" },
+  "2027-05-03": { name: "劳动节", type: "holiday" },
+  "2027-05-04": { name: "劳动节", type: "holiday" },
+  "2027-05-05": { name: "劳动节", type: "holiday" },
+  "2027-04-25": { name: "劳动节调休", type: "workday" },
+  // 端午节
+  "2027-05-31": { name: "端午节", type: "holiday" },
+  "2027-06-01": { name: "端午节", type: "holiday" },
+  "2027-06-02": { name: "端午节", type: "holiday" },
+  // 中秋节
+  "2027-09-23": { name: "中秋节", type: "holiday" },
+  "2027-09-24": { name: "中秋节", type: "holiday" },
+  "2027-09-25": { name: "中秋节", type: "holiday" },
+  // 国庆节
+  "2027-10-01": { name: "国庆节", type: "holiday" },
+  "2027-10-02": { name: "国庆节", type: "holiday" },
+  "2027-10-03": { name: "国庆节", type: "holiday" },
+  "2027-10-04": { name: "国庆节", type: "holiday" },
+  "2027-10-05": { name: "国庆节", type: "holiday" },
+  "2027-10-06": { name: "国庆节", type: "holiday" },
+  "2027-10-07": { name: "国庆节", type: "holiday" },
+  "2027-09-26": { name: "国庆调休", type: "workday" },
+  "2027-10-09": { name: "国庆调休", type: "workday" },
 };
 
 // 固定节日（每年相同日期）

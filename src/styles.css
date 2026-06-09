@@ -3,6 +3,8 @@
   --bg: #f0f2f5; --card: #fff; --text: #333; --text2: #666; --text3: #999;
   --border: #e0e0e0; --header-bg: #fff; --hover: #e8e8e8; --selected: #e3f2fd;
   --accent: #333; --work: #4CAF50; --rest: #2196F3; --trip: #FF9800;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #e8e8e8; --toast-bg: #333;
 }
 
@@ -10,6 +12,8 @@
   --bg: #1a1a2e; --card: #16213e; --text: #e0e0e0; --text2: #aaa; --text3: #666;
   --border: #2a2a4a; --header-bg: #16213e; --hover: #2a2a4a; --selected: #1a3a5c;
   --accent: #e0e0e0; --work: #66BB6A; --rest: #42A5F5; --trip: #FFA726;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
+  --leave: #CE93D8; --annual: #4DD0E1; --sick: #FF8A65; --personal: #A1887F;
   --toolbar-bg: #16213e; --toolbar-border: #2a2a4a; --toast-bg: #333;
 }
 
@@ -17,6 +21,8 @@
   --bg: #e8f5e9; --card: #fff; --text: #2e3b2e; --text2: #5a7a5a; --text3: #8aaf8a;
   --border: #c8e6c9; --header-bg: #fff; --hover: #c8e6c9; --selected: #a5d6a7;
   --accent: #2e7d32; --work: #43A047; --rest: #00897B; --trip: #EF6C00;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #c8e6c9; --toast-bg: #2e7d32;
 }
 
@@ -24,6 +30,7 @@
   --bg: #fce4ec; --card: #fff; --text: #4a2030; --text2: #8a4a60; --text3: #b08090;
   --border: #f8bbd0; --header-bg: #fff; --hover: #f8bbd0; --selected: #f48fb1;
   --accent: #c2185b; --work: #e91e63; --rest: #9c27b0; --trip: #ff6f00;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #f8bbd0; --toast-bg: #c2185b;
 }
 
@@ -31,6 +38,7 @@
   --bg: #ede7f6; --card: #fff; --text: #2d1b4e; --text2: #6a4c93; --text3: #9a8aaf;
   --border: #d1c4e9; --header-bg: #fff; --hover: #d1c4e9; --selected: #b39ddb;
   --accent: #5e35b1; --work: #7e57c2; --rest: #5c6bc0; --trip: #ff7043;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #d1c4e9; --toast-bg: #5e35b1;
 }
 
@@ -38,6 +46,7 @@
   --bg: #e3edf7; --card: #fff; --text: #1a2a3a; --text2: #4a6a8a; --text3: #8aafc0;
   --border: #bbdefb; --header-bg: #fff; --hover: #bbdefb; --selected: #90caf9;
   --accent: #1565c0; --work: #2e7d32; --rest: #0277bd; --trip: #e65100;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #bbdefb; --toast-bg: #1565c0;
 }
 
@@ -45,6 +54,7 @@
   --bg: #e0f2f1; --card: #fff; --text: #004d40; --text2: #00796b; --text3: #80cbc4;
   --border: #b2dfdb; --header-bg: #fff; --hover: #b2dfdb; --selected: #80cbc4;
   --accent: #00838f; --work: #00897b; --rest: #0277bd; --trip: #ef6c00;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #b2dfdb; --toast-bg: #00838f;
 }
 
@@ -52,6 +62,7 @@
   --bg: #fff3e0; --card: #fff; --text: #3e2723; --text2: #795548; --text3: #bcaaa4;
   --border: #ffe0b2; --header-bg: #fff; --hover: #ffe0b2; --selected: #ffcc80;
   --accent: #e65100; --work: #ef6c00; --rest: #f4511e; --trip: #6d4c41;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #ffe0b2; --toast-bg: #e65100;
 }
 
@@ -59,6 +70,7 @@
   --bg: #fbe9e7; --card: #fff; --text: #3e2723; --text2: #8d6e63; --text3: #bcaaa4;
   --border: #d7ccc8; --header-bg: #fff; --hover: #d7ccc8; --selected: #bcaaa4;
   --accent: #b76e79; --work: #c2185b; --rest: #ad1457; --trip: #8d6e63;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #d7ccc8; --toast-bg: #b76e79;
 }
 
@@ -66,6 +78,7 @@
   --bg: #e8f5e9; --card: #fff; --text: #1b3a1b; --text2: #33691e; --text3: #81c784;
   --border: #a5d6a7; --header-bg: #fff; --hover: #a5d6a7; --selected: #81c784;
   --accent: #2e7d32; --work: #388e3c; --rest: #558b2f; --trip: #827717;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #a5d6a7; --toast-bg: #2e7d32;
 }
 
@@ -73,6 +86,7 @@
   --bg: #efebe9; --card: #fff; --text: #3e2723; --text2: #5d4037; --text3: #a1887f;
   --border: #d7ccc8; --header-bg: #fff; --hover: #d7ccc8; --selected: #bcaaa4;
   --accent: #5d4037; --work: #795548; --rest: #6d4c41; --trip: #8d6e63;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #d7ccc8; --toast-bg: #5d4037;
 }
 
@@ -80,6 +94,7 @@
   --bg: #ede7f6; --card: #fff; --text: #311b92; --text2: #5e35b1; --text3: #b39ddb;
   --border: #d1c4e9; --header-bg: #fff; --hover: #d1c4e9; --selected: #b39ddb;
   --accent: #9575cd; --work: #7e57c2; --rest: #673ab7; --trip: #5c6bc0;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #d1c4e9; --toast-bg: #9575cd;
 }
 
@@ -87,6 +102,7 @@
   --bg: #e0f2f1; --card: #fff; --text: #004d40; --text2: #00695c; --text3: #80cbc4;
   --border: #b2dfdb; --header-bg: #fff; --hover: #b2dfdb; --selected: #80cbc4;
   --accent: #26a69a; --work: #00897b; --rest: #00acc1; --trip: #ff8f00;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #b2dfdb; --toast-bg: #26a69a;
 }
 
@@ -94,6 +110,7 @@
   --bg: #eceff1; --card: #fff; --text: #263238; --text2: #546e7a; --text3: #90a4ae;
   --border: #cfd8dc; --header-bg: #fff; --hover: #cfd8dc; --selected: #b0bec5;
   --accent: #546e7a; --work: #607d8b; --rest: #455a64; --trip: #78909c;
+  --leave: #9C27B0; --annual: #00BCD4; --sick: #FF5722; --personal: #795548;
   --toolbar-bg: #fff; --toolbar-border: #cfd8dc; --toast-bg: #546e7a;
 }
 
@@ -243,6 +260,10 @@ button:active::after {
 .day-cell[data-status="work"] .status-label { background: var(--work); }
 .day-cell[data-status="rest"] .status-label { background: var(--rest); }
 .day-cell[data-status="trip"] .status-label { background: var(--trip); }
+.day-cell[data-status="leave"] .status-label { background: var(--leave); }
+.day-cell[data-status="annual"] .status-label { background: var(--annual); }
+.day-cell[data-status="sick"] .status-label { background: var(--sick); }
+.day-cell[data-status="personal"] .status-label { background: var(--personal); }
 
 /* Note indicator */
 .day-cell.has-note::before {
@@ -308,12 +329,12 @@ button:active::after {
   font-size: 14px; color: var(--text2); margin-bottom: 10px;
 }
 
-.status-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.status-row { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
 
 .status-btn {
-  flex: 1; padding: 10px 0;
+  flex: 1; padding: 8px 0; min-width: 0;
   border: 2px solid var(--border); background: var(--card);
-  border-radius: 10px; font-size: 13px; cursor: pointer;
+  border-radius: 10px; font-size: 12px; cursor: pointer;
   transition: all 0.2s; color: var(--text2);
   font-weight: 500;
 }
@@ -323,6 +344,10 @@ button:active::after {
 .status-btn[data-status="work"].active { background: var(--work); border-color: var(--work); color: #fff; }
 .status-btn[data-status="rest"].active { background: var(--rest); border-color: var(--rest); color: #fff; }
 .status-btn[data-status="trip"].active { background: var(--trip); border-color: var(--trip); color: #fff; }
+.status-btn[data-status="leave"].active { background: var(--leave); border-color: var(--leave); color: #fff; }
+.status-btn[data-status="annual"].active { background: var(--annual); border-color: var(--annual); color: #fff; }
+.status-btn[data-status="sick"].active { background: var(--sick); border-color: var(--sick); color: #fff; }
+.status-btn[data-status="personal"].active { background: var(--personal); border-color: var(--personal); color: #fff; }
 
 /* Color picker */
 .color-row {
@@ -418,6 +443,24 @@ button:active::after {
 
 .tag-input-row {
   display: flex; gap: 6px; margin-bottom: 6px;
+  position: relative;
+}
+
+.tag-autocomplete {
+  position: absolute; top: 100%; left: 0; right: 40px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 100; max-height: 160px; overflow-y: auto;
+  margin-top: 2px;
+}
+
+.tag-autocomplete-item {
+  padding: 8px 12px; font-size: 12px; color: var(--text);
+  cursor: pointer; transition: background 0.15s;
+}
+
+.tag-autocomplete-item:hover {
+  background: var(--hover);
 }
 
 #tag-input {
@@ -533,6 +576,13 @@ button:active::after {
 .todo-check:hover { border-color: var(--work); }
 
 .todo-text { flex: 1; font-size: 12px; color: var(--text); }
+
+.todo-edit {
+  cursor: pointer; font-size: 13px; color: var(--text3);
+  line-height: 1; transition: color 0.15s; margin-left: auto;
+}
+
+.todo-edit:hover { color: var(--accent); }
 
 .todo-del {
   cursor: pointer; font-size: 16px; color: var(--text3);
@@ -706,6 +756,13 @@ button:active::after {
 
 .todo-view-text { font-size: 13px; color: var(--text); }
 .todo-view-date { font-size: 11px; color: var(--text3); }
+
+.todo-view-edit {
+  cursor: pointer; font-size: 13px; color: var(--text3);
+  line-height: 1; transition: color 0.15s;
+}
+
+.todo-view-edit:hover { color: var(--accent); }
 
 .todo-view-del {
   cursor: pointer; font-size: 18px; color: var(--text3);
@@ -897,6 +954,10 @@ button:active::after {
 .stat-card.work .stat-num { color: var(--work); }
 .stat-card.rest .stat-num { color: var(--rest); }
 .stat-card.trip .stat-num { color: var(--trip); }
+.stat-card.leave .stat-num { color: var(--leave); }
+.stat-card.annual .stat-num { color: var(--annual); }
+.stat-card.sick .stat-num { color: var(--sick); }
+.stat-card.personal .stat-num { color: var(--personal); }
 .stat-card.total .stat-num { color: var(--text3); }
 
 /* Ratio bar */
@@ -920,6 +981,10 @@ button:active::after {
 .ratio-seg.work { background: var(--work); }
 .ratio-seg.rest { background: var(--rest); }
 .ratio-seg.trip { background: var(--trip); }
+.ratio-seg.leave { background: var(--leave); }
+.ratio-seg.annual { background: var(--annual); }
+.ratio-seg.sick { background: var(--sick); }
+.ratio-seg.personal { background: var(--personal); }
 
 .ratio-legend {
   display: flex; justify-content: center;
@@ -935,6 +1000,10 @@ button:active::after {
 .legend-item.work::before { background: var(--work); }
 .legend-item.rest::before { background: var(--rest); }
 .legend-item.trip::before { background: var(--trip); }
+.legend-item.leave::before { background: var(--leave); }
+.legend-item.annual::before { background: var(--annual); }
+.legend-item.sick::before { background: var(--sick); }
+.legend-item.personal::before { background: var(--personal); }
 
 /* Records list */
 .records-title {
@@ -963,6 +1032,10 @@ button:active::after {
 .record-status.work { background: var(--work); }
 .record-status.rest { background: var(--rest); }
 .record-status.trip { background: var(--trip); }
+.record-status.leave { background: var(--leave); }
+.record-status.annual { background: var(--annual); }
+.record-status.sick { background: var(--sick); }
+.record-status.personal { background: var(--personal); }
 .record-status.none { background: var(--hover); color: var(--text3); }
 
 .record-note {
@@ -1052,6 +1125,77 @@ button:active::after {
 }
 
 .clockin-settings-btn:hover { background: var(--hover); }
+
+/* Water tracker */
+.water-tracker {
+  background: var(--card); border-radius: 12px;
+  padding: 14px; margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+
+.water-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.water-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.water-count { font-size: 13px; color: var(--accent); font-weight: 600; }
+
+.water-progress-bar {
+  height: 6px; background: var(--hover); border-radius: 3px;
+  overflow: hidden; margin-bottom: 12px;
+}
+
+.water-progress-fill {
+  height: 100%; background: linear-gradient(90deg, #42A5F5, #00BCD4);
+  border-radius: 3px; transition: width 0.3s ease;
+}
+
+.water-cups {
+  display: flex; gap: 4px; justify-content: center;
+  margin-bottom: 10px; flex-wrap: wrap;
+}
+
+.water-cup {
+  font-size: 20px; cursor: pointer; opacity: 0.3;
+  transition: all 0.2s; user-select: none;
+  filter: grayscale(1);
+}
+
+.water-cup.filled {
+  opacity: 1; filter: grayscale(0);
+  transform: scale(1.1);
+}
+
+.water-cup:hover { transform: scale(1.2); }
+
+.water-actions {
+  display: flex; gap: 12px; justify-content: center;
+}
+
+.water-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--card);
+  font-size: 18px; cursor: pointer; color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+
+.water-btn:hover:not(:disabled) { background: var(--hover); border-color: var(--accent); }
+.water-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.water-goal-reached {
+  text-align: center; font-size: 13px; color: var(--work);
+  margin-top: 8px; font-weight: 500;
+}
+
+/* Rest day skip message */
+.rest-day-skip {
+  text-align: center; padding: 24px 16px;
+  font-size: 15px; color: var(--text2);
+  background: var(--card); border-radius: 12px;
+  border: 1px solid var(--border);
+}
 
 /* Reminder cards */
 .clockin-today-reminders {

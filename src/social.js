@@ -48,9 +48,16 @@ async function renderSocialView() {
   let html = '';
 
   // Tabs
+  // 检查好友申请数量用于红点提示
+  let pendingCount = 0;
+  try {
+    const requests = await getFriendRequests();
+    pendingCount = requests ? requests.length : 0;
+  } catch {}
+
   html += '<div class="social-tabs">';
   html += `<span class="social-tab${socialTab === 'feed' ? ' active' : ''}" data-tab="feed">动态</span>`;
-  html += `<span class="social-tab${socialTab === 'friends' ? ' active' : ''}" data-tab="friends">好友</span>`;
+  html += `<span class="social-tab${socialTab === 'friends' ? ' active' : ''}" data-tab="friends">好友${pendingCount > 0 ? '<span class="tab-badge">' + pendingCount + '</span>' : ''}</span>`;
   html += `<span class="social-tab${socialTab === 'profile' ? ' active' : ''}" data-tab="profile">我的</span>`;
   html += '</div>';
 
@@ -124,6 +131,7 @@ function renderFeedPosts(container, posts) {
   html += '<button class="fab-btn" id="fab-add-post">✎</button>';
   container.innerHTML = html;
   bindPostEvents(container);
+  setupFeedPullToRefresh(container);
   const fab = document.getElementById('fab-add-post');
   if (fab) fab.addEventListener('click', openPostModal);
 }
@@ -159,6 +167,112 @@ async function renderFeed(container) {
       container.innerHTML = '<div class="social-empty">加载失败，请检查网络</div>';
     }
   }
+}
+
+// 下拉刷新 + 无限滚动
+function setupFeedPullToRefresh(container) {
+  let startY = 0, pulling = false, pullDist = 0;
+  const refreshThreshold = 60;
+  let refreshIndicator = null;
+
+  container.addEventListener('touchstart', (e) => {
+    if (container.scrollTop <= 0) {
+      startY = e.touches[0].clientY;
+      pulling = true;
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    if (!pulling) return;
+    pullDist = e.touches[0].clientY - startY;
+    if (pullDist > 0 && container.scrollTop <= 0) {
+      if (!refreshIndicator) {
+        refreshIndicator = document.createElement('div');
+        refreshIndicator.className = 'pull-refresh-indicator';
+        refreshIndicator.textContent = '下拉刷新';
+        container.insertBefore(refreshIndicator, container.firstChild);
+      }
+      const progress = Math.min(pullDist / refreshThreshold, 1);
+      refreshIndicator.style.height = Math.min(pullDist, 80) + 'px';
+      refreshIndicator.style.opacity = progress;
+      if (pullDist >= refreshThreshold) {
+        refreshIndicator.textContent = '释放刷新';
+      } else {
+        refreshIndicator.textContent = '下拉刷新';
+      }
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchend', async () => {
+    if (pulling && pullDist >= refreshThreshold) {
+      if (refreshIndicator) {
+        refreshIndicator.textContent = '刷新中...';
+        refreshIndicator.style.height = '40px';
+      }
+      // Refresh feed
+      try {
+        localStorage.removeItem(FEED_CACHE_KEY);
+        localStorage.removeItem(FEED_CACHE_TIME_KEY);
+        const fresh = await getFeedPosts(20, 0);
+        feedPosts = fresh;
+        feedOffset = 0;
+        setCachedFeed(fresh);
+        renderFeedPosts(container, feedPosts);
+      } catch (e) {
+        showToast('刷新失败');
+      }
+    }
+    // Cleanup
+    if (refreshIndicator) { refreshIndicator.remove(); refreshIndicator = null; }
+    pulling = false; pullDist = 0;
+  }, { passive: true });
+
+  // 无限滚动
+  container.addEventListener('scroll', async () => {
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+      await loadMoreFeedPosts(container);
+    }
+  });
+}
+
+let _loadingMore = false;
+async function loadMoreFeedPosts(container) {
+  if (_loadingMore) return;
+  const feedList = container.querySelector('.feed-list');
+  if (!feedList) return;
+  // Check if there's already a load-more indicator
+  if (container.querySelector('.feed-loading-more')) return;
+
+  _loadingMore = true;
+  const indicator = document.createElement('div');
+  indicator.className = 'feed-loading-more';
+  indicator.textContent = '加载中...';
+  feedList.appendChild(indicator);
+
+  try {
+    feedOffset += 20;
+    const more = await getFeedPosts(20, feedOffset);
+    if (more.length > 0) {
+      feedPosts = feedPosts.concat(more);
+      for (const post of more) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = renderPostCard(post);
+        feedList.insertBefore(tempDiv.firstChild, indicator);
+      }
+      // Rebind events for new posts
+      bindPostEvents(container);
+    } else {
+      indicator.textContent = '没有更多了';
+      setTimeout(() => indicator.remove(), 1500);
+    }
+  } catch (e) {
+    indicator.textContent = '加载失败';
+    setTimeout(() => indicator.remove(), 1500);
+  }
+  _loadingMore = false;
 }
 
 function renderPostCard(post) {

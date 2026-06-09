@@ -1,5 +1,7 @@
 // todos.js — Todo CRUD, rendering, modal
 
+let _editingTodoId = null; // null = add mode, non-null = edit mode
+
 async function loadTodos() {
   allTodos = await window.calendarAPI.getTodos();
 }
@@ -47,6 +49,7 @@ function renderTodoList(dateStr) {
     item.innerHTML = `
       <span class="todo-check" data-id="${todo.id}">${done ? '✓' : ''}</span>
       <span class="todo-text">${escapeHtml(todo.text)}${remindIcon}</span>
+      <span class="todo-edit" data-id="${todo.id}" title="编辑">✎</span>
       <span class="todo-del" data-id="${todo.id}">&times;</span>
     `;
     container.appendChild(item);
@@ -68,6 +71,12 @@ function renderTodoList(dateStr) {
       renderTodoList(dateStr);
       renderCalendar();
       showToast('已删除待办');
+    });
+  });
+  container.querySelectorAll('.todo-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const todo = allTodos.find(t => t.id === btn.dataset.id);
+      if (todo) openEditTodoModal(todo);
     });
   });
 }
@@ -117,7 +126,9 @@ function lunarToSolar(year, lunarMonth, lunarDay) {
 }
 
 function openTodoModal() {
+  _editingTodoId = null;
   const modal = document.getElementById('todo-modal');
+  document.getElementById('todo-modal-title').textContent = '添加待办';
   document.getElementById('todo-text-input').value = '';
   document.getElementById('todo-date-input').value = selectedDate || '';
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -135,6 +146,55 @@ function openTodoModal() {
   document.getElementById('todo-remind-time').style.display = 'none';
   // Show lunar hint for selected date
   updateLunarHint();
+  modal.style.display = 'flex';
+}
+
+function openEditTodoModal(todo) {
+  _editingTodoId = todo.id;
+  const modal = document.getElementById('todo-modal');
+  document.getElementById('todo-modal-title').textContent = '编辑待办';
+  document.getElementById('todo-text-input').value = todo.text || '';
+
+  // Set type
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  const typeBtn = document.querySelector(`.type-btn[data-type="${todo.type}"]`);
+  if (typeBtn) typeBtn.classList.add('active');
+  document.getElementById('todo-once-row').style.display = todo.type === 'once' ? '' : 'none';
+  document.getElementById('todo-weekly-row').style.display = todo.type === 'weekly' ? '' : 'none';
+  document.getElementById('todo-lunar-row').style.display = 'none';
+
+  // Set date for once type
+  if (todo.type === 'once') {
+    document.getElementById('todo-date-input').value = todo.date || '';
+    // Set calendar type
+    document.querySelectorAll('.calendar-type-btn').forEach(b => b.classList.remove('active'));
+    if (todo.lunarMonth) {
+      document.querySelector('.calendar-type-btn[data-caltype="lunar"]').classList.add('active');
+      document.getElementById('todo-once-row').style.display = 'none';
+      document.getElementById('todo-lunar-row').style.display = '';
+      document.getElementById('todo-lunar-month').value = todo.lunarMonth;
+      updateLunarDays();
+      document.getElementById('todo-lunar-day').value = todo.lunarDay;
+    } else {
+      document.querySelector('.calendar-type-btn[data-caltype="solar"]').classList.add('active');
+    }
+    updateLunarHint();
+  }
+
+  // Set weekdays for weekly type
+  document.querySelectorAll('.wd-btn').forEach(b => b.classList.remove('active'));
+  if (todo.type === 'weekly' && todo.weekdays) {
+    todo.weekdays.forEach(wd => {
+      const btn = document.querySelector(`.wd-btn[data-wd="${wd}"]`);
+      if (btn) btn.classList.add('active');
+    });
+  }
+
+  // Set remind
+  document.getElementById('todo-remind-select').value = todo.remind || '';
+  document.getElementById('todo-remind-time').value = todo.remindTime || '09:00';
+  document.getElementById('todo-remind-time').style.display = todo.remind ? '' : 'none';
+
   modal.style.display = 'flex';
 }
 
@@ -202,7 +262,7 @@ function setupTodoModal() {
     const text = document.getElementById('todo-text-input').value.trim();
     if (!text) { showToast('请输入待办内容'); return; }
     const type = document.querySelector('.type-btn.active').dataset.type;
-    const todo = { text, type };
+    const updates = { text, type };
     if (type === 'once') {
       const isLunar = document.querySelector('.calendar-type-btn[data-caltype="lunar"]').classList.contains('active');
       if (isLunar) {
@@ -210,37 +270,58 @@ function setupTodoModal() {
         const lunarDay = parseInt(document.getElementById('todo-lunar-day').value);
         const dateVal = lunarToSolar(currentYear, lunarMonth, lunarDay);
         if (!dateVal) { showToast('找不到对应的公历日期'); return; }
-        todo.date = dateVal;
-        todo.lunarMonth = lunarMonth;
-        todo.lunarDay = lunarDay;
+        updates.date = dateVal;
+        updates.lunarMonth = lunarMonth;
+        updates.lunarDay = lunarDay;
       } else {
         const dateVal = document.getElementById('todo-date-input').value;
         if (!dateVal) { showToast('请选择日期'); return; }
-        todo.date = dateVal;
+        updates.date = dateVal;
+        delete updates.lunarMonth;
+        delete updates.lunarDay;
       }
-      todo.done = false;
+      if (!_editingTodoId) updates.done = false;
     } else {
       const days = [];
       wdBtns.forEach(b => { if (b.classList.contains('active')) days.push(parseInt(b.dataset.wd)); });
       if (days.length === 0) { showToast('请选择重复星期'); return; }
-      todo.weekdays = days;
-      todo.weeklyDone = {};
+      updates.weekdays = days;
+      if (!_editingTodoId) updates.weeklyDone = {};
     }
     // Save remind settings
     const remindSelect = document.getElementById('todo-remind-select').value;
     const remindTime = document.getElementById('todo-remind-time').value;
     if (remindSelect) {
-      todo.remind = remindSelect; // '' | 'same' | '5' | '10' | '15' | '30' | '60'
-      todo.remindTime = remindTime; // e.g. '09:00'
-      todo.reminded = false; // track if already notified
+      updates.remind = remindSelect;
+      updates.remindTime = remindTime;
+      if (!_editingTodoId) updates.reminded = false;
+    } else {
+      updates.remind = '';
+      updates.remindTime = '';
     }
-    const saved = await window.calendarAPI.addTodo(todo);
-    allTodos.push(saved);
+
+    if (_editingTodoId) {
+      // Edit mode: update existing todo
+      const existing = allTodos.find(t => t.id === _editingTodoId);
+      if (existing) {
+        // Preserve done state and weeklyDone for edit
+        if (type === 'weekly') {
+          updates.weeklyDone = existing.weeklyDone || {};
+        }
+        await window.calendarAPI.updateTodo(_editingTodoId, updates);
+        Object.assign(existing, updates);
+        showToast('待办已更新');
+      }
+    } else {
+      // Add mode: create new todo
+      const saved = await window.calendarAPI.addTodo(updates);
+      allTodos.push(saved);
+      showToast('待办已添加');
+    }
     closeTodoModal();
     if (selectedDate) renderTodoList(selectedDate);
     renderCalendar();
     scheduleTodoReminders();
-    showToast('待办已添加');
   });
 }
 
@@ -286,6 +367,7 @@ function renderTodoView() {
           <span class="todo-view-text">${escapeHtml(todo.text)}</span>
           <span class="todo-view-date">${dateDisplay}${remindLabel}</span>
         </div>
+        <span class="todo-view-edit" data-id="${todo.id}" title="编辑">✎</span>
         <span class="todo-view-del" data-id="${todo.id}">&times;</span>
       </div>`;
     }
@@ -305,6 +387,7 @@ function renderTodoView() {
           <span class="todo-view-text">${escapeHtml(todo.text)}${remindLabel}</span>
           <span class="todo-view-date">${days}</span>
         </div>
+        <span class="todo-view-edit" data-id="${todo.id}" title="编辑">✎</span>
         <span class="todo-view-del" data-id="${todo.id}">&times;</span>
       </div>`;
     }
@@ -339,6 +422,13 @@ function renderTodoView() {
       renderTodoView();
       renderCalendar();
       showToast('已删除待办');
+    });
+  });
+
+  container.querySelectorAll('.todo-view-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const todo = allTodos.find(t => t.id === btn.dataset.id);
+      if (todo) openEditTodoModal(todo);
     });
   });
 

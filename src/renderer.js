@@ -16,8 +16,8 @@ let allReminderRecords = {};
 let reminderNotifTimer = null;
 
 const WEEKDAYS_CN = ['日', '一', '二', '三', '四', '五', '六'];
-const STATUS_LABELS = { work: '上班', rest: '休息', trip: '出差' };
-const STATUS_CHARS = { work: '班', rest: '休', trip: '差' };
+const STATUS_LABELS = { work: '上班', rest: '休息', trip: '出差', leave: '请假', annual: '年假', sick: '病假', personal: '事假' };
+const STATUS_CHARS = { work: '班', rest: '休', trip: '差', leave: '假', annual: '年', sick: '病', personal: '事' };
 
 const THEMES = [
   { id: 'default', name: '经典', color: '#333' },
@@ -64,8 +64,7 @@ async function refreshAllData() {
     allReminderRecords = await window.calendarAPI.getAllReminderRecords();
     renderCalendar();
     if (currentView === 'clockin') renderClockinView();
-    if (currentView === 'stats') renderStatsView();
-    if (currentView === 'todos') renderTodos();
+    if (currentView === 'stats') renderStats();
   } catch (e) {
     console.error('[refreshAllData] Failed:', e.message);
   }

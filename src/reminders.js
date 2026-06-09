@@ -28,6 +28,14 @@ function renderClockinView() {
   const container = document.getElementById('clockin-today-reminders');
   container.innerHTML = '';
 
+  // 检查今天是否标记为休息日
+  const todayData = allData[todayStr];
+  if (todayData && todayData.status === 'rest') {
+    container.innerHTML = '<div class="rest-day-skip">😴 今天是休息日，不需要打卡</div>';
+    renderClockinHistory();
+    return;
+  }
+
   const now = new Date();
   const currentTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
 
@@ -81,8 +89,84 @@ function renderClockinView() {
     });
   });
 
+  // 喝水记录
+  renderWaterTracker();
+
   // History
   renderClockinHistory();
+}
+
+// 喝水记录
+function getWaterCount(dateStr) {
+  try {
+    const raw = localStorage.getItem('water-records');
+    if (raw) { const records = JSON.parse(raw); return records[dateStr] || 0; }
+  } catch {}
+  return 0;
+}
+
+function setWaterCount(dateStr, count) {
+  let records = {};
+  try {
+    const raw = localStorage.getItem('water-records');
+    if (raw) records = JSON.parse(raw);
+  } catch {}
+  records[dateStr] = Math.max(0, count);
+  // 只保留最近30天的记录
+  const keys = Object.keys(records).sort();
+  while (keys.length > 30) { delete records[keys.shift()]; }
+  localStorage.setItem('water-records', JSON.stringify(records));
+}
+
+function renderWaterTracker() {
+  const container = document.getElementById('water-tracker');
+  if (!container) return;
+  const todayStr = getTodayStr();
+  const count = getWaterCount(todayStr);
+  const goal = 8; // 目标8杯
+  const progress = Math.min(count / goal, 1);
+
+  let cupsHtml = '';
+  for (let i = 0; i < goal; i++) {
+    cupsHtml += `<span class="water-cup${i < count ? ' filled' : ''}" data-idx="${i}">💧</span>`;
+  }
+
+  container.innerHTML = `
+    <div class="water-header">
+      <span class="water-title">💧 喝水记录</span>
+      <span class="water-count">${count}/${goal} 杯</span>
+    </div>
+    <div class="water-progress-bar">
+      <div class="water-progress-fill" style="width:${progress * 100}%"></div>
+    </div>
+    <div class="water-cups">${cupsHtml}</div>
+    <div class="water-actions">
+      <button class="water-btn water-minus" ${count <= 0 ? 'disabled' : ''}>−</button>
+      <button class="water-btn water-plus" ${count >= goal ? 'disabled' : ''}>+</button>
+    </div>
+    ${count >= goal ? '<div class="water-goal-reached">🎉 今日喝水目标已达成！</div>' : ''}
+  `;
+
+  container.querySelector('.water-minus').addEventListener('click', () => {
+    setWaterCount(todayStr, count - 1);
+    renderWaterTracker();
+  });
+  container.querySelector('.water-plus').addEventListener('click', () => {
+    setWaterCount(todayStr, count + 1);
+    renderWaterTracker();
+  });
+  container.querySelectorAll('.water-cup').forEach(cup => {
+    cup.addEventListener('click', () => {
+      const idx = parseInt(cup.dataset.idx);
+      // 点击已填充的杯子取消到最后一个，点击空杯子填充到该位置
+      if (idx < count) {
+        setWaterCount(todayStr, idx);
+      } else {
+        setWaterCount(todayStr, idx + 1);
+      }
+      renderWaterTracker();
+    });
+  });
 }
 
 function renderClockinHistory() {
@@ -244,6 +328,9 @@ function getClockinStatusForDate(dateStr) {
   return { confirmed: confirmed.length, total: enabled.length };
 }
 
+// 防止重复注册监听器
+let _notifListenersRegistered = false;
+
 async function scheduleReminderNotifications() {
   if (reminderNotifTimer) clearInterval(reminderNotifTimer);
 
@@ -277,16 +364,20 @@ async function scheduleReminderNotifications() {
 
       // Check exact alarm permission (Android 12+) — without this, alarms are delayed ~15min
       try {
-        const exactPerm = await LocalNotifications.checkExactNotificationSetting();
-        if (exactPerm && exactPerm.exact_alarm !== 'granted') {
-          showToast('⚠️ 请开启"精确闹钟"权限，否则提醒会延迟15分钟！');
-          await LocalNotifications.changeExactNotificationSetting();
+        if (LocalNotifications.checkExactNotificationSetting) {
+          const exactPerm = await LocalNotifications.checkExactNotificationSetting();
+          if (exactPerm && exactPerm.exact_alarm !== 'granted') {
+            showToast('⚠️ 请开启"精确闹钟"权限，否则提醒会延迟15分钟！');
+            if (LocalNotifications.changeExactNotificationSetting) {
+              await LocalNotifications.changeExactNotificationSetting();
+            }
+          }
         }
       } catch (exactErr) {
         console.warn('[Notifications] Exact alarm check error:', exactErr.message);
       }
 
-      // Register action type for clock-in confirmation
+      // Register action type for clock-in confirmation (only once)
       try {
         await LocalNotifications.registerActionTypes({
           types: [{
@@ -298,29 +389,29 @@ async function scheduleReminderNotifications() {
         console.warn('[Notifications] Register action type error:', typeErr.message);
       }
 
-      // Listen for notification action (user tapped "已打卡" or the notification itself)
-      LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
-        const extra = event.notification?.extra || {};
-        if (extra.reminderId && extra.date) {
-          // Auto-confirm the reminder
-          if (typeof confirmReminderRecord === 'function') {
-            confirmReminderRecord(extra.reminderId, extra.date);
-          }
-          if (window.calendarAPI?.confirmReminder) {
-            window.calendarAPI.confirmReminder(extra.date, extra.reminderId);
-          }
-          showToast('打卡成功 ✓');
-          // Refresh view if on clockin page
-          if (typeof currentView !== 'undefined' && currentView === 'clockin') renderClockinView();
-          if (typeof renderCalendar === 'function') renderCalendar();
-        }
-      });
+      // Register listeners only once to prevent duplicates
+      if (!_notifListenersRegistered) {
+        _notifListenersRegistered = true;
 
-      // Also listen for notification delivered (user tapped the notification body)
-      LocalNotifications.addListener('localNotificationReceived', (event) => {
-        // Notification received while app is in foreground - just log
-        console.log('[Notifications] Received in foreground:', event);
-      });
+        LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
+          const extra = event.notification?.extra || {};
+          if (extra.reminderId && extra.date) {
+            // Auto-confirm the reminder
+            if (window.calendarAPI?.confirmReminder) {
+              window.calendarAPI.confirmReminder(extra.date, extra.reminderId);
+            }
+            if (!allReminderRecords[extra.date]) allReminderRecords[extra.date] = {};
+            allReminderRecords[extra.date][extra.reminderId] = { confirmed: true, at: new Date().toISOString() };
+            showToast('打卡成功 ✓');
+            if (typeof currentView !== 'undefined' && currentView === 'clockin') renderClockinView();
+            if (typeof renderCalendar === 'function') renderCalendar();
+          }
+        });
+
+        LocalNotifications.addListener('localNotificationReceived', (event) => {
+          console.log('[Notifications] Received in foreground:', event);
+        });
+      }
 
       // Cancel all existing scheduled notifications
       try {
@@ -338,8 +429,8 @@ async function scheduleReminderNotifications() {
           id: 'clockin-reminders',
           name: '打卡提醒（有声）',
           description: '上班日历的打卡签到提醒（带声音和震动）',
-          importance: 5, // High (heads-up popup)
-          visibility: 1, // Public
+          importance: 5,
+          visibility: 1,
           sound: 'default',
           vibration: true,
           vibrationPattern: [0, 500, 200, 500, 200, 500],
@@ -350,7 +441,7 @@ async function scheduleReminderNotifications() {
           id: 'clockin-silent',
           name: '打卡提醒（静音）',
           description: '上班日历的打卡签到提醒（无声音）',
-          importance: 4, // Default
+          importance: 4,
           visibility: 1,
           sound: null,
           vibration: false
@@ -371,6 +462,11 @@ async function scheduleReminderNotifications() {
         console.warn('[Notifications] Create channel error:', channelErr.message);
       }
 
+      // 检查今天是否是休息日，如果是则跳过当天的打卡提醒
+      const todayStr = getTodayStr();
+      const todayData = allData[todayStr];
+      const isRestDay = todayData && todayData.status === 'rest';
+
       // Schedule notifications for the next 30 days
       const notifications = [];
       let notifId = Math.floor(Date.now() / 1000) % 1000000;
@@ -380,6 +476,10 @@ async function scheduleReminderNotifications() {
         const targetDate = new Date(today);
         targetDate.setDate(targetDate.getDate() + dayOffset);
         const dateStr = dateToStr(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+
+        // 检查目标日期是否是休息日
+        const dayData = allData[dateStr];
+        if (dayData && dayData.status === 'rest') continue;
 
         for (const r of enabled) {
           // Skip if already confirmed
@@ -412,7 +512,7 @@ async function scheduleReminderNotifications() {
 
       if (notifications.length > 0) {
         await LocalNotifications.schedule({ notifications });
-        console.log('[Notifications] Scheduled', notifications.length, 'notifications for next 7 days');
+        console.log('[Notifications] Scheduled', notifications.length, 'notifications for next 30 days');
       } else {
         console.log('[Notifications] All reminders already confirmed or past, nothing to schedule');
       }

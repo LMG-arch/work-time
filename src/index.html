@@ -32,6 +32,10 @@
           <button class="status-btn" data-status="work">上班</button>
           <button class="status-btn" data-status="rest">休息</button>
           <button class="status-btn" data-status="trip">出差</button>
+          <button class="status-btn" data-status="leave">请假</button>
+          <button class="status-btn" data-status="annual">年假</button>
+          <button class="status-btn" data-status="sick">病假</button>
+          <button class="status-btn" data-status="personal">事假</button>
         </div>
         <div class="color-row">
           <span class="color-label">标记颜色</span>
@@ -90,6 +94,7 @@
           <button id="clockin-settings-btn" class="clockin-settings-btn" title="提醒设置">&#x2699;&#xFE0F;</button>
         </div>
         <div id="clockin-today-reminders" class="clockin-today-reminders"></div>
+        <div id="water-tracker" class="water-tracker"></div>
         <div class="clockin-history-section">
           <div class="clockin-history-title">打卡记录</div>
           <div id="clockin-history" class="clockin-history"></div>
@@ -142,7 +147,7 @@
     <!-- Add Todo Modal -->
     <div id="todo-modal" class="modal">
       <div class="modal-content">
-        <div class="modal-title">添加待办</div>
+        <div class="modal-title" id="todo-modal-title">添加待办</div>
         <input id="todo-text-input" type="text" placeholder="待办内容" maxlength="50" class="modal-input">
         <div class="modal-row">
           <span class="modal-label">类型</span>

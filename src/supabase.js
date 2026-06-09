@@ -573,10 +573,10 @@ async function rejectFriendRequest(requestId) {
 }
 
 async function removeFriend(friendId) {
-  const user = await getCurrentUser();
-  if (!user) return false;
+  const uid = await getEffectiveUserId();
+  if (!uid) return false;
   const { error } = await sb.from('friendships').delete()
-    .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`);
+    .or(`and(user_id.eq.${uid},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${uid})`);
   return !error;
 }
 

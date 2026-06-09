@@ -246,6 +246,46 @@ function setupTagInputs() {
   const input = document.getElementById('tag-input');
   const addBtn = document.getElementById('tag-add-btn');
 
+  // 标签自动补全
+  let autocompleteEl = null;
+  function getAllUsedTags() {
+    const tagSet = new Set();
+    for (const dateStr of Object.keys(allData)) {
+      const d = allData[dateStr];
+      if (d && d.tags) d.tags.forEach(t => tagSet.add(t));
+    }
+    return Array.from(tagSet);
+  }
+
+  function showAutocomplete(query) {
+    hideAutocomplete();
+    const allTags = getAllUsedTags();
+    const currentTags = selectedDate ? (getDayData(selectedDate).tags || []) : [];
+    const matches = allTags.filter(t =>
+      t.includes(query) && !currentTags.includes(t)
+    ).slice(0, 8);
+    if (matches.length === 0) return;
+
+    autocompleteEl = document.createElement('div');
+    autocompleteEl.className = 'tag-autocomplete';
+    for (const tag of matches) {
+      const item = document.createElement('div');
+      item.className = 'tag-autocomplete-item';
+      item.textContent = tag;
+      item.addEventListener('click', () => {
+        addTag(tag);
+        hideAutocomplete();
+      });
+      autocompleteEl.appendChild(item);
+    }
+    input.parentElement.style.position = 'relative';
+    input.parentElement.appendChild(autocompleteEl);
+  }
+
+  function hideAutocomplete() {
+    if (autocompleteEl) { autocompleteEl.remove(); autocompleteEl = null; }
+  }
+
   async function addTag(text) {
     const tag = text.trim();
     if (!tag || !selectedDate) return;
@@ -258,11 +298,25 @@ function setupTagInputs() {
     renderTagList(newTags);
     updateCellTagIndicator(selectedDate, newTags);
     input.value = '';
+    hideAutocomplete();
   }
+
+  input.addEventListener('input', () => {
+    const val = input.value.trim();
+    if (val.length > 0) showAutocomplete(val);
+    else hideAutocomplete();
+  });
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); addTag(input.value); }
+    if (e.key === 'Escape') hideAutocomplete();
   });
+
+  input.addEventListener('blur', () => {
+    // Delay to allow click on autocomplete item
+    setTimeout(hideAutocomplete, 200);
+  });
+
   addBtn.addEventListener('click', () => addTag(input.value));
   document.querySelectorAll('.quick-tag').forEach(qt => {
     qt.addEventListener('click', () => addTag(qt.dataset.tag));
