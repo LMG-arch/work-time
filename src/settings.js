@@ -9,7 +9,7 @@ function renderSettingsView() {
     const opt = document.createElement('div');
     opt.className = 'theme-opt' + (currentTheme === t.id ? ' active' : '');
     opt.dataset.theme = t.id;
-    opt.innerHTML = `<div class="theme-dot" style="background:${t.color}"></div><span>${t.name}</span>`;
+    opt.innerHTML = `<div class="theme-dot" style="background:${escapeAttr(t.color)}"></div><span>${escapeHtml(t.name)}</span>`;
     opt.addEventListener('click', () => {
       setTheme(t.id);
       grid.querySelectorAll('.theme-opt').forEach(o => o.classList.remove('active'));
@@ -162,6 +162,18 @@ async function checkAndroidPermissions() {
       } catch (e) {
         console.error('[Settings] Open settings error:', e);
         showToast('请手动前往：系统设置 > 应用管理 > 上班日历 > 权限');
+      }
+    };
+  }
+
+  // Diagnose notifications button
+  const diagnoseBtn = document.getElementById('diagnose-notifications-btn');
+  if (diagnoseBtn) {
+    diagnoseBtn.onclick = async () => {
+      if (typeof diagnoseNotifications === 'function') {
+        await diagnoseNotifications();
+      } else {
+        showToast('诊断功能未加载');
       }
     };
   }

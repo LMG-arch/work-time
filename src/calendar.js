@@ -326,7 +326,11 @@ function setupTagInputs() {
 // --- Data ---
 
 async function loadAllData() {
+  console.log('[loadAllData] Loading data...');
   allData = await window.calendarAPI.getAllData();
+  console.log('[loadAllData] allData:', allData);
+  console.log('[loadAllData] allData keys:', Object.keys(allData || {}));
+  console.log('[loadAllData] allData length:', Object.keys(allData || {}).length);
 }
 
 async function loadHolidays() {

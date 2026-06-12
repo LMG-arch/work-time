@@ -21,8 +21,15 @@ async function getLocalVersion() {
       return await window.calendarAPI.getAppVersion();
     } catch {}
   }
-  // Web 降级：从 package.json 或硬编码读取
-  return { versionName: '3.1.8', versionCode: 14 };
+  // Web 降级：从 version.json 读取（与发布版本同步）
+  try {
+    const resp = await fetch('version.json');
+    if (resp.ok) {
+      const v = await resp.json();
+      return { versionName: v.version, versionCode: v.versionCode || 0 };
+    }
+  } catch {}
+  return { versionName: '3.2.3', versionCode: 19 };
 }
 
 // 版本比较：返回 1 (a>b), 0 (a=b), -1 (a<b)
@@ -48,9 +55,9 @@ async function checkForUpdate(silent) {
     if (!resp.ok) return null;
     const remote = await resp.json();
 
-    if (!remote.versionName || !remote.apkUrl) return null;
+    if (!remote.version || !remote.downloadUrl) return null;
 
-    const hasUpdate = compareVersions(remote.versionName, local.versionName) > 0;
+    const hasUpdate = compareVersions(remote.version, local.versionName) > 0;
     if (hasUpdate) {
       return remote;
     }
@@ -79,7 +86,7 @@ function showUpdateDialog(remote) {
   modal.innerHTML = `
     <div class="update-modal-content">
       <div class="update-icon">🎉</div>
-      <div class="update-title">发现新版本 v${escapeHtml(remote.versionName)}</div>
+      <div class="update-title">发现新版本 v${escapeHtml(remote.version)}</div>
       <div class="update-changelog">${escapeHtml(remote.changelog).replace(/\n/g, '<br>')}</div>
       <div class="update-actions">
         <button class="update-btn update-later">稍后再说</button>
@@ -96,7 +103,7 @@ function showUpdateDialog(remote) {
 
   modal.querySelector('.update-download').addEventListener('click', () => {
     modal.remove();
-    startDownload(remote.apkUrl);
+    startDownload(remote.downloadUrl);
   });
 
   // 点击背景关闭

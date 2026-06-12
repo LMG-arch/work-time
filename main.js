@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, dialog, shell, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, dialog, shell, Notification, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -13,7 +13,7 @@ let reminderTimers = [];
 // Notify renderer to auto-sync after data changes
 function notifyDataChanged() {
   if (win) {
-    try { win.webContents.send('data-changed'); } catch {}
+    try { win.webContents.send('data-changed'); } catch (e) { console.error('[Main] notifyDataChanged failed:', e.message); }
   }
 }
 
@@ -39,16 +39,41 @@ function initStore() {
   } catch {
     store = { days: {}, todos: [], reminders: null, reminderRecords: {} };
   }
+  // 清理超过 90 天的墓碑记录和旧数据
+  cleanupOldDays();
+}
+
+// 清理超过 90 天的墓碑记录，防止数据无限增长
+function cleanupOldDays() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  let cleaned = 0;
+  for (const dateStr of Object.keys(store.days)) {
+    if (dateStr < cutoffStr && store.days[dateStr].deleted) {
+      delete store.days[dateStr];
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) console.log('[Main] Cleaned', cleaned, 'old tombstone records');
 }
 
 function saveStore() {
-  fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+  try {
+    fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[Main] saveStore failed:', e.message);
+  }
   notifyDataChanged();
 }
 
 // Save without triggering sync notification (used by sync-write to avoid loops)
 function saveStoreSilent() {
-  fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+  try {
+    fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[Main] saveStoreSilent failed:', e.message);
+  }
 }
 
 function saveDayData(dateStr, status, note, tags, color) {
@@ -58,7 +83,11 @@ function saveDayData(dateStr, status, note, tags, color) {
   } else {
     store.days[dateStr] = { status, note, tags: tags || [], color: color || '', updatedAt: new Date().toISOString(), deleted: false };
   }
-  fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+  try {
+    fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[Main] saveDayData failed:', e.message);
+  }
   notifyDataChanged();
 }
 
@@ -74,11 +103,19 @@ function isAutoLaunchEnabled() {
 function setAutoLaunch(enable) {
   if (enable) {
     const shortcutTarget = process.execPath;
-    // Use PowerShell to create shortcut
-    const ps = `$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('${SHORTCUT_PATH.replace(/\\/g, '\\\\')}'); $s.TargetPath = '${shortcutTarget.replace(/\\/g, '\\\\')}'; $s.WorkingDirectory = '${path.dirname(shortcutTarget).replace(/\\/g, '\\\\')}'; $s.Save()`;
-    require('child_process').execSync(`powershell -NoProfile -Command "${ps}"`, { windowsHide: true });
+    const workingDir = path.dirname(shortcutTarget);
+    // Use PowerShell with encoded command to avoid injection
+    const psScript = `
+      $ws = New-Object -ComObject WScript.Shell
+      $s = $ws.CreateShortcut('${SHORTCUT_PATH.replace(/'/g, "''")}')
+      $s.TargetPath = '${shortcutTarget.replace(/'/g, "''")}'
+      $s.WorkingDirectory = '${workingDir.replace(/'/g, "''")}'
+      $s.Save()
+    `;
+    const encodedCommand = Buffer.from(psScript, 'utf16le').toString('base64');
+    require('child_process').execSync(`powershell -NoProfile -EncodedCommand ${encodedCommand}`, { windowsHide: true });
   } else {
-    try { fs.unlinkSync(SHORTCUT_PATH); } catch {}
+    try { fs.unlinkSync(SHORTCUT_PATH); } catch (e) { console.error('[Main] Remove shortcut failed:', e.message); }
   }
 }
 
@@ -154,27 +191,70 @@ function registerIPC() {
     try {
       const raw = fs.readFileSync(filePaths[0], 'utf-8');
       const imported = JSON.parse(raw);
-      if (imported.days) {
-        Object.assign(store.days, imported.days);
-      } else {
-        Object.assign(store.days, imported);
+
+      // 验证导入数据结构
+      if (!imported || typeof imported !== 'object') {
+        return { success: false, error: '无效的数据格式' };
       }
-      if (imported.reminders) store.reminders = imported.reminders;
-      if (imported.reminderRecords) Object.assign(store.reminderRecords, imported.reminderRecords);
-      fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+
+      if (imported.days && typeof imported.days === 'object') {
+        // 验证 days 数据
+        for (const [key, val] of Object.entries(imported.days)) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+          if (typeof val !== 'object' || val === null) continue;
+          store.days[key] = {
+            status: val.status || null,
+            note: typeof val.note === 'string' ? val.note.slice(0, 500) : '',
+            tags: Array.isArray(val.tags) ? val.tags.filter(t => typeof t === 'string').slice(0, 10) : [],
+            color: typeof val.color === 'string' ? val.color : '',
+            updatedAt: typeof val.updatedAt === 'string' ? val.updatedAt : new Date().toISOString(),
+            deleted: !!val.deleted
+          };
+        }
+      } else {
+        // Old format: keys are date strings, values are day records
+        for (const [k, v] of Object.entries(imported)) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(k) && typeof v === 'object' && v !== null) {
+            store.days[k] = {
+              status: v.status || null,
+              note: typeof v.note === 'string' ? v.note.slice(0, 500) : '',
+              tags: Array.isArray(v.tags) ? v.tags.filter(t => typeof t === 'string').slice(0, 10) : [],
+              color: typeof v.color === 'string' ? v.color : '',
+              updatedAt: typeof v.updatedAt === 'string' ? v.updatedAt : new Date().toISOString(),
+              deleted: !!v.deleted
+            };
+          }
+        }
+      }
+      if (Array.isArray(imported.reminders)) {
+        store.reminders = imported.reminders;
+      }
+      if (imported.reminderRecords && typeof imported.reminderRecords === 'object') {
+        Object.assign(store.reminderRecords, imported.reminderRecords);
+      }
+      // 安全：禁止导入文件覆盖 supabase 配置，防止恶意服务器劫持
+      try {
+        fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+      } catch (e) {
+        console.error('[Main] import writeFileSync failed:', e.message);
+      }
       scheduleReminders();
+      scheduleTodoReminders();
       return { success: true };
-    } catch {
+    } catch (e) {
+      console.error('[Main] import-data failed:', e.message);
       return { success: false, error: '文件格式错误' };
     }
   });
 
-  ipcMain.handle('get-auto-launch', () => isAutoLaunchEnabled());
-
-  ipcMain.handle('set-auto-launch', (_, enable) => {
-    setAutoLaunch(enable);
-    return { success: true };
-  });
+    // Auto-launch: Windows only
+    if (process.platform === 'win32') {
+      ipcMain.handle('get-auto-launch', () => isAutoLaunchEnabled());
+      ipcMain.handle('set-auto-launch', (_, enable) => {
+        setAutoLaunch(enable);
+        return { success: true };
+      });
+    }
 
   // Holidays
   const { HOLIDAYS, FIXED_HOLIDAYS } = require('./src/holidays.js');
@@ -218,6 +298,7 @@ function registerIPC() {
     todo.updatedAt = new Date().toISOString();
     store.todos.push(todo);
     saveStore();
+    scheduleTodoReminders();
     return todo;
   });
 
@@ -227,6 +308,7 @@ function registerIPC() {
       updates.updatedAt = new Date().toISOString();
       Object.assign(store.todos[idx], updates);
       saveStore();
+      scheduleTodoReminders();
       return store.todos[idx];
     }
     return null;
@@ -235,6 +317,7 @@ function registerIPC() {
   ipcMain.handle('delete-todo', (_, id) => {
     store.todos = store.todos.filter(t => t.id !== id);
     saveStore();
+    scheduleTodoReminders();
     return { success: true };
   });
 
@@ -282,6 +365,7 @@ function registerIPC() {
     }
     saveStoreSilent();
     scheduleReminders();
+    scheduleTodoReminders();
     return { success: true };
   });
 
@@ -384,6 +468,18 @@ function scheduleReminders() {
 function createWindow() {
   Menu.setApplicationMenu(null);
 
+  // Security: set CSP to block inline scripts and external resources
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';"
+        ]
+      }
+    });
+  });
+
   win = new BrowserWindow({
     width: 420,
     height: 620,
@@ -470,6 +566,92 @@ function createTray() {
   });
 }
 
+// --- Todo reminder notifications ---
+
+let todoRemindTimers = [];
+
+function scheduleTodoReminders() {
+  todoRemindTimers.forEach(t => clearInterval(t));
+  todoRemindTimers = [];
+
+  const todos = store.todos || [];
+  const todosWithRemind = todos.filter(t => t.remind && !t.done);
+  if (todosWithRemind.length === 0) return;
+
+  console.log('[Main] Scheduling todo reminders for', todosWithRemind.length, 'todos');
+
+  function checkTodoReminders() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${hh}:${mm}`;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const weekday = now.getDay();
+
+    for (const todo of todosWithRemind) {
+      if (todo.done) continue;
+
+      // Determine if this todo applies today
+      let appliesToday = false;
+      if (todo.type === 'once') {
+        appliesToday = (todo.date === todayStr);
+      } else if (todo.type === 'weekly') {
+        appliesToday = (todo.weekdays || []).includes(weekday);
+      }
+      if (!appliesToday) continue;
+
+      // Calculate reminder time
+      let targetTime = todo.remindTime || '09:00';
+      const [th, tm] = targetTime.split(':').map(Number);
+      let remindMinutes = th * 60 + tm;
+      if (todo.remind !== 'same') {
+        remindMinutes -= parseInt(todo.remind) || 0;
+      }
+      if (remindMinutes < 0) remindMinutes = 0;
+      const remindH = Math.floor(remindMinutes / 60);
+      const remindM = remindMinutes % 60;
+      const remindTimeStr = `${String(remindH).padStart(2, '0')}:${String(remindM).padStart(2, '0')}`;
+
+      if (remindTimeStr !== currentTime) continue;
+
+      // Check if already reminded
+      const remindedKey = `todo-reminded-${todo.id}-${todayStr}`;
+      if (!store._todoReminded) store._todoReminded = {};
+      if (store._todoReminded[remindedKey]) continue;
+      store._todoReminded[remindedKey] = Date.now();
+      // Clean up old keys (keep last 7 days)
+      const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      for (const key of Object.keys(store._todoReminded)) {
+        if (store._todoReminded[key] < cutoff) delete store._todoReminded[key];
+      }
+
+      const iconPath = path.join(__dirname, 'assets', 'icon.png');
+      const iconOpts = fs.existsSync(iconPath) ? { icon: iconPath } : {};
+
+      try {
+        const notification = new Notification({
+          title: '上班日历 · 待办提醒',
+          body: `📋 ${todo.text} (${targetTime})`,
+          ...iconOpts,
+          silent: false,
+          requireInteraction: true
+        });
+        notification.on('click', () => {
+          if (win) { win.show(); win.focus(); }
+        });
+        notification.show();
+        console.log('[Main] Todo notification shown:', todo.text, targetTime);
+      } catch (e) {
+        console.error('[Main] Todo notification error:', e.message);
+      }
+    }
+  }
+
+  checkTodoReminders();
+  const timer = setInterval(checkTodoReminders, 10000);
+  todoRemindTimers.push(timer);
+}
+
 // --- App lifecycle ---
 
 app.whenReady().then(() => {
@@ -478,6 +660,7 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   scheduleReminders();
+  scheduleTodoReminders();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

@@ -87,7 +87,8 @@ async function updateAccountUI() {
     const displayId = profile ? profile.display_id : '-';
     const avatarEl = document.getElementById('account-avatar');
     if (profile && profile.avatar) {
-      avatarEl.innerHTML = `<img src="${escapeHtml(profile.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      const safeAvatarUrl = typeof sanitizeUrl === 'function' ? sanitizeUrl(profile.avatar) : profile.avatar;
+      avatarEl.innerHTML = `<img src="${escapeHtml(safeAvatarUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
       avatarEl.classList.remove('avatar-placeholder');
     } else {
       avatarEl.textContent = nickname[0];
@@ -654,57 +655,111 @@ async function setupAdminControls() {
 // ===== Init =====
 
 document.addEventListener('DOMContentLoaded', async () => {
-  loadTheme();
+  try {
+    loadTheme();
+  } catch (e) {
+    console.error('[Init] loadTheme failed:', e.message);
+  }
+
   const today = new Date();
   currentYear = today.getFullYear();
   currentMonth = today.getMonth();
-  await Promise.all([loadAllData(), loadHolidays(), loadTodos(), loadReminders(), loadReminderRecords()]);
-  renderCalendar();
-  setupEventListeners();
+
+  try {
+    await Promise.all([loadAllData(), loadHolidays(), loadTodos(), loadReminders(), loadReminderRecords()]);
+  } catch (e) {
+    console.error('[Init] Data loading failed:', e.message);
+  }
+
+  try {
+    renderCalendar();
+  } catch (e) {
+    console.error('[Init] renderCalendar failed:', e.message);
+  }
+
+  try {
+    setupEventListeners();
+  } catch (e) {
+    console.error('[Init] setupEventListeners failed:', e.message);
+  }
 
   // Setup interactive components (deferred from module load)
-  if (typeof setupColorPicker === 'function') setupColorPicker();
-  if (typeof setupTagInputs === 'function') setupTagInputs();
-  if (typeof setupTodoModal === 'function') setupTodoModal();
-  if (typeof setupPostImagePicker === 'function') setupPostImagePicker();
+  try {
+    if (typeof setupColorPicker === 'function') setupColorPicker();
+    if (typeof setupTagInputs === 'function') setupTagInputs();
+    if (typeof setupTodoModal === 'function') setupTodoModal();
+    if (typeof setupPostImagePicker === 'function') setupPostImagePicker();
+  } catch (e) {
+    console.error('[Init] Interactive components setup failed:', e.message);
+  }
 
-  scheduleReminderNotifications();
-  scheduleTodoReminders();
+  try {
+    scheduleReminderNotifications();
+    scheduleTodoReminders();
+  } catch (e) {
+    console.error('[Init] Reminder scheduling failed:', e.message);
+  }
 
   // Init social (Supabase)
-  if (typeof initSocial === 'function') await initSocial();
+  try {
+    if (typeof initSocial === 'function') await initSocial();
+  } catch (e) {
+    console.error('[Init] initSocial failed:', e.message);
+  }
 
   // Setup admin controls (needs Supabase to be initialized first)
-  if (typeof setupAdminControls === 'function') await setupAdminControls();
+  try {
+    if (typeof setupAdminControls === 'function') await setupAdminControls();
+  } catch (e) {
+    console.error('[Init] setupAdminControls failed:', e.message);
+  }
 
   // Listen for reminder confirmations from Electron main process
-  if (window.calendarAPI.onReminderConfirmed) {
-    window.calendarAPI.onReminderConfirmed(async (data) => {
-      if (!allReminderRecords[data.date]) allReminderRecords[data.date] = {};
-      allReminderRecords[data.date][data.reminderId] = { confirmed: true, at: new Date().toISOString() };
-      if (currentView === 'clockin') renderClockinView();
-      renderCalendar();
-      showToast('打卡成功 ✓');
-    });
+  try {
+    if (window.calendarAPI?.onReminderConfirmed) {
+      window.calendarAPI.onReminderConfirmed(async (data) => {
+        if (!allReminderRecords[data.date]) allReminderRecords[data.date] = {};
+        allReminderRecords[data.date][data.reminderId] = { confirmed: true, at: new Date().toISOString() };
+        if (currentView === 'clockin') renderClockinView();
+        renderCalendar();
+        showToast('打卡成功 ✓');
+      });
+    }
+  } catch (e) {
+    console.error('[Init] onReminderConfirmed setup failed:', e.message);
   }
 
   // Electron: auto-sync when data changes in main process
-  if (window.calendarAPI?.onDataChanged) {
-    window.calendarAPI.onDataChanged(() => {
-      if (typeof autoSyncPush === 'function') {
-        autoSyncPush().then(() => {
-          refreshAllData();
-        });
-      }
-    });
+  try {
+    if (window.calendarAPI?.onDataChanged) {
+      window.calendarAPI.onDataChanged(() => {
+        if (typeof autoSyncPush === 'function') {
+          autoSyncPush().then(() => {
+            refreshAllData();
+          }).catch(e => {
+            console.error('[onDataChanged] Sync failed:', e.message);
+          });
+        }
+      });
+    }
+  } catch (e) {
+    console.error('[Init] onDataChanged setup failed:', e.message);
   }
 
   // Hide auto-launch on mobile
-  if (window.Capacitor || !navigator.userAgent.includes('Electron')) {
-    const autoBtn = document.getElementById('auto-launch-btn');
-    if (autoBtn) autoBtn.parentElement.style.display = 'none';
+  try {
+    if (window.Capacitor || !navigator.userAgent.includes('Electron')) {
+      const autoBtn = document.getElementById('auto-launch-btn');
+      if (autoBtn) autoBtn.parentElement.style.display = 'none';
+    }
+  } catch (e) {
+    console.error('[Init] Auto-launch hide failed:', e.message);
   }
 
   // 启动时自动检查更新
-  if (typeof autoCheckUpdate === 'function') autoCheckUpdate();
+  try {
+    if (typeof autoCheckUpdate === 'function') autoCheckUpdate();
+  } catch (e) {
+    console.error('[Init] autoCheckUpdate failed:', e.message);
+  }
 });

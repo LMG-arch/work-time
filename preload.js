@@ -1,5 +1,18 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// 管理每个 channel 的监听器，避免 removeAllListeners 误杀其他模块的监听
+const _channelListeners = {};
+
+function safeOn(channel, callback) {
+  // 移除本模块之前注册的监听器，而非清除所有
+  if (_channelListeners[channel]) {
+    ipcRenderer.removeListener(channel, _channelListeners[channel]);
+  }
+  const handler = (_, data) => callback(data);
+  _channelListeners[channel] = handler;
+  ipcRenderer.on(channel, handler);
+}
+
 contextBridge.exposeInMainWorld('calendarAPI', {
   getAllData: () => ipcRenderer.invoke('get-all-data'),
   getMonthData: (year, month) => ipcRenderer.invoke('get-month-data', year, month),
@@ -21,9 +34,12 @@ contextBridge.exposeInMainWorld('calendarAPI', {
   confirmReminder: (date, reminderId) => ipcRenderer.invoke('confirm-reminder', date, reminderId),
   getReminderRecords: (date) => ipcRenderer.invoke('get-reminder-records', date),
   getAllReminderRecords: () => ipcRenderer.invoke('get-all-reminder-records'),
-  onReminderConfirmed: (callback) => ipcRenderer.on('reminder-confirmed', (_, data) => callback(data)),
+  onReminderConfirmed: (callback) => safeOn('reminder-confirmed', callback),
   // Sync bridge: read/write full store for cloud sync
   syncRead: () => ipcRenderer.invoke('sync-read'),
   syncWrite: (data) => ipcRenderer.invoke('sync-write', data),
-  onDataChanged: (callback) => ipcRenderer.on('data-changed', () => callback())
+  onDataChanged: (callback) => {
+    ipcRenderer.removeAllListeners('data-changed');
+    ipcRenderer.on('data-changed', () => callback());
+  }
 });

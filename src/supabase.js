@@ -109,7 +109,8 @@ async function restoreExpiredSession() {
   if (!sb) return null;
   const savedUsername = getSavedUsername();
   const savedHash = localStorage.getItem(ACCOUNT_HASH_KEY);
-  if (!savedUsername || !savedHash) return null;
+  const savedSalt = getSavedSalt();
+  if (!savedUsername || !savedHash || !savedSalt) return null;
 
   try {
     // Create a fresh anonymous session
@@ -141,14 +142,27 @@ async function restoreExpiredSession() {
 
 const ACCOUNT_USERNAME_KEY = 'social-account-username';
 const ACCOUNT_HASH_KEY = 'social-account-hash';
+const ACCOUNT_SALT_KEY = 'social-account-salt';
 
-// Simple SHA-256 hash for passwords (browser Web Crypto API)
-async function hashPassword(password) {
+// 生成随机盐值
+function generateSalt() {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// SHA-256 哈希密码（使用随机盐值，每个用户独立）
+async function hashPassword(password, salt) {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password + '_workcalendar_salt');
+  const data = encoder.encode(password + ':' + salt);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// 获取已保存的盐值（用于登录/恢复）
+function getSavedSalt() {
+  return localStorage.getItem(ACCOUNT_SALT_KEY) || '';
 }
 
 async function registerAccount(username, password) {
@@ -165,7 +179,9 @@ async function registerAccount(username, password) {
     setBoundUserId(user.id);
   }
 
-  const pwHash = await hashPassword(password);
+  // 生成随机盐值并哈希密码
+  const salt = generateSalt();
+  const pwHash = await hashPassword(password, salt);
   const { data, error } = await sb.rpc('register_username', {
     p_username: username,
     p_password_hash: pwHash
@@ -175,6 +191,7 @@ async function registerAccount(username, password) {
 
   localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
   localStorage.setItem(ACCOUNT_HASH_KEY, pwHash);
+  localStorage.setItem(ACCOUNT_SALT_KEY, salt);
   if (typeof _currentUserId !== 'undefined') _currentUserId = user.id;
   return { user: { id: user.id } };
 }
@@ -192,7 +209,9 @@ async function loginAccount(username, password) {
     setBoundUserId(currentUser.id);
   }
 
-  const pwHash = await hashPassword(password);
+  // 生成随机盐值并哈希密码
+  const salt = generateSalt();
+  const pwHash = await hashPassword(password, salt);
   const { data, error } = await sb.rpc('login_username', {
     p_username: username,
     p_password_hash: pwHash
@@ -203,6 +222,7 @@ async function loginAccount(username, password) {
   const userId = data.user_id;
   localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
   localStorage.setItem(ACCOUNT_HASH_KEY, pwHash);
+  localStorage.setItem(ACCOUNT_SALT_KEY, salt);
   setBoundUserId(userId);
   if (typeof _currentUserId !== 'undefined') _currentUserId = userId;
   return { user: { id: userId } };
@@ -212,7 +232,8 @@ async function loginAccount(username, password) {
 async function restoreAccount() {
   const username = getSavedUsername();
   const pwHash = localStorage.getItem(ACCOUNT_HASH_KEY);
-  if (!username || !pwHash || !sb) return false;
+  const salt = getSavedSalt();
+  if (!username || !pwHash || !salt || !sb) return false;
 
   // Check if already logged in with correct user
   const currentUser = await getCurrentUser();
@@ -256,6 +277,7 @@ async function logoutAccount() {
   }
   localStorage.removeItem(ACCOUNT_USERNAME_KEY);
   localStorage.removeItem(ACCOUNT_HASH_KEY);
+  localStorage.removeItem(ACCOUNT_SALT_KEY);
   localStorage.removeItem('social-bound-user-id');
   if (typeof _currentUserId !== 'undefined') _currentUserId = null;
 }
@@ -374,7 +396,8 @@ async function uploadPostImage(file) {
   if (!user) { console.error('[Upload] no user'); return null; }
   const compressed = await compressImage(file);
   console.log('[Upload] original:', file.size, 'compressed:', compressed.size);
-  const path = `${Date.now()}.jpg`;
+  // 路径必须以用户 ID 开头，符合存储策略
+  const path = `${user.id}/${Date.now()}.jpg`;
   const { data, error } = await sb.storage.from('post-images').upload(path, compressed, { upsert: true });
   if (error) {
     console.error('[Upload] error:', JSON.stringify(error));
@@ -957,6 +980,24 @@ async function _doSyncCalendarData() {
 
     await applyCalendarData(cloudData);
   }
+
+  // 清理超过 30 天的 tombstone 记录，避免数据膨胀
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const cutoffTime = thirtyDaysAgo.getTime();
+
+  const currentData = await collectCalendarData();
+  if (currentData.workData?.days) {
+    for (const [date, day] of Object.entries(currentData.workData.days)) {
+      if (day.deleted && day.updatedAt) {
+        const deletedTime = new Date(day.updatedAt).getTime();
+        if (deletedTime < cutoffTime) {
+          delete currentData.workData.days[date];
+        }
+      }
+    }
+  }
+  await applyCalendarData(currentData);
 
   // Push merged data to cloud
   const pushData = await collectCalendarData();

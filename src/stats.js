@@ -1,8 +1,15 @@
 // stats.js — Monthly statistics view
 
 function renderStats() {
-  updateMonthLabel();
+  try {
+    updateMonthLabel();
+  } catch (e) {
+    console.error('[Stats] updateMonthLabel error:', e);
+  }
+
   const container = document.getElementById('stats-content');
+  if (!container) return;
+
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
 
   let workDays = 0, restDays = 0, tripDays = 0, leaveDays = 0, annualDays = 0, sickDays = 0, personalDays = 0, holidayCount = 0, workdayCount = 0;
@@ -146,14 +153,16 @@ function renderStats() {
 }
 
 // 导出统计为图片
-function exportStatsAsImage(stats) {
+async function exportStatsAsImage(stats) {
   const { workDays, restDays, tripDays, leaveDays, annualDays, sickDays, personalDays, noStatus, sortedTags, dayRecords, holidayCount, workdayCount } = stats;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const W = 400;
   const totalDays = workDays + restDays + tripDays + leaveDays + annualDays + sickDays + personalDays;
   const rowsNeeded = 7 + sortedTags.length + dayRecords.length + (holidayCount || workdayCount ? 2 : 0);
-  const H = Math.max(600, rowsNeeded * 22 + 200);
+  // 预估每行高度：记录行可能包含 note/tags 需要更多空间
+  const avgRowHeight = dayRecords.some(r => r.note && r.note.length > 20 || r.tags.length > 3) ? 30 : 22;
+  const H = Math.max(600, rowsNeeded * avgRowHeight + 200);
   canvas.width = W; canvas.height = H;
 
   // Background
@@ -191,7 +200,7 @@ function exportStatsAsImage(stats) {
     ctx.fillText(s.label, cx + cardW / 2 - 10, cy + 36);
   }
 
-  y += Math.ceil(stats.length / 4) * 50 + 15;
+  y += Math.ceil(statCards.length / 4) * 50 + 15;
 
   // Holiday info
   if (holidayCount || workdayCount) {
@@ -221,7 +230,11 @@ function exportStatsAsImage(stats) {
     ctx.fillText(`逐日记录 (${dayRecords.length}天)`, 20, y); y += 18;
     ctx.font = '11px sans-serif';
     for (const r of dayRecords) {
-      if (y > H - 30) break;
+      if (y > H - 30) {
+        ctx.fillStyle = '#999';
+        ctx.fillText(`... 还有 ${dayRecords.length - (r.day ? dayRecords.indexOf(r) : 0)} 条记录`, 20, y);
+        break;
+      }
       const d = new Date(r.dateStr + 'T00:00:00');
       const weekday = WEEKDAYS_CN[d.getDay()];
       const statusText = STATUS_LABELS[r.status] || '未标记';

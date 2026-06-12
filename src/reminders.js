@@ -5,8 +5,11 @@ async function loadReminders() {
 }
 
 // 生成不重复的通知 ID（Java int 范围：-2147483648 ~ 2147483647）
+let _notifIdCounter = 0;
 function generateNotifId() {
-  return Math.floor(Date.now() / 1000) % 2000000000 + Math.floor(Math.random() * 1000);
+  _notifIdCounter = (_notifIdCounter + 1) % 1000000;
+  const rand = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
+  return Math.floor(Date.now() / 1000) % 1000000 * 1000 + _notifIdCounter + rand % 1000;
 }
 
 async function loadReminderRecords() {
@@ -38,7 +41,7 @@ function renderClockinView() {
   const nonWorkStatuses = ['rest', 'leave', 'annual', 'sick', 'personal'];
   if (todayData && nonWorkStatuses.includes(todayData.status)) {
     const statusLabel = STATUS_LABELS[todayData.status] || '休息';
-    container.innerHTML = `<div class="rest-day-skip">😴 今天是${statusLabel}日，不需要打卡</div>`;
+    container.innerHTML = `<div class="rest-day-skip">😴 今天是${escapeHtml(statusLabel)}日，不需要打卡</div>`;
     renderWaterTracker();
     renderClockinHistory();
     return;
@@ -262,15 +265,57 @@ function closeReminderSettings() {
 
 async function sendTestNotification() {
   const isCapacitor = isCapacitorPlatform();
+
   if (isCapacitor) {
     try {
       const { LocalNotifications } = window.Capacitor.Plugins;
-      if (!LocalNotifications) { showToast('通知插件未加载'); return; }
+      if (!LocalNotifications) {
+        showToast('❌ 通知插件未加载，请运行 npx cap sync android');
+        return;
+      }
+
       const perm = await LocalNotifications.requestPermissions();
-      if (perm.display !== 'granted') { showToast('请在系统设置中开启通知权限'); return; }
+      if (perm.display !== 'granted') {
+        showToast('❌ 通知权限被拒绝，请在系统设置中开启');
+        return;
+      }
+
+      // 检查精确闹钟权限
+      if (LocalNotifications.checkExactNotificationSetting) {
+        try {
+          const exactPerm = await LocalNotifications.checkExactNotificationSetting();
+          if (exactPerm && exactPerm.exact_alarm !== 'granted') {
+            const userConfirmed = confirm('⚠️ 精确闹钟权限未开启\n\n没有此权限，通知会延迟15分钟！\n\n点击"确定"前往设置页面开启');
+            if (userConfirmed && LocalNotifications.changeExactNotificationSetting) {
+              await LocalNotifications.changeExactNotificationSetting();
+              showToast('请在设置中开启精确闹钟权限后，再次测试');
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('[Test] Exact alarm check error:', e.message);
+        }
+      }
+
+      // 创建通知渠道
+      try {
+        await LocalNotifications.createChannel({
+          id: 'clockin-reminders',
+          name: '打卡提醒',
+          description: '上班日历的打卡提醒',
+          importance: 5,
+          visibility: 1,
+          sound: 'default',
+          vibration: true
+        });
+      } catch (e) {
+        console.warn('[Test] Channel creation warning:', e.message);
+      }
+
+      // 发送测试通知
       await LocalNotifications.schedule({
         notifications: [{
-          id: 999999,
+          id: generateNotifId(),
           title: '上班日历 · 测试通知',
           body: '🔔 如果你看到这条通知，说明通知功能正常！',
           schedule: { at: new Date(Date.now() + 1000) },
@@ -280,9 +325,10 @@ async function sendTestNotification() {
           vibrate: true
         }]
       });
-      showToast('测试通知已发送，1秒后弹出');
+      showToast('✅ 测试通知已发送，1秒后弹出');
     } catch (e) {
-      showToast('通知发送失败: ' + e.message);
+      console.error('[Test] Notification error:', e);
+      showToast('❌ 通知发送失败: ' + (e.message || '未知错误'));
     }
   } else if (window.calendarAPI?.notifyTodo) {
     window.calendarAPI.notifyTodo('测试通知 - 如果你看到这条通知，说明通知功能正常！', '现在');
@@ -298,6 +344,83 @@ async function sendTestNotification() {
   } else {
     showToast('当前环境不支持通知');
   }
+}
+
+// 诊断通知状态
+async function diagnoseNotifications() {
+  const isCapacitor = isCapacitorPlatform();
+  const results = [];
+
+  if (isCapacitor) {
+    const { LocalNotifications } = window.Capacitor.Plugins;
+
+    // 1. 检查插件是否加载
+    if (!LocalNotifications) {
+      results.push('❌ LocalNotifications 插件未加载');
+      results.push('   解决: 运行 npx cap sync android');
+    } else {
+      results.push('✅ LocalNotifications 插件已加载');
+
+      // 2. 检查通知权限
+      try {
+        const perm = await LocalNotifications.checkPermissions();
+        if (perm.display === 'granted') {
+          results.push('✅ 通知权限已授予');
+        } else {
+          results.push('❌ 通知权限未授予');
+          results.push('   解决: 在系统设置中开启通知权限');
+        }
+      } catch (e) {
+        results.push('❌ 检查通知权限失败: ' + e.message);
+      }
+
+      // 3. 检查精确闹钟权限
+      try {
+        if (LocalNotifications.checkExactNotificationSetting) {
+          const exactPerm = await LocalNotifications.checkExactNotificationSetting();
+          if (exactPerm && exactPerm.exact_alarm === 'granted') {
+            results.push('✅ 精确闹钟权限已授予');
+          } else {
+            results.push('❌ 精确闹钟权限未授予');
+            results.push('   解决: 在设置中开启"精确闹钟"权限');
+            results.push('   路径: 设置 → 应用 → 上班日历 → 精确闹钟');
+          }
+        }
+      } catch (e) {
+        results.push('❌ 检查精确闹钟权限失败: ' + e.message);
+      }
+
+      // 4. 检查通知渠道
+      try {
+        const channels = await LocalNotifications.listChannels();
+        if (channels && channels.channels) {
+          const clockinChannel = channels.channels.find(ch => ch.id === 'clockin-reminders');
+          if (clockinChannel) {
+            results.push('✅ 通知渠道已创建');
+          } else {
+            results.push('⚠️ 通知渠道未创建，将在下次调度时创建');
+          }
+        }
+      } catch (e) {
+        results.push('⚠️ 检查通知渠道失败: ' + e.message);
+      }
+
+      // 5. 检查待发送的通知
+      try {
+        const pending = await LocalNotifications.getPending();
+        if (pending && pending.notifications) {
+          results.push(`📋 待发送通知数量: ${pending.notifications.length}`);
+        }
+      } catch (e) {
+        results.push('⚠️ 检查待发送通知失败: ' + e.message);
+      }
+    }
+  } else {
+    results.push('ℹ️ 当前不是 Android 环境');
+  }
+
+  // 显示诊断结果
+  alert('通知诊断结果:\n\n' + results.join('\n'));
 }
 
 async function saveReminderSettings() {
@@ -373,12 +496,21 @@ async function scheduleReminderNotifications() {
       }
 
       // Check exact alarm permission (Android 12+) — without this, alarms are delayed ~15min
+      // Android 16: SCHEDULE_EXACT_ALARM is revoked by default, must guide user to settings
       try {
         if (LocalNotifications.checkExactNotificationSetting) {
           const exactPerm = await LocalNotifications.checkExactNotificationSetting();
+          console.log('[Notifications] Exact alarm permission:', exactPerm);
           if (exactPerm && exactPerm.exact_alarm !== 'granted') {
-            showToast('⚠️ 请开启"精确闹钟"权限，否则提醒会延迟15分钟！');
-            if (LocalNotifications.changeExactNotificationSetting) {
+            // Show detailed guidance for Android 16
+            const userConfirmed = confirm(
+              '⚠️ 精确闹钟权限未开启\n\n' +
+              '没有此权限，打卡提醒会延迟15分钟！\n\n' +
+              '点击"确定"前往设置页面开启：\n' +
+              '1. 找到"精确闹钟"或"Alarms & reminders"\n' +
+              '2. 开启"上班日历"的权限'
+            );
+            if (userConfirmed && LocalNotifications.changeExactNotificationSetting) {
               await LocalNotifications.changeExactNotificationSetting();
             }
           }
@@ -528,12 +660,13 @@ async function scheduleReminderNotifications() {
       // 防止系统清除已调度的通知
       if (!window._notifRescheduleRegistered) {
         window._notifRescheduleRegistered = true;
-        document.addEventListener('visibilitychange', () => {
+        window._notifVisibilityHandler = () => {
           if (document.visibilityState === 'visible') {
             console.log('[Notifications] App resumed, rescheduling notifications');
             scheduleReminderNotifications();
           }
-        });
+        };
+        document.addEventListener('visibilitychange', window._notifVisibilityHandler);
       }
     } catch (e) {
       console.error('[Notifications] Capacitor scheduling error:', e);
@@ -543,13 +676,27 @@ async function scheduleReminderNotifications() {
   }
 
   // === 轮询兜底：所有平台都运行 ===
-  // 每 10 秒检查一次，如果当前时间到了提醒时间，立即发通知
+  // 每 30 秒检查一次，如果当前时间到了提醒时间，立即发通知
   // 预调度可能被系统延迟，轮询确保不会漏掉
   if (reminderNotifTimer) clearInterval(reminderNotifTimer);
 
   const isElectron = typeof window.calendarAPI?.saveReminders === 'function' && !isCapacitor;
 
+  // Android: 不暂停轮询，因为需要后台通知
+  // Web/Electron: 页面不可见时暂停轮询，节省电池
+  let reminderPollingPaused = false;
+  if (!isCapacitor) {
+    if (!window._reminderVisibilityHandler) {
+      window._reminderVisibilityHandler = () => {
+        reminderPollingPaused = document.visibilityState === 'hidden';
+      };
+      document.addEventListener('visibilitychange', window._reminderVisibilityHandler);
+    }
+    reminderPollingPaused = document.visibilityState === 'hidden';
+  }
+
   reminderNotifTimer = setInterval(() => {
+    if (reminderPollingPaused) return;
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
@@ -593,14 +740,8 @@ async function scheduleReminderNotifications() {
           console.warn('[Polling] Capacitor notification error:', e.message);
         }
       } else if (isElectron) {
-        // Electron: 通过 IPC 通知主进程
-        try {
-          if (window.calendarAPI?.notifyTodo) {
-            window.calendarAPI.notifyTodo(r.label, r.time);
-          }
-        } catch (e) {
-          console.warn('[Polling] Electron notification error:', e.message);
-        }
+        // Electron: 由主进程负责通知，渲染进程跳过避免重复
+        // main.js 的 scheduleReminders 已经在处理通知
       } else if ('Notification' in window && Notification.permission === 'granted') {
         // Web browser fallback
         try {
@@ -616,7 +757,7 @@ async function scheduleReminderNotifications() {
         }
       }
     }
-  }, 10000);
+  }, 30000);
 
   // 请求 Web 通知权限（非 Electron、非 Capacitor 时需要）
   if (!isCapacitor && !isElectron && 'Notification' in window && Notification.permission === 'default') {
@@ -631,8 +772,96 @@ let todoRemindTimer = null;
 function scheduleTodoReminders() {
   if (todoRemindTimer) clearInterval(todoRemindTimer);
 
-  // Check every 10 seconds for timely reminders
+  const isCapacitor = isCapacitorPlatform();
+
+  // Capacitor Android: 使用预调度机制（和打卡通知相同）
+  if (isCapacitor) {
+    try {
+      const { LocalNotifications } = window.Capacitor.Plugins;
+      if (!LocalNotifications) {
+        console.warn('[TodoRemind] LocalNotifications plugin not found');
+        return;
+      }
+
+      // 预调度待办通知
+      const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
+      if (todosWithRemind.length === 0) return;
+
+      const notifications = [];
+      const today = new Date();
+      const todayStr = getTodayStr();
+
+      // 调度未来 30 天的待办通知
+      for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
+        const targetDate = new Date(today);
+        targetDate.setDate(targetDate.getDate() + dayOffset);
+        const dateStr = dateToStr(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+        const weekday = targetDate.getDay();
+
+        for (const todo of todosWithRemind) {
+          // 确定目标日期
+          let shouldSchedule = false;
+          if (todo.type === 'once') {
+            shouldSchedule = (todo.date === dateStr);
+          } else if (todo.type === 'weekly') {
+            shouldSchedule = (todo.weekdays || []).includes(weekday);
+          }
+
+          if (!shouldSchedule) continue;
+
+          // 计算提醒时间
+          let targetTime = todo.remindTime || '09:00';
+          const [th, tm] = targetTime.split(':').map(Number);
+          let remindMinutes = th * 60 + tm;
+          if (todo.remind !== 'same') {
+            remindMinutes -= parseInt(todo.remind) || 0;
+          }
+          if (remindMinutes < 0) remindMinutes = 0;
+
+          const remindH = Math.floor(remindMinutes / 60);
+          const remindM = remindMinutes % 60;
+
+          const scheduleDate = new Date(targetDate);
+          scheduleDate.setHours(remindH, remindM, 0, 0);
+
+          // 跳过已过去的时间
+          if (scheduleDate <= new Date()) continue;
+
+          notifications.push({
+            id: generateNotifId(),
+            title: '上班日历 · 待办提醒',
+            body: `📋 ${todo.text} (${targetTime})`,
+            schedule: { at: scheduleDate, allowWhileIdle: true },
+            smallIcon: 'ic_launcher',
+            channelId: 'todo-reminders',
+            sound: 'default',
+            vibrate: true
+          });
+        }
+      }
+
+      if (notifications.length > 0) {
+        LocalNotifications.schedule({ notifications });
+        console.log('[TodoRemind] Scheduled', notifications.length, 'todo notifications');
+      }
+    } catch (e) {
+      console.error('[TodoRemind] Scheduling error:', e);
+    }
+    return;
+  }
+
+  // Web/Electron: 使用轮询机制
+  let todoPollingPaused = false;
+  if (!window._todoVisibilityHandler) {
+    window._todoVisibilityHandler = () => {
+      todoPollingPaused = document.visibilityState === 'hidden';
+    };
+    document.addEventListener('visibilitychange', window._todoVisibilityHandler);
+  }
+  todoPollingPaused = document.visibilityState === 'hidden';
+
   todoRemindTimer = setInterval(() => {
+    if (todoPollingPaused) return;
     const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
     if (todosWithRemind.length === 0) return;
 
@@ -645,7 +874,6 @@ function scheduleTodoReminders() {
     for (const todo of todosWithRemind) {
       if (todo.done) continue;
 
-      // Determine the target date and time for this todo
       let targetDate = null;
       let targetTime = todo.remindTime || '09:00';
 
@@ -660,7 +888,6 @@ function scheduleTodoReminders() {
 
       if (!targetDate || targetDate !== todayStr) continue;
 
-      // Calculate the remind time
       const [th, tm] = targetTime.split(':').map(Number);
       let remindMinutes = th * 60 + tm;
       if (todo.remind !== 'same') {
@@ -674,40 +901,14 @@ function scheduleTodoReminders() {
 
       if (remindTimeStr !== currentTime) continue;
 
-      // Check if already reminded for this date
       const remindKey = `todo-reminded-${todo.id}-${todayStr}`;
       if (localStorage.getItem(remindKey)) continue;
 
-      // Mark as reminded
       localStorage.setItem(remindKey, '1');
 
-      // Send notification
-      const isCap = isCapacitorPlatform();
-      if (isCap) {
-        try {
-          const { LocalNotifications } = window.Capacitor.Plugins;
-          if (LocalNotifications) {
-            LocalNotifications.schedule({
-              notifications: [{
-                id: generateNotifId(),
-                title: '上班日历 · 待办提醒',
-                body: `📋 ${todo.text} (${targetTime})`,
-                schedule: { at: new Date() },
-                smallIcon: 'ic_launcher',
-                channelId: 'todo-reminders',
-                sound: 'default',
-                vibrate: true
-              }]
-            });
-          }
-        } catch (e) {
-          console.warn('[TodoRemind] Capacitor notification error:', e);
-        }
-      } else if (window.calendarAPI?.notifyTodo) {
-        // Electron: notify via main process (single notification path)
+      if (window.calendarAPI?.notifyTodo) {
         window.calendarAPI.notifyTodo(todo.text, targetTime);
       } else if ('Notification' in window && Notification.permission === 'granted') {
-        // Pure web browser fallback (not Electron, not Capacitor)
         try {
           const notif = new Notification('上班日历 · 待办提醒', {
             body: `📋 ${todo.text} (${targetTime})`,
@@ -715,14 +916,11 @@ function scheduleTodoReminders() {
             tag: 'todo-' + todo.id,
             requireInteraction: true
           });
-          notif.onclick = () => {
-            window.focus();
-            switchView('clockin');
-          };
+          notif.onclick = () => { window.focus(); switchView('clockin'); };
         } catch (e) {
           console.warn('[TodoRemind] Web notification error:', e);
         }
       }
     }
-  }, 10000);
+  }, 30000);
 }

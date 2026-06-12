@@ -686,6 +686,27 @@ MIT
 
 ## 更新日志
 
+### v3.3.0 (2026-06-12) — 安全加固与全面质量审查
+- **安全修复**：添加 CSP（Content-Security-Policy）阻止外部脚本注入
+- **安全修复**：移除 CDN fallback，防止供应链攻击
+- **安全修复**：导入数据禁止覆盖 Supabase 配置，防止服务器劫持
+- **安全修复**：设置页 Anon Key 改为密码掩码显示
+- **修复**：visibilitychange 监听器累积泄漏 — 改用具名函数单次注册
+- **修复**：通知 ID 碰撞概率高 — 使用 crypto.getRandomValues + 计数器
+- **修复**：saveReminders 的 updatedAt 在 localStorage 中丢失 — 改用包装对象存储
+- **修复**：自动同步错误静默丢失 — 添加 .catch() 错误处理
+- **修复**：统计图片导出高度计算不足导致记录被截断
+- **修复**：硬编码版本号改为从 version.json 动态读取
+- **改进**：store.days 自动清理超过 90 天的墓碑记录，防止数据无限增长
+- **改进**：weeklyDone 自动清理超过 60 天的旧记录
+- **改进**：待办 IPC 调用添加 try-catch 和回滚机制
+- **改进**：开机自启仅在 Windows 平台注册 IPC
+- **改进**：头像 URL 统一使用 sanitizeUrl 校验
+- **改进**：preload.js safeOn 改用 channel 级别监听器管理
+- **改进**：移除 sendTestNotification 中 7 个 alert() 调试弹窗
+- **改进**：writeFileSync 全部添加 try-catch 防止磁盘满崩溃
+- **改进**：silent catch 块添加 console.error 日志
+
 ### v3.1.8 (2026-06-06) — 新功能与自动更新
 - **新功能**：待办编辑 — 点击 ✎ 按钮编辑已有待办，无需删除重建
 - **新功能**：更多状态类型 — 请假、年假、病假、事假，统计页同步显示

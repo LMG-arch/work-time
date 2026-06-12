@@ -262,7 +262,7 @@
           </div>
           <div class="settings-field">
             <label>Anon Key</label>
-            <input id="supabase-key-input" class="settings-input" placeholder="sb_publishable_xxx 或 eyJxxx">
+            <input id="supabase-key-input" class="settings-input" type="password" placeholder="sb_publishable_xxx 或 eyJxxx">
           </div>
           <div class="settings-btn-row">
             <button id="supabase-save-btn" class="settings-action-btn">保存配置</button>
@@ -306,6 +306,7 @@
             <div class="settings-hint" style="margin-bottom:8px;">以下权限影响通知和更新功能，建议全部开启</div>
             <div id="perms-list"></div>
             <button id="open-app-settings-btn" class="settings-action-btn full" style="margin-top:8px;">前往系统设置</button>
+            <button id="diagnose-notifications-btn" class="settings-action-btn full" style="margin-top:8px;background:#2196F3;">🔍 诊断通知问题</button>
           </div>
         </div>
         <div class="settings-group">
@@ -326,7 +327,7 @@
     </div>
   </div>
 
-  <script src="lib/supabase.min.js" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';s.onload=function(){if(typeof initSupabase==='function'&&typeof sb!=='undefined'&&!sb)window.sb=initSupabase();};document.head.appendChild(s);"></script>
+  <script src="lib/supabase.min.js"></script>
   <script src="utils.js"></script>
   <script src="holidays.js"></script>
   <script src="lunar.js"></script>

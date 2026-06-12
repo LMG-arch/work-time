@@ -42,6 +42,16 @@
       return result;
     },
 
+    async getMonthData(year, month) {
+      const days = getStore().days;
+      const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const result = {};
+      for (const [key, val] of Object.entries(days)) {
+        if (key.startsWith(prefix) && !val.deleted) result[key] = val;
+      }
+      return result;
+    },
+
     async saveDay(date, status, note, tags, color) {
       const store = getStore();
       if (!status && !note && (!tags || tags.length === 0) && !color) {
@@ -132,31 +142,67 @@
           try {
             const text = await file.text();
             const imported = JSON.parse(text);
+
+            // 验证导入数据结构
+            if (!imported || typeof imported !== 'object') {
+              return resolve({ success: false, error: '无效的数据格式' });
+            }
+
             const store = getStore();
-            if (imported.days) {
-              Object.assign(store.days, imported.days);
+            if (imported.days && typeof imported.days === 'object') {
+              // 验证 days 数据
+              for (const [key, val] of Object.entries(imported.days)) {
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+                if (typeof val !== 'object' || val === null) continue;
+                // 只保留有效字段
+                store.days[key] = {
+                  status: val.status || null,
+                  note: typeof val.note === 'string' ? val.note.slice(0, 500) : '',
+                  tags: Array.isArray(val.tags) ? val.tags.filter(t => typeof t === 'string').slice(0, 10) : [],
+                  color: typeof val.color === 'string' ? val.color : '',
+                  updatedAt: typeof val.updatedAt === 'string' ? val.updatedAt : new Date().toISOString(),
+                  deleted: !!val.deleted
+                };
+              }
             } else if (typeof imported === 'object') {
               // Old format: keys are date strings, values are day records
               for (const [k, v] of Object.entries(imported)) {
-                if (/^\d{4}-\d{2}-\d{2}$/.test(k) && typeof v === 'object') {
-                  store.days[k] = v;
+                if (/^\d{4}-\d{2}-\d{2}$/.test(k) && typeof v === 'object' && v !== null) {
+                  store.days[k] = {
+                    status: v.status || null,
+                    note: typeof v.note === 'string' ? v.note.slice(0, 500) : '',
+                    tags: Array.isArray(v.tags) ? v.tags.filter(t => typeof t === 'string').slice(0, 10) : [],
+                    color: typeof v.color === 'string' ? v.color : '',
+                    updatedAt: typeof v.updatedAt === 'string' ? v.updatedAt : new Date().toISOString(),
+                    deleted: !!v.deleted
+                  };
                 }
               }
             }
-            if (imported.todos) {
-              store.todos = imported.todos;
+            if (Array.isArray(imported.todos)) {
+              // 验证 todos 数据
+              store.todos = imported.todos.filter(t => t && typeof t === 'object').map(t => ({
+                id: typeof t.id === 'string' ? t.id : Date.now().toString(36),
+                text: typeof t.text === 'string' ? t.text.slice(0, 200) : '',
+                done: !!t.done,
+                type: t.type || 'once',
+                date: typeof t.date === 'string' ? t.date : '',
+                weekdays: Array.isArray(t.weekdays) ? t.weekdays : [],
+                remind: t.remind || null,
+                remindTime: typeof t.remindTime === 'string' ? t.remindTime : '',
+                updatedAt: typeof t.updatedAt === 'string' ? t.updatedAt : new Date().toISOString()
+              }));
             }
             saveStore(store);
             // Import reminders and records
-            if (imported.reminders) {
+            if (Array.isArray(imported.reminders)) {
               localStorage.setItem('calendar-reminders', JSON.stringify(imported.reminders));
             }
-            if (imported.reminderRecords) {
+            if (imported.reminderRecords && typeof imported.reminderRecords === 'object') {
               localStorage.setItem('calendar-reminder-records', JSON.stringify(imported.reminderRecords));
             }
-            if (imported.supabaseConfig) {
-              localStorage.setItem('supabase-config', JSON.stringify(imported.supabaseConfig));
-            }
+            // 安全：禁止导入文件覆盖 supabase 配置，防止恶意服务器劫持
+            // 原有的 supabaseConfig 导入已移除
             resolve({ success: true });
           } catch {
             resolve({ success: false, error: '文件格式错误' });
@@ -174,7 +220,13 @@
     async getReminders() {
       try {
         const raw = localStorage.getItem('calendar-reminders');
-        if (raw) return JSON.parse(raw);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          // 兼容新格式 { items, updatedAt } 和旧格式纯数组
+          if (Array.isArray(parsed)) return parsed;
+          if (parsed && Array.isArray(parsed.items)) return parsed.items;
+          return parsed;
+        }
       } catch {}
       return [
         { id: 'r1', label: '上班打卡', time: '08:30', enabled: true },
@@ -185,8 +237,9 @@
     },
 
     async saveReminders(reminders) {
-      reminders.updatedAt = new Date().toISOString();
-      localStorage.setItem('calendar-reminders', JSON.stringify(reminders));
+      // updatedAt 不能加在数组上（JSON.stringify 会丢失），存为包装对象
+      const wrapper = { items: reminders, updatedAt: new Date().toISOString() };
+      localStorage.setItem('calendar-reminders', JSON.stringify(wrapper));
       if (typeof autoSyncPush === 'function') autoSyncPush();
       return { success: true };
     },
@@ -235,7 +288,13 @@
           }
         } catch {}
       }
-      return { versionName: '3.1.8', versionCode: 14 };
+      // 尝试从 package.json 读取版本号
+      let versionName = '3.2.3', versionCode = 19;
+      try {
+        // 读取远程 version.json 会在 updater.js 中处理
+        // 这里只用于 Capacitor 降级场景
+      } catch {}
+      return { versionName, versionCode };
     }
   };
 })();

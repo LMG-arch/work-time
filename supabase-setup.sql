@@ -347,7 +347,15 @@ CREATE INDEX IF NOT EXISTS idx_friendships_deleted ON friendships(deleted_at);
 -- 存储桶（用于帖子图片）
 INSERT INTO storage.buckets (id, name, public) VALUES ('post-images', 'post-images', true) ON CONFLICT (id) DO NOTHING;
 
--- 存储策略：所有人可读，登录用户可上传和删除
+-- 存储策略：所有人可读，登录用户只能上传和删除自己的文件
 CREATE POLICY "post_images_select" ON storage.objects FOR SELECT USING (bucket_id = 'post-images');
-CREATE POLICY "post_images_insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'post-images');
-CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (bucket_id = 'post-images');
+CREATE POLICY "post_images_insert" ON storage.objects FOR INSERT WITH CHECK (
+  bucket_id = 'post-images'
+  AND auth.uid() IS NOT NULL
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+CREATE POLICY "post_images_delete" ON storage.objects FOR DELETE USING (
+  bucket_id = 'post-images'
+  AND auth.uid() IS NOT NULL
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
