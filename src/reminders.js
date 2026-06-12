@@ -8,8 +8,10 @@ async function loadReminders() {
 let _notifIdCounter = 0;
 function generateNotifId() {
   _notifIdCounter = (_notifIdCounter + 1) % 1000000;
-  const rand = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
-  return Math.floor(Date.now() / 1000) % 1000000 * 1000 + _notifIdCounter + rand % 1000;
+  const rand = crypto.getRandomValues(new Uint32Array(1))[0] % 1000;
+  const raw = Math.floor(Date.now() / 1000) % 1000000 * 1000 + _notifIdCounter + rand;
+  const id = raw % 2147483647;
+  return id > 0 ? id : id + 2147483647;
 }
 
 async function loadReminderRecords() {
@@ -664,6 +666,8 @@ async function scheduleReminderNotifications() {
           if (document.visibilityState === 'visible') {
             console.log('[Notifications] App resumed, rescheduling notifications');
             scheduleReminderNotifications();
+            // 待办提醒也必须重新调度，否则系统清除后不会恢复
+            if (typeof scheduleTodoReminders === 'function') scheduleTodoReminders();
           }
         };
         document.addEventListener('visibilitychange', window._notifVisibilityHandler);
@@ -847,7 +851,7 @@ function scheduleTodoReminders() {
     } catch (e) {
       console.error('[TodoRemind] Scheduling error:', e);
     }
-    return;
+    // 不 return，继续执行下面的轮询兜底逻辑（和打卡提醒一致）
   }
 
   // Web/Electron: 使用轮询机制

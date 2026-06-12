@@ -157,13 +157,15 @@ async function exportStatsAsImage(stats) {
   const { workDays, restDays, tripDays, leaveDays, annualDays, sickDays, personalDays, noStatus, sortedTags, dayRecords, holidayCount, workdayCount } = stats;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  const W = 400;
+  // 3倍分辨率：导出高清图片，在手机和电脑上都清晰
+  const scale = 3;
+  const W = 480;
   const totalDays = workDays + restDays + tripDays + leaveDays + annualDays + sickDays + personalDays;
   const rowsNeeded = 7 + sortedTags.length + dayRecords.length + (holidayCount || workdayCount ? 2 : 0);
-  // 预估每行高度：记录行可能包含 note/tags 需要更多空间
   const avgRowHeight = dayRecords.some(r => r.note && r.note.length > 20 || r.tags.length > 3) ? 30 : 22;
   const H = Math.max(600, rowsNeeded * avgRowHeight + 200);
-  canvas.width = W; canvas.height = H;
+  canvas.width = W * scale; canvas.height = H * scale;
+  ctx.scale(scale, scale);
 
   // Background
   ctx.fillStyle = '#f5f5f5'; ctx.fillRect(0, 0, W, H);
@@ -229,10 +231,12 @@ async function exportStatsAsImage(stats) {
     ctx.fillStyle = '#333'; ctx.font = 'bold 13px sans-serif';
     ctx.fillText(`逐日记录 (${dayRecords.length}天)`, 20, y); y += 18;
     ctx.font = '11px sans-serif';
-    for (const r of dayRecords) {
+    for (let idx = 0; idx < dayRecords.length; idx++) {
+      const r = dayRecords[idx];
       if (y > H - 30) {
         ctx.fillStyle = '#999';
-        ctx.fillText(`... 还有 ${dayRecords.length - (r.day ? dayRecords.indexOf(r) : 0)} 条记录`, 20, y);
+        const remaining = dayRecords.length - idx;
+        ctx.fillText(`... 还有 ${remaining} 条记录`, 20, y);
         break;
       }
       const d = new Date(r.dateStr + 'T00:00:00');

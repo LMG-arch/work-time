@@ -1,15 +1,12 @@
 {
-  "version": "3.3.0",
-  "versionCode": 20,
-  "releaseDate": "2026-06-12",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.3.0/work-calendar-v3.3.0.apk",
+  "version": "3.3.1",
+  "versionCode": 21,
+  "releaseDate": "2026-03-14",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.3.1/work-calendar-v3.3.1.apk",
   "changelog": [
-    "安全加固：添加 CSP、移除 CDN fallback、禁止导入覆盖 Supabase 配置",
-    "修复通知 ID 碰撞和 visibilitychange 监听器泄漏",
-    "修复同步 updatedAt 丢失和错误静默丢失",
-    "store.days/weeklyDone 自动清理防止数据无限增长",
-    "待办操作添加 try-catch 和回滚机制",
-    "移除调试代码、改进错误日志"
+    "修复待办提醒不通知：通知 ID 限制在 Java int 范围内，添加轮询兜底机制",
+    "提高统计导出图片分辨率：canvas 3 倍缩放，逻辑宽度 480px",
+    "优化逐日记录截断计数逻辑"
   ],
   "forceUpdate": false
 }
