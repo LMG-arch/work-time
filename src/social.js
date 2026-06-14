@@ -13,7 +13,7 @@ async function renderSocialView() {
   const config = getSupabaseConfig();
   if (!config.url || !config.key) {
     container.innerHTML = `<div class="social-empty" style="text-align:left;padding:20px;">
-      <div style="font-size:16px;font-weight:600;margin-bottom:12px;">⚙️ 需要先配置服务</div>
+      <div style="font-size:16px;font-weight:600;margin-bottom:12px;">需要先配置服务</div>
       <div style="font-size:13px;color:var(--text2);line-height:1.8;">
         <p>请先到 <b>设置</b> 页面配置好友圈服务：</p>
         <ol style="padding-left:20px;">
@@ -31,7 +31,7 @@ async function renderSocialView() {
   const dbReady = await checkDatabaseSetup();
   if (!dbReady) {
     container.innerHTML = `<div class="social-empty" style="text-align:left;padding:20px;">
-      <div style="font-size:16px;font-weight:600;margin-bottom:12px;">⚙️ 首次使用设置</div>
+      <div style="font-size:16px;font-weight:600;margin-bottom:12px;">首次使用设置</div>
       <div style="font-size:13px;color:var(--text2);line-height:1.8;">
         <p>需要先在 Supabase 中创建数据库表：</p>
         <ol style="padding-left:20px;">

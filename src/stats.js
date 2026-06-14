@@ -55,7 +55,7 @@ function renderStats() {
 
   // Export button
   html += `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-    <button id="export-stats-btn" class="settings-action-btn" style="font-size:11px;padding:4px 10px;">📊 导出统计图片</button>
+    <button id="export-stats-btn" class="settings-action-btn" style="font-size:11px;padding:4px 10px;">导出统计图片</button>
   </div>`;
 
   // Summary cards
@@ -257,7 +257,7 @@ async function exportStatsAsImage(stats) {
   // Export image
   const fileName = `上班日历_${currentYear}年${currentMonth + 1}月统计.png`;
 
-  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+  if (isCapacitorPlatform()) {
     // Android: share image (user can save to gallery)
     try {
       const { Filesystem, Share } = window.Capacitor.Plugins;

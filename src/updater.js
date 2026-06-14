@@ -85,7 +85,7 @@ function showUpdateDialog(remote) {
   modal.style.display = 'flex';
   modal.innerHTML = `
     <div class="update-modal-content">
-      <div class="update-icon">🎉</div>
+      <div class="update-icon">&#x2728;</div>
       <div class="update-title">发现新版本 v${escapeHtml(remote.version)}</div>
       <div class="update-changelog">${escapeHtml(remote.changelog).replace(/\n/g, '<br>')}</div>
       <div class="update-actions">
@@ -114,7 +114,7 @@ function showUpdateDialog(remote) {
 
 // 下载 APK（显示进度）
 function startDownload(url) {
-  const isAndroid = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+  const isAndroid = isCapacitorPlatform();
 
   if (isAndroid) {
     // Android: 使用系统浏览器下载

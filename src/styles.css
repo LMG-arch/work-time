@@ -1046,7 +1046,7 @@ button:active::after {
   line-height: 2;
 }
 .empty-tip::before {
-  content: '📭';
+  content: '○';
   display: block;
   font-size: 32px;
   margin-bottom: 8px;

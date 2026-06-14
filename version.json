@@ -1,12 +1,12 @@
 {
-  "version": "3.3.1",
-  "versionCode": 21,
-  "releaseDate": "2026-03-14",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.3.1/work-calendar-v3.3.1.apk",
+  "version": "3.3.2",
+  "versionCode": 22,
+  "releaseDate": "2026-06-05",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.3.2/work-calendar-v3.3.2.apk",
   "changelog": [
-    "修复待办提醒不通知：通知 ID 限制在 Java int 范围内，添加轮询兜底机制",
-    "提高统计导出图片分辨率：canvas 3 倍缩放，逻辑宽度 480px",
-    "优化逐日记录截断计数逻辑"
+    "代码审计优化：统一使用 isCapacitorPlatform() 替代冗余内联检查",
+    "清理 UI 中不必要的 emoji 字符",
+    "recycle bin 标题使用纯文本"
   ],
   "forceUpdate": false
 }

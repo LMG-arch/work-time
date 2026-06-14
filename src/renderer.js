@@ -224,7 +224,7 @@ function setupEventListeners() {
     const panel = document.createElement('div');
     panel.id = 'diag-panel';
     panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:90%;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-size:13px;white-space:pre-line;line-height:1.8;color:var(--text);';
-    panel.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px;">🔍 诊断结果</div><div>' + escapeHtml(message).replace(/\n/g, '<br>') + '</div>' +
+    panel.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px;">诊断结果</div><div>' + escapeHtml(message).replace(/\n/g, '<br>') + '</div>' +
       '<button id="diag-close" style="margin-top:16px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);cursor:pointer;font-size:13px;">关闭</button>';
     document.body.appendChild(panel);
     document.getElementById('diag-close').addEventListener('click', () => panel.remove());
@@ -584,7 +584,7 @@ async function setupAdminControls() {
     trashSection.id = 'trash-section';
     trashSection.style.cssText = 'margin-top:12px;border-top:1px solid var(--border);padding-top:12px;';
     trashSection.innerHTML = `
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🗑️ 回收站</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">回收站</div>
       <div id="trash-stats" class="settings-hint" style="margin-bottom:8px;">加载中...</div>
       <div style="display:flex;gap:8px;">
         <button id="trash-restore-btn" class="settings-action-btn" style="flex:1;">恢复数据</button>
