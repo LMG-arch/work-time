@@ -686,6 +686,12 @@ MIT
 
 ## 更新日志
 
+### v3.6.0 (2026-06-28) — 待办模块迁移为 Vue 组件
+- **组件化重构**：待办模块从 todos.js 迁移为 Vue SFC（TodoItem / TodoListApp / TodoViewApp / TodoModal）
+- **独立挂载点**：3 个独立 Vue 实例嵌入日历面板和打卡页，不走页面路由
+- **功能完整保留**：添加/编辑弹窗、类型切换、农历日期、周重复、提醒设置、完成/删除、筛选全部一致
+- **清理**：todos.js 移除 416 行被替代的代码，保留核心数据函数
+
 ### v3.5.0 (2026-06-28) — 设置页迁移为 Vue 组件
 - **组件化重构**：设置页从 settings.js 迁移为 Vue SFC（SettingsPage.vue）
 - **新组件**：SettingsToggle.vue（Reka UI Switch 封装）、SettingsSection.vue（可折叠分组容器）
