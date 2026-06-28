@@ -96,11 +96,11 @@
           <div class="clockin-today-label" id="clockin-today-label"></div>
           <button id="clockin-settings-btn" class="clockin-settings-btn" title="提醒设置">&#x2699;</button>
         </div>
-        <div id="clockin-today-reminders" class="clockin-today-reminders"></div>
+        <div id="reminder-list-vue" class="clockin-today-reminders"></div>
         <div id="water-tracker" class="water-tracker"></div>
         <div class="clockin-history-section">
           <div class="clockin-history-title">打卡记录</div>
-          <div id="clockin-history" class="clockin-history"></div>
+          <div id="reminder-history-vue" class="clockin-history"></div>
         </div>
         <div id="clockin-todo-section" class="todo-section" style="margin-top:16px;">
           <div id="todo-view-content" class="todo-view-content"></div>
@@ -109,18 +109,8 @@
       </div>
     </div>
 
-    <!-- Reminder Settings Modal -->
-    <div id="reminder-modal" class="modal">
-      <div class="modal-content">
-        <div class="modal-title">打卡提醒设置</div>
-        <div class="reminder-settings-list" id="reminder-settings-list"></div>
-        <div class="modal-actions">
-          <button id="reminder-test-btn" class="modal-btn" style="background:var(--accent);color:#fff;">测试通知</button>
-          <button id="reminder-modal-cancel" class="modal-btn cancel">取消</button>
-          <button id="reminder-modal-save" class="modal-btn confirm">保存</button>
-        </div>
-      </div>
-    </div>
+    <!-- Reminder Settings Modal (Vue) -->
+    <div id="reminder-settings-vue"></div>
 
     <!-- Social View -->
     <div id="social-view" class="page-view" style="display:none;">
@@ -281,6 +271,7 @@
   <script src="settings.js"></script>
   <script src="updater.js"></script>
   <script type="module" src="./vue-todos.js"></script>
+  <script type="module" src="./vue-reminders.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
