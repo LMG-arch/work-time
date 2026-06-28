@@ -1,12 +1,12 @@
 {
-  "version": "3.4.0",
-  "versionCode": 22,
+  "version": "3.5.0",
+  "versionCode": 23,
   "releaseDate": "2026-06-28",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.4.0/work-calendar-v3.4.0.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.5.0/work-calendar-v3.5.0.apk",
   "changelog": [
-    "搭建 Vite + Vue 3 组件化基础架构",
-    "引入 Reka UI headless 组件库",
-    "Electron/Capacitor 适配 Vite 构建流程"
+    "设置页迁移为 Vue 组件 + Reka UI",
+    "渐进式迁移策略：Vue 组件与现有 JS 模块共存",
+    "Vite 构建工具 + Vue 3 + Reka UI 双版本齐头并进"
   ],
   "forceUpdate": false
 }

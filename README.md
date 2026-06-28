@@ -686,6 +686,13 @@ MIT
 
 ## 更新日志
 
+### v3.5.0 (2026-06-28) — 设置页迁移为 Vue 组件
+- **组件化重构**：设置页从 settings.js 迁移为 Vue SFC（SettingsPage.vue）
+- **新组件**：SettingsToggle.vue（Reka UI Switch 封装）、SettingsSection.vue（可折叠分组容器）
+- **渐进式迁移**：Vue 组件通过 __vueActivate/__vueDeactivate 桥接与 renderer.js 路由联动
+- **UI 美化**：设置页采用卡片式分组布局，scoped CSS 隔离，与现有设计语言一致
+- **功能不变**：账号、Supabase 配置、数据同步、主题、导航栏、权限等全部功能保持原有行为
+
 ### v3.4.0 (2026-06-28) — Vue 组件化基础架构
 - **新架构**：引入 Vite 构建工具链 + Vue 3 框架 + Reka UI 组件库
 - **构建工具**：Vite 开发服务器、HMR 热更新、生产构建
