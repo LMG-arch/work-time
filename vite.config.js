@@ -18,7 +18,7 @@ function copyLegacyAssets() {
       const outDir = path.resolve(__dirname, 'dist')
       for (const f of FILES) {
         const src = path.join(srcDir, f)
-        if (fs.existsSync(src)) fs.cpSync(src, path.join(outDir, f))
+        if (fs.existsSync(src)) fs.copyFileSync(src, path.join(outDir, f))
       }
       // 复制 lib 目录
       const libOut = path.join(outDir, 'lib')
@@ -26,7 +26,7 @@ function copyLegacyAssets() {
       const libSrc = path.join(srcDir, 'lib')
       if (fs.existsSync(libSrc)) {
         for (const f of fs.readdirSync(libSrc)) {
-          fs.cpSync(path.join(libSrc, f), path.join(libOut, f))
+          fs.copyFileSync(path.join(libSrc, f), path.join(libOut, f))
         }
       }
       // 复制 holidays.js 和 lunar.js 的依赖文件（如果有额外资源）
