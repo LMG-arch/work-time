@@ -40,10 +40,30 @@ const THEMES = [
 
 function switchView(view) {
   currentView = view;
+
+  // Vue 管理的页面先激活 Vue 容器并返回
+  const VUE_PAGES = ['settings']
+  if (VUE_PAGES.includes(view)) {
+    document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
+    const appEl = document.getElementById('app');
+    if (appEl) appEl.style.display = '';
+    window.__vueActivate?.(view);
+    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+    const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
+    const activeBtn = document.getElementById(activeMap[view]);
+    if (activeBtn) activeBtn.classList.add('active');
+    return;
+  }
+
+  // 非 Vue 页面：隐藏 Vue 容器
+  const appEl = document.getElementById('app');
+  if (appEl) appEl.style.display = 'none';
+  window.__vueDeactivate?.();
+
   document.getElementById('calendar-view').style.display = view === 'calendar' ? '' : 'none';
   document.getElementById('stats-view').style.display = view === 'stats' ? '' : 'none';
   document.getElementById('clockin-view').style.display = view === 'clockin' ? '' : 'none';
-  document.getElementById('settings-view').style.display = view === 'settings' ? '' : 'none';
+  document.getElementById('settings-view').style.display = 'none';
   document.getElementById('social-view').style.display = view === 'social' ? '' : 'none';
   document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
   const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
@@ -51,7 +71,6 @@ function switchView(view) {
   if (activeBtn) activeBtn.classList.add('active');
   if (view === 'stats') renderStats();
   if (view === 'clockin') renderClockinView();
-  if (view === 'settings') renderSettingsView();
   if (view === 'social') renderSocialView();
 }
 
