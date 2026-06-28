@@ -3,10 +3,12 @@
 let _editingTodoId = null; // null = add mode, non-null = edit mode
 
 // 清理 weeklyDone 中超过 60 天的旧记录，防止数据无限增长
-let _weeklyDoneCleanupDone = false;
+let _weeklyDoneLastCleanup = 0;
 function cleanupWeeklyDone() {
-  if (_weeklyDoneCleanupDone) return;
-  _weeklyDoneCleanupDone = true;
+  // 每小时清理一次，避免频繁遍历
+  const now = Date.now();
+  if (now - _weeklyDoneLastCleanup < 3600000) return;
+  _weeklyDoneLastCleanup = now;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 60);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
@@ -96,12 +98,14 @@ function renderTodoList(dateStr) {
   });
   container.querySelectorAll('.todo-del').forEach(btn => {
     btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
       try {
-        await window.calendarAPI.deleteTodo(btn.dataset.id);
+        await window.calendarAPI.deleteTodo(id);
       } catch (e) {
-        console.error('[Todo] deleteTodo failed:', e.message);
+        console.error('[Todo] deleteTodo IPC failed:', e.message);
+        return; // IPC 失败时不更新内存
       }
-      allTodos = allTodos.filter(t => t.id !== btn.dataset.id);
+      allTodos = allTodos.filter(t => t.id !== id);
       renderTodoList(dateStr);
       renderCalendar();
       showToast('已删除待办');
@@ -435,16 +439,7 @@ function renderTodoView() {
     btn.addEventListener('click', async () => {
       const todo = allTodos.find(t => t.id === btn.dataset.id);
       if (!todo) return;
-      if (todo.type === 'once') {
-        await window.calendarAPI.updateTodo(todo.id, { done: !todo.done });
-        todo.done = !todo.done;
-      } else if (todo.type === 'weekly') {
-        const todayStr = getTodayStr();
-        const wd = todo.weeklyDone || {};
-        wd[todayStr] = !wd[todayStr];
-        await window.calendarAPI.updateTodo(todo.id, { weeklyDone: wd });
-        todo.weeklyDone = wd;
-      }
+      await toggleTodoDone(todo, getTodayStr());
       renderTodoView();
       renderCalendar();
     });
@@ -452,8 +447,14 @@ function renderTodoView() {
 
   container.querySelectorAll('.todo-view-del').forEach(btn => {
     btn.addEventListener('click', async () => {
-      await window.calendarAPI.deleteTodo(btn.dataset.id);
-      allTodos = allTodos.filter(t => t.id !== btn.dataset.id);
+      const id = btn.dataset.id;
+      try {
+        await window.calendarAPI.deleteTodo(id);
+      } catch (e) {
+        console.error('[Todo] deleteTodo IPC failed:', e.message);
+        return;
+      }
+      allTodos = allTodos.filter(t => t.id !== id);
       renderTodoView();
       renderCalendar();
       showToast('已删除待办');

@@ -679,15 +679,22 @@ async function scheduleReminderNotifications() {
     // 不 return，继续执行下面的轮询兜底逻辑
   }
 
-  // === 轮询兜底：所有平台都运行 ===
+  // === 轮询兜底：Capacitor/Web 平台运行 ===
   // 每 30 秒检查一次，如果当前时间到了提醒时间，立即发通知
   // 预调度可能被系统延迟，轮询确保不会漏掉
+  // Electron 端通知由主进程处理，不在此处轮询
   if (reminderNotifTimer) clearInterval(reminderNotifTimer);
 
   const isElectron = typeof window.calendarAPI?.saveReminders === 'function' && !isCapacitor;
 
+  // Electron 端通知由主进程负责，渲染进程跳过轮询
+  if (isElectron) {
+    console.log('[Notifications] Electron detected, skipping renderer polling (handled by main process)');
+    return;
+  }
+
   // Android: 不暂停轮询，因为需要后台通知
-  // Web/Electron: 页面不可见时暂停轮询，节省电池
+  // Web: 页面不可见时暂停轮询，节省电池
   let reminderPollingPaused = false;
   if (!isCapacitor) {
     if (!window._reminderVisibilityHandler) {

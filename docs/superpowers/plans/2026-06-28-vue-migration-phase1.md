@@ -1,8 +1,503 @@
+# Phase 1: Vue + Reka UI 迁移实现计划
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** 搭建 Vite + Vue 3 + Reka UI 工具链，渐进式将设置页迁移为 Vue 组件
+
+**Architecture:** 在三进程 Electron 架构（main/preload/renderer）基础上叠加 Vite 作为渲染进程构建工具，Vue SFC 与现有 JS 通过独立的 DOM 容器 (`#app` vs `#page-container`) 共存。renderer.js 的页面路由分派决定谁渲染当前页面。数据层不变，继续通过 contextBridge (`calendarAPI`) 与主进程通信。
+
+**Tech Stack:** Vite 6, Vue 3 (Composition API, SFC), Reka UI (Switch only), Electron 35, Capacitor 8
+
+---
+
+## 里程碑及文件结构
+
+### v3.4.0 — 工具链搭建（不改变任何 UI 行为）
+
+| 文件 | 操作 |
+|------|------|
+| `package.json` | 修改 — 添加依赖和 scripts |
+| `vite.config.js` | 新建 |
+| `src/vue-main.js` | 新建 |
+| `src/components/App.vue` | 新建 |
+| `src/index.html` | 修改 — 添加 #app + vue-main.js |
+| `main.js` | 修改 — 开发模式 loadURL |
+| `capacitor.config.json` | 修改 — webDir 指向 dist |
+
+### v3.5.0 — 设置页迁移为 Vue 组件
+
+| 文件 | 操作 |
+|------|------|
+| `src/components/SettingsToggle.vue` | 新建 — Reka UI Switch 封装 |
+| `src/components/SettingsSection.vue` | 新建 — 设置分组容器 |
+| `src/pages/SettingsPage.vue` | 新建 — 完整设置页（替代 settings.js 功能） |
+| `src/components/App.vue` | 修改 — 添加 SettingsPage 路由 |
+| `src/renderer.js` | 修改 — settings 路由指向 Vue |
+| `src/index.html` | 修改 — 移除 settings-view 静态 HTML |
+
+---
+
+## Milestone: v3.4.0 — 工具链搭建
+
+### Task 1: 安装依赖
+
+- [ ] **Step 1: 安装 Vite + Vue + Reka UI 依赖**
+
+```bash
+npm install --save-dev vite @vitejs/plugin-vue
+npm install vue@3 reka-ui
+npm install concurrently wait-on --save-dev
+```
+
+- [ ] **Step 2: 验证安装**
+
+Run: `node -e "require('vite'); console.log('Vite OK')"`
+Expected: `Vite OK`
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add package.json package-lock.json
+git commit -m "chore: add Vite + Vue + Reka UI dependencies"
+```
+
+### Task 2: 创建 Vite 配置
+
+- [ ] **Step 1: 新建 vite.config.js**
+
+```js
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [vue()],
+  root: 'src',
+  base: './',
+  build: {
+    outDir: '../dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
+  },
+  server: {
+    port: 5173,
+    strictPort: false,
+  },
+})
+```
+
+**关键点：** `root: 'src'` 让 Vite 以 `src/` 为根，所有现有脚本的 `./renderer.js` 等路径无需修改；`base: './'` 确保 file:// 协议可用。
+
+- [ ] **Step 2: 验证 Vite 配置可加载**
+
+```bash
+npx vite --help
+```
+
+Expected: Vite help output (no errors)
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add vite.config.js
+git commit -m "chore: add Vite configuration (root: src, base: ./)"
+```
+
+### Task 3: 创建 Vue 应用骨架
+
+- [ ] **Step 1: 新建 src/vue-main.js**
+
+```js
+import { createApp } from 'vue'
+import App from './components/App.vue'
+
+const app = createApp(App)
+app.mount('#app')
+```
+
+- [ ] **Step 2: 新建 src/components/App.vue**
+
+```vue
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref } from 'vue'
+
+// 由 renderer.js 通过 window.__vueActivate 控制显示哪个页面
+const activePage = ref(null)
+
+// 暴露给 renderer.js 的全局函数
+window.__vueActivate = (page) => { activePage.value = page }
+window.__vueDeactivate = () => { activePage.value = null }
+
+// v3.4.0: App.vue 不包含任何页面组件，仅作为 Vue 挂载验证
+// 后续版本在此添加 <SettingsPage /> 等
+</script>
+
+<template>
+  <!-- 空壳 — v3.4.0 不做任何 UI 渲染 -->
+</template>
+```
+
+- [ ] **Step 3: 验证 Vue 文件语法**
+
+```bash
+npx vite build 2>&1 | head -20
+```
+
+Expected: 构建成功，输出 dist/index.html
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/vue-main.js src/components/App.vue
+git commit -m "feat: add Vue app skeleton with mount point"
+```
+
+### Task 4: 修改 index.html
+
+- [ ] **Step 1: 在 src/index.html 中添加 Vue 挂载点和入口脚本**
+
+```diff
+   <title>上班日历</title>
+   <link rel="stylesheet" href="styles.css">
+   <link rel="stylesheet" href="social.css">
++  <script type="module" src="./vue-main.js"></script>
+ </head>
+ <body>
++  <div id="app" style="display:none"></div>
+   <div class="app">
+```
+
+**注意：** `#app` 放在 `body` 下、`.app` 同级。`display:none` 确保 Vue 挂载但不显示（v3.4.0 不需要它可见）。
+
+- [ ] **Step 2: 验证 HTML 语法**
+
+Run: `npx vite build 2>&1`
+Expected: 构建成功，dist/index.html 包含 #app
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/index.html
+git commit -m "feat: add Vue mount point and script to index.html"
+```
+
+### Task 5: 修改 main.js — Electron 加载 Vite
+
+- [ ] **Step 1: 修改 createWindow 函数**
+
+```diff
+ function createWindow() {
+   Menu.setApplicationMenu(null);
+ 
+   // Security: set CSP to block inline scripts and external resources
+   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+     callback({
+       responseHeaders: {
+         ...details.responseHeaders,
+         'Content-Security-Policy': [
+-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';"
++          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';"
+         ]
+       }
+     });
+   });
+ 
+   win = new BrowserWindow({
+     width: 420,
+     height: 620,
+     resizable: true,
+     minWidth: 380,
+     minHeight: 500,
+     webPreferences: {
+       preload: path.join(__dirname, 'preload.js'),
+       contextIsolation: true,
+       nodeIntegration: false
+     }
+   });
+ 
+-  win.loadFile(path.join(__dirname, 'src', 'index.html'));
++  const isDev = !app.isPackaged;
++  if (isDev) {
++    win.loadURL('http://localhost:5173');
++    win.webContents.openDevTools();
++  } else {
++    win.loadFile(path.join(__dirname, 'dist', 'index.html'));
++  }
+ 
+   // Minimize to tray instead of closing
+   win.on('close', (e) => {
+```
+
+**注意 CSP 变更：** 添加 `'unsafe-inline'` 到 `script-src`。Vite 开发模式使用内联脚本注入模块，生产模式输出独立文件。如果在生产构建中不需要，可在后续优化 CSP。
+
+- [ ] **Step 2: 验证语法**
+
+```bash
+node -c main.js
+```
+
+Expected: 无语法错误
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add main.js
+git commit -m "feat: support Vite dev server (loadURL) and production dist build"
+```
+
+### Task 6: 更新 capacitor.config.json
+
+- [ ] **Step 1: 修改 webDir**
+
+```diff
+ {
+   "appId": "com.workcalendar.app",
+   "appName": "上班日历",
+-  "webDir": "src",
++  "webDir": "dist",
+   "server": {
+     "androidScheme": "https"
+   },
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add capacitor.config.json
+git commit -m "chore: update Capacitor webDir to dist"
+```
+
+### Task 7: 更新 package.json scripts
+
+- [ ] **Step 1: 修改 scripts**
+
+```diff
+ {
+   "name": "work-calendar",
+   "version": "3.4.0",
+   "scripts": {
+-    "start": "electron .",
++    "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
++    "dev:vite": "vite",
++    "dev:electron": "wait-on http://localhost:5173 && electron .",
++    "build": "vite build",
++    "start": "electron .",
+     "pack": "npm run build && electron-packager . WorkCalendar --platform=win32 --arch=x64 --out=dist-electron --overwrite --ignore=\"android|dist|docs|\\.git|\\.claude|.*\\.apk|启动.*|README\\.md|CHANGELOG.*|node_modules/@capacitor|node_modules/@nicolo-ribaudo|node_modules/capacitor\" && node set-icon.js && node scripts/clean-locales.js"
+   },
+```
+
+**注意：** `-k` 参数表示一个任务退出时杀死另一个，避免 Vite 或 Electron 退出后另一个仍在运行。
+
+- [ ] **Step 2: 验证 scripts**
+
+```bash
+node -e "const p = require('./package.json'); console.log(Object.keys(p.scripts).join(', '))"
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add package.json
+git commit -m "chore: add dev/build scripts with Vite + Electron integration"
+```
+
+### Task 8: 验证 v3.4.0 全流程
+
+- [ ] **Step 1: 验证 Vite 构建**
+
+```bash
+npm run build
+ls dist/
+```
+
+Expected: dist/ 包含 index.html + 资源，无报错
+
+- [ ] **Step 2: 构建后在本地打开验证**
+
+```bash
+npx serve dist  # 手动验证构建产出可访问
+```
+
+- [ ] **Step 3: 提交版本变更并发布**
+
+```bash
+# 更新 version.json
+# 更新 README.md 更新日志
+# 更新 android/app/build.gradle versionCode +1
+git add -A
+git commit -m "chore: bump v3.4.0 — Vue toolchain foundation"
+git tag v3.4.0
+git push && git push --tags
+```
+
+---
+
+## Milestone: v3.5.0 — 设置页迁移
+
+### Task 1: 创建 SettingsToggle.vue（Reka UI Switch 封装）
+
+- [ ] **Step 1: 新建 src/components/SettingsToggle.vue**
+
+```vue
+<script setup>
+import { SwitchRoot, SwitchThumb } from 'reka-ui'
+
+const props = defineProps({
+  modelValue: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false },
+})
+
+const emit = defineEmits(['update:modelValue'])
+</script>
+
+<template>
+  <SwitchRoot
+    :checked="modelValue"
+    :disabled="disabled"
+    class="settings-switch-root"
+    @update:checked="emit('update:modelValue', $event)"
+  >
+    <SwitchThumb class="settings-switch-thumb" />
+  </SwitchRoot>
+</template>
+
+<style scoped>
+.settings-switch-root {
+  width: 44px;
+  height: 24px;
+  background: var(--border, #ccc);
+  border-radius: 12px;
+  position: relative;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.settings-switch-root[data-state="checked"] {
+  background: var(--accent, #333);
+}
+.settings-switch-root:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.settings-switch-thumb {
+  display: block;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.settings-switch-root[data-state="checked"] .settings-switch-thumb {
+  transform: translateX(20px);
+}
+</style>
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/components/SettingsToggle.vue
+git commit -m "feat: add Reka UI Switch wrapper component"
+```
+
+### Task 2: 创建 SettingsSection.vue（设置分组容器）
+
+- [ ] **Step 1: 新建 src/components/SettingsSection.vue**
+
+```vue
+<script setup>
+defineProps({
+  title: { type: String, required: true },
+  collapsible: { type: Boolean, default: false },
+})
+import { ref } from 'vue'
+const open = ref(true)
+</script>
+
+<template>
+  <div class="settings-group">
+    <div
+      v-if="collapsible"
+      class="settings-group-title settings-collapsible"
+      @click="open = !open"
+    >
+      {{ title }} <span class="collapse-arrow" :class="{ open }">▾</span>
+    </div>
+    <div v-else class="settings-group-title">{{ title }}</div>
+    <div v-show="!collapsible || open">
+      <slot />
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.settings-group {
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.settings-group-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.settings-collapsible {
+  cursor: pointer;
+  user-select: none;
+}
+.collapse-arrow {
+  display: inline-block;
+  transition: transform 0.2s;
+  font-size: 12px;
+}
+.collapse-arrow.open {
+  transform: rotate(180deg);
+}
+</style>
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/components/SettingsSection.vue
+git commit -m "feat: add settings section container component"
+```
+
+### Task 3: 创建 SettingsPage.vue（完整设置页）
+
+这是最核心的任务。SettingsPage.vue 必须完全覆盖现有 settings.js + renderer.js 中所有设置相关的功能和交互。
+
+- [ ] **Step 1: 新建 src/pages/SettingsPage.vue**
+
+**代码说明：** SettingsPage.vue 使用 CalendarAPI（来自 preload.js 的 contextBridge）与主进程通信，与之前的 settings.js 使用完全相同的 IPC 通道。
+
+```vue
+<script setup>
+import { ref, onMounted } from 'vue'
+import SettingsToggle from '../components/SettingsToggle.vue'
 import SettingsSection from '../components/SettingsSection.vue'
 
 // ===== 全局依赖（通过 window 访问现有模块函数）=====
+// 这些函数来自现有的 JS 模块（supabase.js, utils.js 等），保持不变
 const getSupabaseConfig = window.getSupabaseConfig
 const saveSupabaseConfig = window.saveSupabaseConfig
 const initSupabase = window.initSupabase
@@ -27,11 +522,6 @@ const emptySelected = window.emptySelected
 const isCapacitorPlatform = window.isCapacitorPlatform
 const showToast = window.showToast
 const escapeHtml = window.escapeHtml
-const sanitizeUrl = window.sanitizeUrl
-
-const safeAvatarUrl = computed(() => {
-  return avatarUrl.value ? sanitizeUrl?.(avatarUrl.value) || avatarUrl.value : ''
-})
 
 // ===== 主题 =====
 const THEMES = window.THEMES || [
@@ -328,6 +818,7 @@ async function clearData() {
 }
 
 async function restoreData() {
+  const label = getSelectedTables().length > 0 ? '' : '全部'
   if (!confirm(`确定从回收站恢复数据？`)) return
   showToast('正在恢复...')
   const r = await restoreSelected(getSelectedTables())
@@ -366,6 +857,7 @@ const permStatuses = ref({})
 async function checkAndroidPermissions() {
   if (!isCapacitorPlatform()) return
   isAndroid.value = true
+  // 通过 window.Capacitor 检查
   try {
     const { LocalNotifications } = window.Capacitor.Plugins
     if (LocalNotifications) {
@@ -379,6 +871,7 @@ async function checkAndroidPermissions() {
       }
     }
   } catch {}
+  // 不能通过 API 检查的标记为 null（"建议开启"）
   permStatuses.value.overlay = null
   permStatuses.value.battery = null
   permStatuses.value.install = null
@@ -440,6 +933,7 @@ function getNavItems() {
 function saveNavItems(items) {
   localStorage.setItem(NAV_ITEMS_KEY, JSON.stringify(items))
   navEnabled.value = items
+  // 同步到现有 renderer.js 的导航栏
   allNavItems.forEach(item => {
     const btn = document.getElementById(item.id + '-btn')
     if (btn) btn.style.display = items.includes(item.id) ? '' : 'none'
@@ -481,7 +975,7 @@ function checkUpdate() {
   }
 }
 
-// ===== 设置页激活 =====
+// ===== 设置页激活/失活 =====
 onMounted(async () => {
   await updateAccountUI()
   loadSupabaseConfig()
@@ -491,6 +985,7 @@ onMounted(async () => {
   await checkAndroidPermissions()
 })
 
+// 外部刷新设置页的入口
 window.__refreshSettingsData = async () => {
   await updateAccountUI()
   loadSupabaseConfig()
@@ -499,12 +994,6 @@ window.__refreshSettingsData = async () => {
   await checkAdmin()
   await updateTrashStats()
 }
-
-onUnmounted(() => {
-  if (window.__refreshSettingsData) {
-    window.__refreshSettingsData = undefined
-  }
-})
 </script>
 
 <template>
@@ -530,8 +1019,8 @@ onUnmounted(() => {
       <div v-else>
         <div style="display:flex;align-items:center;gap:12px;">
           <div style="position:relative;width:40px;height:40px;cursor:pointer;" title="点击更换头像">
-            <template v-if="safeAvatarUrl">
-              <img :src="safeAvatarUrl" style="width:40px;height:40px;object-fit:cover;border-radius:50%;">
+            <template v-if="avatarUrl">
+              <img :src="avatarUrl" style="width:40px;height:40px;object-fit:cover;border-radius:50%;">
             </template>
             <div v-else class="post-avatar avatar-placeholder" style="width:40px;height:40px;font-size:18px;">{{ nickname[0] }}</div>
             <input type="file" accept="image/*" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;" @change="handleAvatarUpload">
@@ -572,6 +1061,7 @@ onUnmounted(() => {
         首次配置后需在 Supabase SQL Editor 执行 <b>supabase-setup.sql</b> 创建数据表
       </div>
 
+      <!-- 管理员功能 -->
       <template v-if="isUserAdmin">
         <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
           <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">勾选数据类型（不勾选 = 全部）</div>
@@ -589,7 +1079,8 @@ onUnmounted(() => {
           <div class="settings-hint" style="margin-top:4px;">⚠️ 管理员功能：重置全部数据（移入回收站，可恢复），不影响配置</div>
         </div>
 
-        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+        <!-- 回收站 -->
+        <div v-if="isUserAdmin" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
           <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🗑️ 回收站</div>
           <div class="settings-hint" style="margin-bottom:8px;">
             <template v-if="!trashStats || trashStats.total === 0">回收站为空</template>
@@ -695,6 +1186,7 @@ onUnmounted(() => {
       <button class="settings-action-btn full" style="margin-top:8px;" @click="checkUpdate">检查更新</button>
     </SettingsSection>
 
+    <!-- 底部间距 -->
     <div style="height:24px;"></div>
   </div>
 </template>
@@ -706,6 +1198,8 @@ onUnmounted(() => {
   padding: 16px;
   box-sizing: border-box;
 }
+/* ===== 复用现有 settings.css 中的样式类 ===== */
+/* 以下样式与 src/styles.css 中的对应类保持视觉一致 */
 .settings-hint {
   font-size: 12px;
   color: var(--text-secondary, #888);
@@ -856,8 +1350,173 @@ onUnmounted(() => {
   background: var(--warning, #ff9800);
   color: #fff;
 }
+/* 确保链接在设置页中可点击 */
 .settings-scroll a {
   color: var(--accent, #333);
   text-decoration: underline;
 }
 </style>
+```
+
+- [ ] **Step 2: 验证 Vue 组件语法**
+
+```bash
+npx vite build 2>&1
+```
+
+Expected: 构建成功，无 Vue 编译错误
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/pages/SettingsPage.vue
+git commit -m "feat: add SettingsPage Vue component (replaces settings.js)"
+```
+
+### Task 4: 修改 App.vue — 添加 SettingsPage 路由
+
+- [ ] **Step 1: 修改 src/components/App.vue**
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import SettingsPage from '../pages/SettingsPage.vue'
+
+const activePage = ref(null)
+
+window.__vueActivate = (page) => {
+  activePage.value = page
+  // 当切换到设置页时，刷新数据
+  if (page === 'settings' && window.__refreshSettingsData) {
+    window.__refreshSettingsData()
+  }
+}
+window.__vueDeactivate = () => { activePage.value = null }
+</script>
+
+<template>
+  <SettingsPage v-if="activePage === 'settings'" />
+</template>
+```
+
+- [ ] **Step 2: 验证**
+
+```bash
+npx vite build 2>&1
+```
+
+Expected: 构建成功
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/components/App.vue
+git commit -m "feat: add SettingsPage route to App.vue"
+```
+
+### Task 5: 修改 renderer.js — 设置页路由指向 Vue
+
+- [ ] **Step 1: 修改 switchView 函数**
+
+```diff
+ function switchView(view) {
+   currentView = view;
++  
++  // Vue 管理的页面先激活 Vue 容器并返回
++  const VUE_PAGES = ['settings']
++  if (VUE_PAGES.includes(view)) {
++    // 隐藏所有传统页面
++    document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
++    // 显示 Vue 容器
++    const appEl = document.getElementById('app');
++    if (appEl) appEl.style.display = '';
++    window.__vueActivate?.(view);
++    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
++    const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
++    const activeBtn = document.getElementById(activeMap[view]);
++    if (activeBtn) activeBtn.classList.add('active');
++    return;
++  }
++  
++  // 非 Vue 页面：隐藏 Vue 容器，显示传统页面容器
++  const appEl = document.getElementById('app');
++  if (appEl) appEl.style.display = 'none';
++  window.__vueDeactivate?.();
++
+   document.getElementById('calendar-view').style.display = view === 'calendar' ? '' : 'none';
+   document.getElementById('stats-view').style.display = view === 'stats' ? '' : 'none';
+   document.getElementById('clockin-view').style.display = view === 'clockin' ? '' : 'none';
+-  document.getElementById('settings-view').style.display = view === 'settings' ? '' : 'none';
+   document.getElementById('social-view').style.display = view === 'social' ? '' : 'none';
++  document.getElementById('settings-view').style.display = 'none';  // 不再被路由使用
+   document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+   const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
+   const activeBtn = document.getElementById(activeMap[view]);
+   if (activeBtn) activeBtn.classList.add('active');
+   if (view === 'stats') renderStats();
+   if (view === 'clockin') renderClockinView();
+-  if (view === 'settings') renderSettingsView();
+   if (view === 'social') renderSocialView();
+ }
+```
+
+**注意：** `settings-view` 仍存在于 DOM 中但不再显示。设置页的 UI 由 Vue 完全接管。
+
+- [ ] **Step 2: 验证语法**
+
+```bash
+node -c src/renderer.js
+```
+
+Expected: 语法检查通过
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/renderer.js
+git commit -m "fix: route settings page to Vue component"
+```
+
+### Task 6: 验证 v3.5.0 全流程
+
+- [ ] **Step 1: Vite 构建验证**
+
+```bash
+npm run build
+ls dist/
+```
+
+Expected: 构建成功，dist/ 包含正确资源
+
+- [ ] **Step 2: 功能完整性验证**
+
+手动在 Electron 中验证以下每一项（对照原 settings.js 行为）：
+
+| 功能 | 验证方法 | 预期 |
+|------|---------|------|
+| 注册/登录 | 输入用户名密码，点击注册/登录 | 与之前行为一致 |
+| 退出登录 | 点击退出登录 | 与之前行为一致 |
+| 头像上传 | 点击头像区域上传图片 | 与之前行为一致 |
+| 数据导出 | 点击导出数据 | 弹出保存对话框 |
+| 数据导入 | 点击导入数据 | 弹出文件选择对话框 |
+| Supabase 配置保存 | 输入 URL/Key，点击保存 | 提示保存成功 |
+| Supabase 测试连接 | 点击测试连接 | 弹出诊断结果 |
+| 自动同步开关 | 点击切换 | 开关状态切换 |
+| 立即同步 | 点击立即同步 | 同步完成提示 |
+| 上传/下载云端数据 | 点击上传/下载 | 确认后执行 |
+| 主题切换 | 点击主题色块 | 主题立即切换 |
+| 导航栏设置 | 切换导航项开关 | 底部导航栏对应显示/隐藏 |
+| 开机自启 | 点击按钮 | 切换自启状态 |
+| 检查更新 | 点击检查更新 | 触发更新检查 |
+
+- [ ] **Step 3: 提交版本变更并发布**
+
+```bash
+# 更新 version.json
+# 更新 README.md 更新日志
+# 更新 android/app/build.gradle versionCode +1, versionName = 3.5.0
+git add -A
+git commit -m "feat: v3.5.0 — migrate settings page to Vue + Reka UI"
+git tag v3.5.0
+git push && git push --tags
+```

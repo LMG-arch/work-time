@@ -72,12 +72,12 @@
 
     // --- Todos ---
     async getTodos() {
-      return getStore().todos;
+      return (getStore().todos || []).filter(t => t && !t.deleted);
     },
 
     async addTodo(todo) {
       const store = getStore();
-      todo.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      todo.id = crypto.randomUUID();
       todo.updatedAt = new Date().toISOString();
       store.todos.push(todo);
       saveStore(store);
@@ -100,7 +100,11 @@
 
     async deleteTodo(id) {
       const store = getStore();
-      store.todos = store.todos.filter(t => t.id !== id);
+      const idx = store.todos.findIndex(t => t.id === id);
+      if (idx >= 0) {
+        store.todos[idx].deleted = true;
+        store.todos[idx].updatedAt = new Date().toISOString();
+      }
       saveStore(store);
       if (typeof autoSyncPush === 'function') autoSyncPush();
       return { success: true };

@@ -152,6 +152,9 @@ function generateSalt() {
 }
 
 // SHA-256 哈希密码（使用随机盐值，每个用户独立）
+// ⚠️ 安全注意：客户端哈希值直接发送给服务端 RPC 做比对，
+// 哈希本身等同于密码等价物。截获哈希可直接登录。
+// 更安全的方案是使用 Supabase 内置 Auth 或让服务端负责加盐比对。
 async function hashPassword(password, salt) {
   const encoder = new TextEncoder();
   const data = encoder.encode(password + ':' + salt);
@@ -645,6 +648,8 @@ async function clearAllSocialData() {
   if (!sb) return { error: '未连接' };
   const user = await ensureSession();
   if (!user) return { error: '未登录' };
+  // 客户端二次确认管理员身份（服务端 RPC 也应做权限校验）
+  if (!await isAdmin()) return { error: '无管理员权限' };
 
   // Call server-side function (soft delete only, no storage deletion)
   const { error } = await sb.rpc('reset_all_data');
@@ -686,6 +691,7 @@ async function restoreAllData() {
   if (!sb) return { error: '未连接' };
   const user = await ensureSession();
   if (!user) return { error: '未登录' };
+  if (!await isAdmin()) return { error: '无管理员权限' };
   const { error } = await sb.rpc('restore_all_data');
   return { error: error ? error.message : null };
 }
@@ -694,6 +700,7 @@ async function emptyTrash() {
   if (!sb) return { error: '未连接' };
   const user = await ensureSession();
   if (!user) return { error: '未登录' };
+  if (!await isAdmin()) return { error: '无管理员权限' };
   const { error } = await sb.rpc('empty_trash');
   if (error) return { error: error.message };
   // Also delete storage files when permanently deleting posts
@@ -705,6 +712,7 @@ async function resetSelected(tables) {
   if (!sb) return { error: '未连接' };
   const user = await ensureSession();
   if (!user) return { error: '未登录' };
+  if (!await isAdmin()) return { error: '无管理员权限' };
   const { error } = await sb.rpc('reset_selected', { p_tables: tables });
   return { error: error ? error.message : null };
 }
@@ -713,6 +721,7 @@ async function restoreSelected(tables) {
   if (!sb) return { error: '未连接' };
   const user = await ensureSession();
   if (!user) return { error: '未登录' };
+  if (!await isAdmin()) return { error: '无管理员权限' };
   const { error } = await sb.rpc('restore_selected', { p_tables: tables });
   return { error: error ? error.message : null };
 }
@@ -721,6 +730,7 @@ async function emptySelected(tables) {
   if (!sb) return { error: '未连接' };
   const user = await ensureSession();
   if (!user) return { error: '未登录' };
+  if (!await isAdmin()) return { error: '无管理员权限' };
   const { error } = await sb.rpc('empty_selected', { p_tables: tables });
   return { error: error ? error.message : null };
 }
@@ -856,14 +866,21 @@ async function pullCalendarData() {
 }
 
 // Smart sync: pull cloud data, merge with local, push back
-let _syncing = false;
+// 排队机制：同步进行中时，后续调用等待而非丢弃
+let _syncPromise = null;
+let _syncQueued = false;
 async function syncCalendarData() {
-  if (_syncing) return { error: '同步进行中' };
-  _syncing = true;
+  if (_syncPromise) {
+    // 当前有同步在运行，标记排队并等待完成后重试一次
+    _syncQueued = true;
+    await _syncPromise;
+    _syncQueued = false;
+  }
+  _syncPromise = _doSyncCalendarData();
   try {
-    return await _doSyncCalendarData();
+    return await _syncPromise;
   } finally {
-    _syncing = false;
+    _syncPromise = null;
   }
 }
 
@@ -1041,22 +1058,19 @@ async function pullFromCloud() {
 // Auto-sync: full sync if enabled (debounced, 3s idle)
 // Returns a promise that resolves when sync completes (or immediately if no sync needed)
 let _syncTimer = null;
-let _syncResolve = null;
 function autoSyncPush() {
-  return new Promise((resolve) => {
-    if (!isSyncEnabled() || !sb) { resolve(); return; }
-    if (_syncTimer) { clearTimeout(_syncTimer); }
-    if (_syncResolve) _syncResolve(); // resolve previous pending
-    _syncResolve = resolve;
+  if (!isSyncEnabled() || !sb) return Promise.resolve();
+  if (_syncTimer) clearTimeout(_syncTimer);
+  return new Promise((resolve, reject) => {
     _syncTimer = setTimeout(async () => {
       _syncTimer = null;
-      _syncResolve = null;
       try {
-        await syncCalendarData();
+        const result = await syncCalendarData();
+        resolve(result);
       } catch (e) {
         console.log('[Sync] Auto-sync failed:', e.message);
+        reject(e);
       }
-      resolve();
     }, 3000);
   });
 }

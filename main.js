@@ -496,13 +496,17 @@ function scheduleReminders() {
 function createWindow() {
   Menu.setApplicationMenu(null);
 
+  const isDev = !app.isPackaged;
+  // Dev mode needs 'unsafe-inline' for Vite HMR; prod can lock down scripts
+  const scriptSrc = isDev ? "'self' 'unsafe-inline'" : "'self'";
+
   // Security: set CSP to block inline scripts and external resources
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';"
+          `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';`
         ]
       }
     });
@@ -521,7 +525,6 @@ function createWindow() {
     }
   });
 
-  const isDev = !app.isPackaged;
   if (isDev) {
     win.loadURL('http://localhost:5173');
     win.webContents.openDevTools();

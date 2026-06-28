@@ -339,8 +339,12 @@ async function loadHolidays() {
 
 async function saveDay(date, status, note, tags, color) {
   await window.calendarAPI.saveDay(date, status, note, tags, color);
-  if (!status && !note && (!tags || tags.length === 0) && !color) delete allData[date];
-  else allData[date] = { status, note, tags: tags || [], color: color || '' };
+  if (!status && !note && (!tags || tags.length === 0) && !color) {
+    // 保留 tombstone 标记，确保同步时能检测到删除
+    allData[date] = { status: null, note: '', tags: [], color: '', deleted: true, updatedAt: new Date().toISOString() };
+  } else {
+    allData[date] = { status, note, tags: tags || [], color: color || '' };
+  }
 }
 
 async function saveCurrentDay(status, note, tags, color) {
