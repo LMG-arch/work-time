@@ -75,6 +75,7 @@
             <button id="todo-add-btn" class="todo-add-btn">+ 添加待办</button>
           </div>
           <div id="todo-list" class="todo-list"></div>
+          <div id="todo-list-vue" class="todo-list"></div>
         </div>
         <div class="note-section">
           <textarea id="note-input" placeholder="备注今天做了什么..." rows="3"></textarea>
@@ -103,6 +104,7 @@
         </div>
         <div id="clockin-todo-section" class="todo-section" style="margin-top:16px;">
           <div id="todo-view-content" class="todo-view-content"></div>
+          <div id="todo-view-vue" class="todo-view-content"></div>
         </div>
       </div>
     </div>
@@ -146,72 +148,8 @@
       </div>
     </div>
 
-    <!-- Add Todo Modal -->
-    <div id="todo-modal" class="modal">
-      <div class="modal-content">
-        <div class="modal-title" id="todo-modal-title">添加待办</div>
-        <input id="todo-text-input" type="text" placeholder="待办内容" maxlength="50" class="modal-input">
-        <div class="modal-row">
-          <span class="modal-label">类型</span>
-          <div class="modal-type-btns">
-            <button class="type-btn active" data-type="once">指定日期</button>
-            <button class="type-btn" data-type="weekly">每周重复</button>
-          </div>
-        </div>
-        <div id="todo-once-row" class="modal-row">
-          <span class="modal-label">日期</span>
-          <input id="todo-date-input" type="date" class="modal-date-input">
-          <span id="todo-date-lunar-hint" class="todo-date-lunar-hint"></span>
-        </div>
-        <div id="todo-lunar-row" class="modal-row" style="display:none">
-          <span class="modal-label">农历</span>
-          <div class="lunar-date-picker">
-            <select id="todo-lunar-month" class="lunar-select"></select>
-            <select id="todo-lunar-day" class="lunar-select"></select>
-          </div>
-        </div>
-        <div class="modal-row">
-          <span class="modal-label">历法</span>
-          <div class="modal-type-btns">
-            <button class="calendar-type-btn active" data-caltype="solar">公历</button>
-            <button class="calendar-type-btn" data-caltype="lunar">农历</button>
-          </div>
-        </div>
-        <div id="todo-weekly-row" class="modal-row" style="display:none">
-          <span class="modal-label">重复</span>
-          <div class="weekday-picker">
-            <span class="wd-btn" data-wd="1">一</span>
-            <span class="wd-btn" data-wd="2">二</span>
-            <span class="wd-btn" data-wd="3">三</span>
-            <span class="wd-btn" data-wd="4">四</span>
-            <span class="wd-btn" data-wd="5">五</span>
-            <span class="wd-btn" data-wd="6">六</span>
-            <span class="wd-btn" data-wd="0">日</span>
-          </div>
-        </div>
-        <div id="todo-remind-row" class="modal-row">
-          <span class="modal-label">提醒</span>
-          <div class="todo-remind-picker">
-            <select id="todo-remind-select" class="lunar-select">
-              <option value="">不提醒</option>
-              <option value="same">准时提醒</option>
-              <option value="5">提前5分钟</option>
-              <option value="10">提前10分钟</option>
-              <option value="15">提前15分钟</option>
-              <option value="30">提前30分钟</option>
-              <option value="60">提前1小时</option>
-              <option value="120">提前2小时</option>
-              <option value="1440">提前1天</option>
-            </select>
-            <input id="todo-remind-time" type="time" class="modal-date-input" value="09:00" style="display:none">
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button id="todo-modal-cancel" class="modal-btn cancel">取消</button>
-          <button id="todo-modal-confirm" class="modal-btn confirm">确定</button>
-        </div>
-      </div>
-    </div>
+    <!-- Add Todo Modal (Vue) -->
+    <div id="todo-modal-vue"></div>
 
     <!-- Settings View -->
     <div id="settings-view" class="page-view" style="display:none;">
@@ -342,6 +280,7 @@
   <script src="stats.js"></script>
   <script src="settings.js"></script>
   <script src="updater.js"></script>
+  <script type="module" src="./vue-todos.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
