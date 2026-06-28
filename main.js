@@ -10,6 +10,13 @@ let dataPath;
 let store = { days: {}, todos: [], reminders: null, reminderRecords: {} };
 let reminderTimers = [];
 
+// 规范化 reminders 存储格式：确保 { items: [...], updatedAt: ... } 结构
+function normalizeReminders(raw) {
+  if (Array.isArray(raw)) return { items: raw, updatedAt: null };
+  if (raw && typeof raw === 'object' && Array.isArray(raw.items)) return raw;
+  return null;
+}
+
 // Notify renderer to auto-sync after data changes
 function notifyDataChanged() {
   if (win) {
@@ -36,6 +43,9 @@ function initStore() {
     if (!store.days) store.days = {};
     if (!store.todos) store.todos = [];
     if (!store.reminderRecords) store.reminderRecords = {};
+    // 规范化旧格式的 reminders：统一存储为 { items: [...], updatedAt: ... }
+    const norm = normalizeReminders(store.reminders);
+    store.reminders = norm || store.reminders;
   } catch {
     store = { days: {}, todos: [], reminders: null, reminderRecords: {} };
   }
@@ -159,7 +169,7 @@ function registerIPC() {
     // Include reminders and records in JSON export
     const exportObj = filePath.endsWith('.csv') ? store : {
       ...store,
-      reminders: store.reminders || getDefaultReminders(),
+      reminders: (normalizeReminders(store.reminders) || { items: getDefaultReminders() }).items,
       reminderRecords: store.reminderRecords || {}
     };
 
@@ -227,6 +237,8 @@ function registerIPC() {
         }
       }
       if (Array.isArray(imported.reminders)) {
+        store.reminders = { items: imported.reminders, updatedAt: null };
+      } else if (imported.reminders && typeof imported.reminders === 'object' && Array.isArray(imported.reminders.items)) {
         store.reminders = imported.reminders;
       }
       if (imported.reminderRecords && typeof imported.reminderRecords === 'object') {
@@ -262,12 +274,13 @@ function registerIPC() {
 
   // Reminders
   ipcMain.handle('get-reminders', () => {
-    return store.reminders || getDefaultReminders();
+    const wrapped = normalizeReminders(store.reminders);
+    return wrapped ? wrapped.items : getDefaultReminders();
   });
 
   ipcMain.handle('save-reminders', (_, reminders) => {
-    reminders.updatedAt = new Date().toISOString();
-    store.reminders = reminders;
+    const wrapped = { items: reminders, updatedAt: new Date().toISOString() };
+    store.reminders = wrapped;
     saveStore();
     scheduleReminders();
     return { success: true };
@@ -291,10 +304,10 @@ function registerIPC() {
   });
 
   // Todos
-  ipcMain.handle('get-todos', () => store.todos);
+  ipcMain.handle('get-todos', () => (store.todos || []).filter(t => t && !t.deleted));
 
   ipcMain.handle('add-todo', (_, todo) => {
-    todo.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    todo.id = crypto.randomUUID();
     todo.updatedAt = new Date().toISOString();
     store.todos.push(todo);
     saveStore();
@@ -315,7 +328,11 @@ function registerIPC() {
   });
 
   ipcMain.handle('delete-todo', (_, id) => {
-    store.todos = store.todos.filter(t => t.id !== id);
+    const idx = store.todos.findIndex(t => t.id === id);
+    if (idx >= 0) {
+      store.todos[idx].deleted = true;
+      store.todos[idx].updatedAt = new Date().toISOString();
+    }
     saveStore();
     scheduleTodoReminders();
     return { success: true };
@@ -341,7 +358,7 @@ function registerIPC() {
     return {
       days: days,
       todos: todos,
-      reminders: store.reminders || null,
+      reminders: store.reminders ? (normalizeReminders(store.reminders) || store.reminders) : null,
       reminderRecords: store.reminderRecords || {}
     };
   });
@@ -355,7 +372,17 @@ function registerIPC() {
       data.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
       store.todos = Object.values(todoMap);
     }
-    if (data.reminders) store.reminders = data.reminders;
+    if (data.reminders) {
+      const norm = normalizeReminders(data.reminders);
+      if (norm) {
+        const localNorm = normalizeReminders(store.reminders);
+        if (!localNorm || !localNorm.updatedAt || (norm.updatedAt && norm.updatedAt > localNorm.updatedAt)) {
+          store.reminders = norm;
+        }
+      } else if (Array.isArray(data.reminders)) {
+        store.reminders = { items: data.reminders, updatedAt: null };
+      }
+    }
     if (data.reminderRecords) {
       if (!store.reminderRecords) store.reminderRecords = {};
       for (const date of Object.keys(data.reminderRecords)) {
@@ -400,7 +427,8 @@ function scheduleReminders() {
   reminderTimers.forEach(t => clearInterval(t));
   reminderTimers = [];
 
-  const reminders = store.reminders || getDefaultReminders();
+  const wrapped = normalizeReminders(store.reminders);
+  const reminders = wrapped ? wrapped.items : getDefaultReminders();
   const enabledReminders = reminders.filter(r => r.enabled);
   if (enabledReminders.length === 0) {
     console.log('[Main] No enabled reminders');
@@ -458,7 +486,7 @@ function scheduleReminders() {
   // Check now
   checkReminders();
 
-  // Check every 30 seconds
+  // Check every 10 seconds
   const timer = setInterval(checkReminders, 10000);
   reminderTimers.push(timer);
 }
@@ -474,7 +502,7 @@ function createWindow() {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';"
+          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';"
         ]
       }
     });
@@ -493,7 +521,13 @@ function createWindow() {
     }
   });
 
-  win.loadFile(path.join(__dirname, 'src', 'index.html'));
+  const isDev = !app.isPackaged;
+  if (isDev) {
+    win.loadURL('http://localhost:5173');
+    win.webContents.openDevTools();
+  } else {
+    win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  }
 
   // Minimize to tray instead of closing
   win.on('close', (e) => {
