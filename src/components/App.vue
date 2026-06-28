@@ -1,12 +1,18 @@
 <script setup>
 import { ref } from 'vue'
+import SettingsPage from '../pages/SettingsPage.vue'
 
 const activePage = ref(null)
 
-window.__vueActivate = (page) => { activePage.value = page }
+window.__vueActivate = (page) => {
+  activePage.value = page
+  if (page === 'settings' && window.__refreshSettingsData) {
+    window.__refreshSettingsData()
+  }
+}
 window.__vueDeactivate = () => { activePage.value = null }
 </script>
 
 <template>
-  <!-- Empty shell for v3.4.0 -->
+  <SettingsPage v-if="activePage === 'settings'" />
 </template>
