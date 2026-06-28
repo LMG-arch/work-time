@@ -253,10 +253,8 @@ function setupEventListeners() {
   // Called after initSocial() so Supabase client is ready
 
   // Clock-in settings
-  document.getElementById('clockin-settings-btn').addEventListener('click', openReminderSettings);
-  document.getElementById('reminder-modal-cancel').addEventListener('click', closeReminderSettings);
-  document.getElementById('reminder-modal-save').addEventListener('click', saveReminderSettings);
-  document.getElementById('reminder-test-btn').addEventListener('click', sendTestNotification);
+  document.getElementById('clockin-settings-btn').addEventListener('click', () => window.__openReminderSettings?.());
+  // 提醒设置弹窗由 Vue ReminderSettings 组件处理
 
   // Auto-launch toggle
   const autoLaunchBtn = document.getElementById('auto-launch-btn');
@@ -541,7 +539,7 @@ function setupEventListeners() {
       closeDetailPanel();
       closeTodoModal();
       closePostModal();
-      closeReminderSettings();
+      window.__closeReminderSettings?.();
     }
   });
 }
