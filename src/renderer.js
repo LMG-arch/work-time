@@ -85,7 +85,7 @@ async function refreshAllData() {
     if (currentView === 'clockin') renderClockinView();
     if (currentView === 'stats') renderStats();
     // 如果当前在日历视图且详情面板打开，刷新待办列表
-    if (currentView === 'calendar' && selectedDate) renderTodoList(selectedDate);
+    if (currentView === 'calendar' && selectedDate) window.__refreshTodoList?.(selectedDate);
   } catch (e) {
     console.error('[refreshAllData] Failed:', e.message);
   }
@@ -517,7 +517,7 @@ function setupEventListeners() {
   });
 
   // Todo add button
-  document.getElementById('todo-add-btn').addEventListener('click', openTodoModal);
+  document.getElementById('todo-add-btn').addEventListener('click', () => window.__openTodoModal?.());
 
   // Save note button
   document.getElementById('save-note-btn').addEventListener('click', async () => {
@@ -536,7 +536,7 @@ function setupEventListeners() {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.key === 'ArrowLeft') changeMonth(-1);
     if (e.key === 'ArrowRight') changeMonth(1);
-    if (e.key === 't' && !e.ctrlKey && !e.metaKey) { openTodoModal(); e.preventDefault(); }
+    if (e.key === 't' && !e.ctrlKey && !e.metaKey) { window.__openTodoModal?.(); e.preventDefault(); }
     if (e.key === 'Escape') {
       closeDetailPanel();
       closeTodoModal();
@@ -706,7 +706,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     if (typeof setupColorPicker === 'function') setupColorPicker();
     if (typeof setupTagInputs === 'function') setupTagInputs();
-    if (typeof setupTodoModal === 'function') setupTodoModal();
+    // setupTodoModal 由 Vue TodoModal 组件替代
     if (typeof setupPostImagePicker === 'function') setupPostImagePicker();
   } catch (e) {
     console.error('[Init] Interactive components setup failed:', e.message);
