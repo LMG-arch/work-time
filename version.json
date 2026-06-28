@@ -1,12 +1,12 @@
 {
-  "version": "3.3.2",
+  "version": "3.4.0",
   "versionCode": 22,
-  "releaseDate": "2026-06-05",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.3.2/work-calendar-v3.3.2.apk",
+  "releaseDate": "2026-06-28",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.4.0/work-calendar-v3.4.0.apk",
   "changelog": [
-    "代码审计优化：统一使用 isCapacitorPlatform() 替代冗余内联检查",
-    "清理 UI 中不必要的 emoji 字符",
-    "recycle bin 标题使用纯文本"
+    "搭建 Vite + Vue 3 组件化基础架构",
+    "引入 Reka UI headless 组件库",
+    "Electron/Capacitor 适配 Vite 构建流程"
   ],
   "forceUpdate": false
 }
