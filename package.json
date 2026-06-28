@@ -8,15 +8,21 @@
     "pack": "electron-packager . WorkCalendar --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"android|dist|docs|\\.git|\\.claude|.*\\.apk|启动.*|README\\.md|CHANGELOG.*|node_modules/@capacitor|node_modules/@nicolo-ribaudo|node_modules/capacitor\" && node set-icon.js && node scripts/clean-locales.js"
   },
   "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.7",
+    "concurrently": "^10.0.3",
     "electron": "^35.0.0",
     "electron-packager": "^17.1.2",
-    "resedit": "^3.0.2"
+    "resedit": "^3.0.2",
+    "vite": "^8.1.0",
+    "wait-on": "^9.0.10"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
     "@capacitor/filesystem": "^8.1.2",
-    "@capacitor/local-notifications": "^8.2.0"
+    "@capacitor/local-notifications": "^8.2.0",
+    "reka-ui": "^2.10.1",
+    "vue": "^3.5.39"
   }
 }
