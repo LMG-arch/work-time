@@ -686,6 +686,11 @@ MIT
 
 ## 更新日志
 
+### v3.10.0 (2026-06-29) — 日历格子 + 头部导航迁移为 Vue 组件
+- **组件化重构**：日历格子渲染 + 月份导航从 calendar.js DOM 操作迁移为 CalendarView.vue
+- **页面路由**：走 __vueActivate 页面路由模式，Vue 管理当前年/月状态
+- **功能完整保留**：月历格子（含农历/节假日/状态/颜色/打卡指示）、月份切换、今天按钮
+
 ### v3.9.0 (2026-06-29) — 日历详情面板迁移为 Vue 组件
 - **组件化重构**：详情面板从 calendar.js DOM 操作迁移为 Vue SFC（StatusButtons + ColorPicker + TagEditor + NoteEditor + DetailPanel）
 - **独立挂载点**：`#detail-panel-vue` 嵌入日历视图内
