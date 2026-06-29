@@ -1,12 +1,12 @@
 {
-  "version": "3.10.0",
-  "versionCode": 28,
+  "version": "3.12.0",
+  "versionCode": 30,
   "releaseDate": "2026-06-29",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.10.0/work-calendar-v3.10.0.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.12.0/work-calendar-v3.12.0.apk",
   "changelog": [
-    "日历格子 + 头部导航迁移为 Vue 组件",
-    "CalendarView.vue — 走 __vueActivate 页面路由模式",
-    "Vue 渲染：月历格子（含农历/节假日/状态/颜色/打卡指示）、头部导航月份切换"
+    "好友圈迁移为 Vue 组件 — SocialPage.vue",
+    "renderer.js 清理 — 移除 setupAdminControls 等死代码 130 行",
+    "Vue 迁移全部完成：settings/todos/reminders/stats/calendar/social"
   ],
   "forceUpdate": false
 }
