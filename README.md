@@ -686,6 +686,12 @@ MIT
 
 ## 更新日志
 
+### v3.9.0 (2026-06-29) — 日历详情面板迁移为 Vue 组件
+- **组件化重构**：详情面板从 calendar.js DOM 操作迁移为 Vue SFC（StatusButtons + ColorPicker + TagEditor + NoteEditor + DetailPanel）
+- **独立挂载点**：`#detail-panel-vue` 嵌入日历视图内
+- **功能完整保留**：7 种状态按钮、8 色标记、标签输入+快捷标签+自动补全、备注编辑
+- **清理**：calendar.js 移除 210 行被替代的代码
+
 ### v3.8.0 (2026-06-29) — 月度统计模块迁移为 Vue 组件
 - **组件化重构**：统计模块从 stats.js 迁移为 StatsPage.vue
 - **页面路由**：走 __vueActivate 页面路由模式（与 SettingsPage 相同）

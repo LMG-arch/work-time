@@ -1,12 +1,12 @@
 {
-  "version": "3.8.0",
-  "versionCode": 26,
+  "version": "3.9.0",
+  "versionCode": 27,
   "releaseDate": "2026-06-29",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.8.0/work-calendar-v3.8.0.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.9.0/work-calendar-v3.9.0.apk",
   "changelog": [
-    "月度统计模块迁移为 Vue 组件",
-    "StatsPage.vue — 走 __vueActivate 页面路由模式",
-    "清理 stats.js 152 行死代码"
+    "日历详情面板迁移为 Vue 组件",
+    "StatusButtons + ColorPicker + TagEditor + NoteEditor + DetailPanel",
+    "清理 calendar.js 210 行死代码"
   ],
   "forceUpdate": false
 }
