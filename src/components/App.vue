@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import SettingsPage from '../pages/SettingsPage.vue'
+import StatsPage from '../pages/StatsPage.vue'
 
 const activePage = ref(null)
 
@@ -15,4 +16,5 @@ window.__vueDeactivate = () => { activePage.value = null }
 
 <template>
   <SettingsPage v-if="activePage === 'settings'" />
+  <StatsPage v-if="activePage === 'stats'" />
 </template>
