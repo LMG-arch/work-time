@@ -686,6 +686,12 @@ MIT
 
 ## 更新日志
 
+### v3.7.0 (2026-06-28) — 打卡提醒模块迁移为 Vue 组件
+- **组件化重构**：提醒模块从 reminders.js 迁移为 Vue SFC（ReminderList / ReminderHistory / ReminderSettings）
+- **独立挂载点**：3 个独立 Vue 实例嵌入打卡页
+- **功能完整保留**：今日提醒卡片、7 天打卡历史、提醒设置弹窗（时间/标签/声音/震动/开关）
+- **清理**：reminders.js 移除 182 行被替代的代码
+
 ### v3.6.0 (2026-06-28) — 待办模块迁移为 Vue 组件
 - **组件化重构**：待办模块从 todos.js 迁移为 Vue SFC（TodoItem / TodoListApp / TodoViewApp / TodoModal）
 - **独立挂载点**：3 个独立 Vue 实例嵌入日历面板和打卡页，不走页面路由

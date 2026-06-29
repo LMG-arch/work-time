@@ -1,12 +1,12 @@
 {
-  "version": "3.6.0",
-  "versionCode": 24,
+  "version": "3.7.0",
+  "versionCode": 25,
   "releaseDate": "2026-06-28",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.6.0/work-calendar-v3.6.0.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.7.0/work-calendar-v3.7.0.apk",
   "changelog": [
-    "待办模块迁移为 Vue 组件",
-    "TodoListApp.vue + TodoViewApp.vue + TodoModal.vue + TodoItem.vue",
-    "独立 Vue 挂载点嵌入日历面板和打卡页"
+    "打卡提醒模块迁移为 Vue 组件",
+    "ReminderList.vue + ReminderHistory.vue + ReminderSettings.vue",
+    "清理 reminders.js 182 行死代码"
   ],
   "forceUpdate": false
 }
