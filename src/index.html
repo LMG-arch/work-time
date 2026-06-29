@@ -29,57 +29,13 @@
       </div>
       <div id="calendar-grid" class="calendar-grid"></div>
       <div id="detail-panel" class="detail-panel">
-        <div id="detail-date" class="detail-date"></div>
-        <div class="status-row">
-          <button class="status-btn" data-status="work">上班</button>
-          <button class="status-btn" data-status="rest">休息</button>
-          <button class="status-btn" data-status="trip">出差</button>
-          <button class="status-btn" data-status="leave">请假</button>
-          <button class="status-btn" data-status="annual">年假</button>
-          <button class="status-btn" data-status="sick">病假</button>
-          <button class="status-btn" data-status="personal">事假</button>
-        </div>
-        <div class="color-row">
-          <span class="color-label">标记颜色</span>
-          <div class="color-options">
-            <span class="color-dot" data-color="" title="无颜色"></span>
-            <span class="color-dot" data-color="#ffcdd2" title="红色" style="background:#ffcdd2"></span>
-            <span class="color-dot" data-color="#c8e6c9" title="绿色" style="background:#c8e6c9"></span>
-            <span class="color-dot" data-color="#bbdefb" title="蓝色" style="background:#bbdefb"></span>
-            <span class="color-dot" data-color="#fff9c4" title="黄色" style="background:#fff9c4"></span>
-            <span class="color-dot" data-color="#e1bee7" title="紫色" style="background:#e1bee7"></span>
-            <span class="color-dot" data-color="#ffe0b2" title="橙色" style="background:#ffe0b2"></span>
-            <span class="color-dot" data-color="#b2dfdb" title="青色" style="background:#b2dfdb"></span>
-          </div>
-        </div>
-        <div class="tag-section">
-          <div id="tag-list" class="tag-list"></div>
-          <div class="tag-input-row">
-            <input id="tag-input" type="text" placeholder="添加标签，回车确认" maxlength="10">
-            <button id="tag-add-btn" class="tag-add-btn">+</button>
-          </div>
-          <div class="tag-quick">
-            <span class="quick-tag" data-tag="加班">加班</span>
-            <span class="quick-tag" data-tag="迟到">迟到</span>
-            <span class="quick-tag" data-tag="早退">早退</span>
-            <span class="quick-tag" data-tag="会议">会议</span>
-            <span class="quick-tag" data-tag="培训">培训</span>
-            <span class="quick-tag" data-tag="请假">请假</span>
-            <span class="quick-tag" data-tag="远程">远程</span>
-            <span class="quick-tag" data-tag="外勤">外勤</span>
-          </div>
-        </div>
+        <div id="detail-panel-vue"></div>
         <div class="todo-section">
           <div class="todo-header-row">
             <span class="todo-title">待办</span>
             <button id="todo-add-btn" class="todo-add-btn">+ 添加待办</button>
           </div>
-          <div id="todo-list" class="todo-list"></div>
           <div id="todo-list-vue" class="todo-list"></div>
-        </div>
-        <div class="note-section">
-          <textarea id="note-input" placeholder="备注今天做了什么..." rows="3"></textarea>
-          <button id="save-note-btn" class="save-btn">保存</button>
         </div>
       </div>
     </div>
@@ -272,6 +228,7 @@
   <script src="updater.js"></script>
   <script type="module" src="./vue-todos.js"></script>
   <script type="module" src="./vue-reminders.js"></script>
+  <script type="module" src="./vue-calendar.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
