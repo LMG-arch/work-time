@@ -33,80 +33,11 @@ function renderClockinView() {
   updateMonthLabel();
   const todayStr = getTodayStr();
   document.getElementById('clockin-today-label').textContent = formatDateCN(todayStr);
-
-  // Today's reminders
-  const container = document.getElementById('clockin-today-reminders');
-  container.innerHTML = '';
-
-  // 检查今天是否标记为非工作日（休息/请假/年假/病假/事假）
-  const todayData = allData[todayStr];
-  const nonWorkStatuses = ['rest', 'leave', 'annual', 'sick', 'personal'];
-  if (todayData && nonWorkStatuses.includes(todayData.status)) {
-    const statusLabel = STATUS_LABELS[todayData.status] || '休息';
-    container.innerHTML = `<div class="rest-day-skip">😴 今天是${escapeHtml(statusLabel)}日，不需要打卡</div>`;
-    renderWaterTracker();
-    renderClockinHistory();
-    return;
-  }
-
-  const now = new Date();
-  const currentTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-
-  for (const r of allReminders) {
-    if (!r.enabled) continue;
-    const confirmed = isReminderConfirmed(r.id, todayStr);
-    const isPast = currentTime >= r.time;
-
-    const card = document.createElement('div');
-    card.className = 'reminder-card' + (confirmed ? ' confirmed' : '');
-
-    let statusText, btnClass, btnText, btnDisabled;
-    if (confirmed) {
-      statusText = '已确认打卡';
-      btnClass = 'confirmed';
-      btnText = '✓ 已打卡';
-      btnDisabled = true;
-    } else if (isPast) {
-      statusText = '待确认';
-      btnClass = 'pending';
-      btnText = '确认打卡';
-      btnDisabled = false;
-    } else {
-      statusText = '未到时间';
-      btnClass = 'waiting';
-      btnText = '等待中';
-      btnDisabled = true;
-    }
-
-    card.innerHTML = `
-      <div class="reminder-time">${escapeHtml(r.time)}</div>
-      <div class="reminder-info">
-        <span class="reminder-label">${escapeHtml(r.label)}</span>
-        <span class="reminder-status">${escapeHtml(statusText)}</span>
-      </div>
-      <button class="reminder-confirm-btn ${escapeHtml(btnClass)}" data-id="${escapeAttr(r.id)}" ${btnDisabled ? 'disabled' : ''}>${escapeHtml(btnText)}</button>
-    `;
-    container.appendChild(card);
-  }
-
-  // Bind confirm buttons
-  container.querySelectorAll('.reminder-confirm-btn.pending').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const rid = btn.dataset.id;
-      await window.calendarAPI.confirmReminder(todayStr, rid);
-      if (!allReminderRecords[todayStr]) allReminderRecords[todayStr] = {};
-      allReminderRecords[todayStr][rid] = { confirmed: true, at: new Date().toISOString() };
-      renderClockinView();
-      renderCalendar();
-      showToast('打卡成功 ✓');
-    });
-  });
-
-  // 喝水记录
+  // 提醒列表由 ReminderList.vue 渲染
+  window.__refreshReminderList?.();
   renderWaterTracker();
-
-  // History
-  renderClockinHistory();
+  // 打卡历史由 ReminderHistory.vue 渲染
+  window.__refreshReminderHistory?.();
 }
 
 // 喝水记录
@@ -180,89 +111,6 @@ function renderWaterTracker() {
       renderWaterTracker();
     });
   });
-}
-
-function renderClockinHistory() {
-  const historyContainer = document.getElementById('clockin-history');
-  historyContainer.innerHTML = '';
-
-  // Get last 7 days
-  const days = [];
-  const today = new Date();
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    days.push(dateToStr(d.getFullYear(), d.getMonth(), d.getDate()));
-  }
-
-  let hasRecords = false;
-  for (const dateStr of days) {
-    const records = allReminderRecords[dateStr];
-    if (!records || Object.keys(records).length === 0) continue;
-    hasRecords = true;
-
-    const d = new Date(dateStr + 'T00:00:00');
-    const weekday = WEEKDAYS_CN[d.getDay()];
-    const parts = dateStr.split('-');
-
-    const item = document.createElement('div');
-    item.className = 'history-item';
-
-    let html = `<div class="history-date">${parseInt(parts[1])}月${parseInt(parts[2])}日 周${weekday}</div><div class="history-records">`;
-    for (const r of allReminders) {
-      if (!r.enabled) continue;
-      const confirmed = records[r.id] && records[r.id].confirmed;
-      html += `<span class="history-record ${confirmed ? 'confirmed' : 'unconfirmed'}">${escapeHtml(r.label)} ${confirmed ? '✓' : '✗'}</span>`;
-    }
-    html += '</div>';
-    item.innerHTML = html;
-    historyContainer.appendChild(item);
-  }
-
-  if (!hasRecords) {
-    historyContainer.innerHTML = '<div class="empty-tip">暂无打卡记录</div>';
-  }
-
-  // Render todo section below clockin
-  renderTodoView();
-}
-
-function renderReminderSettings() {
-  const list = document.getElementById('reminder-settings-list');
-  list.innerHTML = '';
-
-  for (const r of allReminders) {
-    const item = document.createElement('div');
-    item.className = 'reminder-setting-item';
-    const sound = r.sound !== false;
-    const vibrate = r.vibrate !== false;
-    item.innerHTML = `
-      <input type="time" class="setting-time-input" value="${escapeAttr(r.time)}" data-id="${escapeAttr(r.id)}">
-      <input type="text" class="setting-label-input" value="${escapeAttr(r.label)}" data-id="${escapeAttr(r.id)}" maxlength="10">
-      <div style="display:flex;gap:8px;align-items:center;">
-        <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:2px;" title="声音">
-          <input type="checkbox" class="setting-sound-check" data-id="${escapeAttr(r.id)}" ${sound ? 'checked' : ''} style="width:12px;height:12px;">🔔
-        </label>
-        <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:2px;" title="震动">
-          <input type="checkbox" class="setting-vibrate-check" data-id="${escapeAttr(r.id)}" ${vibrate ? 'checked' : ''} style="width:12px;height:12px;">📳
-        </label>
-        <label class="toggle-switch">
-          <input type="checkbox" ${r.enabled ? 'checked' : ''} data-id="${escapeAttr(r.id)}">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    `;
-    list.appendChild(item);
-  }
-}
-
-function openReminderSettings() {
-  renderReminderSettings();
-  document.getElementById('reminder-modal').style.display = 'flex';
-}
-
-function closeReminderSettings() {
-  document.getElementById('reminder-modal').style.display = 'none';
 }
 
 async function sendTestNotification() {
@@ -425,32 +273,6 @@ async function diagnoseNotifications() {
   alert('通知诊断结果:\n\n' + results.join('\n'));
 }
 
-async function saveReminderSettings() {
-  const items = document.querySelectorAll('.reminder-setting-item');
-  const updated = [];
-  items.forEach(item => {
-    const timeInput = item.querySelector('.setting-time-input');
-    const labelInput = item.querySelector('.setting-label-input');
-    const toggle = item.querySelector('.toggle-switch input[type="checkbox"]');
-    const soundCheck = item.querySelector('.setting-sound-check');
-    const vibrateCheck = item.querySelector('.setting-vibrate-check');
-    updated.push({
-      id: timeInput.dataset.id,
-      label: labelInput.value.trim() || '打卡',
-      time: timeInput.value,
-      enabled: toggle.checked,
-      sound: soundCheck ? soundCheck.checked : true,
-      vibrate: vibrateCheck ? vibrateCheck.checked : true
-    });
-  });
-  allReminders = updated;
-  await window.calendarAPI.saveReminders(updated);
-  closeReminderSettings();
-  renderClockinView();
-  scheduleReminderNotifications();
-  scheduleTodoReminders();
-  showToast('提醒设置已保存');
-}
 
 function getClockinStatusForDate(dateStr) {
   const enabled = allReminders.filter(r => r.enabled);
