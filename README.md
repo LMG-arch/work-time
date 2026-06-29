@@ -686,6 +686,12 @@ MIT
 
 ## 更新日志
 
+### v3.8.0 (2026-06-29) — 月度统计模块迁移为 Vue 组件
+- **组件化重构**：统计模块从 stats.js 迁移为 StatsPage.vue
+- **页面路由**：走 __vueActivate 页面路由模式（与 SettingsPage 相同）
+- **功能完整保留**：天数统计卡片、节假日信息、比例条、标签排行、逐日记录、导出图片
+- **清理**：stats.js 移除 152 行被替代的代码
+
 ### v3.7.0 (2026-06-28) — 打卡提醒模块迁移为 Vue 组件
 - **组件化重构**：提醒模块从 reminders.js 迁移为 Vue SFC（ReminderList / ReminderHistory / ReminderSettings）
 - **独立挂载点**：3 个独立 Vue 实例嵌入打卡页

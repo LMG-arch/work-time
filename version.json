@@ -1,12 +1,12 @@
 {
-  "version": "3.7.0",
-  "versionCode": 25,
-  "releaseDate": "2026-06-28",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.7.0/work-calendar-v3.7.0.apk",
+  "version": "3.8.0",
+  "versionCode": 26,
+  "releaseDate": "2026-06-29",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.8.0/work-calendar-v3.8.0.apk",
   "changelog": [
-    "打卡提醒模块迁移为 Vue 组件",
-    "ReminderList.vue + ReminderHistory.vue + ReminderSettings.vue",
-    "清理 reminders.js 182 行死代码"
+    "月度统计模块迁移为 Vue 组件",
+    "StatsPage.vue — 走 __vueActivate 页面路由模式",
+    "清理 stats.js 152 行死代码"
   ],
   "forceUpdate": false
 }
