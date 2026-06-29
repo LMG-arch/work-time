@@ -249,7 +249,7 @@ function setupEventListeners() {
     document.getElementById('diag-close').addEventListener('click', () => panel.remove());
   }
 
-  // Clear Supabase data (admin only) — deferred to setupAdminControls()
+  // 管理员回收站功能已由 SettingsPage.vue 处理
   // Called after initSocial() so Supabase client is ready
 
   // Clock-in settings
@@ -524,129 +524,6 @@ function setupEventListeners() {
 
 // ===== Admin Controls =====
 
-async function setupAdminControls() {
-  const clearBtn = document.getElementById('supabase-clear-btn');
-  const clearHint = clearBtn?.nextElementSibling;
-  if (await isAdmin()) {
-    const TABLES = [
-      { key: 'posts', label: '动态' },
-      { key: 'comments', label: '评论' },
-      { key: 'likes', label: '点赞' },
-      { key: 'friendships', label: '好友关系' },
-      { key: 'profiles', label: '用户' }
-    ];
-
-    function getSelectedTables() {
-      const checked = document.querySelectorAll('.trash-check:checked');
-      if (checked.length === 0) return null;
-      return Array.from(checked).map(cb => cb.dataset.table);
-    }
-    function getSelectedLabel() {
-      const tables = getSelectedTables();
-      if (!tables) return '全部';
-      return tables.map(t => TABLES.find(x => x.key === t)?.label || t).join('、');
-    }
-
-    // Insert checkboxes BEFORE the clear button
-    const container = clearBtn.parentElement;
-    const selectorDiv = document.createElement('div');
-    selectorDiv.style.cssText = 'margin-bottom:8px;';
-    selectorDiv.innerHTML = `
-      <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">勾选数据类型（不勾选 = 全部）</div>
-      <div style="display:flex;flex-wrap:wrap;gap:2px 10px;">
-        ${TABLES.map(t => `<label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;">
-          <input type="checkbox" class="trash-check" data-table="${t.key}" style="width:14px;height:14px;">${t.label}
-          <span id="data-size-${t.key}" style="color:var(--text3);font-size:11px;"></span>
-        </label>`).join('')}
-      </div>
-    `;
-    container.insertBefore(selectorDiv, clearBtn);
-
-    // Clear button — selective
-    clearBtn.addEventListener('click', async () => {
-      const label = getSelectedLabel();
-      if (!confirm(`⚠️ 即将清除以下数据：${label}\n\n数据会移入回收站，可从回收站恢复。\n\n继续吗？`)) return;
-      if (!confirm('再次确认：真的要清除吗？')) return;
-      showToast('正在清除...');
-      const tables = getSelectedTables() || TABLES.map(t => t.key);
-      const result = await resetSelected(tables);
-      if (result.error) showToast('清除失败: ' + result.error);
-      else { showToast('数据已移入回收站 ✓'); updateTrashStats(); }
-    });
-
-    // Trash section below
-    const trashSection = document.createElement('div');
-    trashSection.id = 'trash-section';
-    trashSection.style.cssText = 'margin-top:12px;border-top:1px solid var(--border);padding-top:12px;';
-    trashSection.innerHTML = `
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">回收站</div>
-      <div id="trash-stats" class="settings-hint" style="margin-bottom:8px;">加载中...</div>
-      <div style="display:flex;gap:8px;">
-        <button id="trash-restore-btn" class="settings-action-btn" style="flex:1;">恢复数据</button>
-        <button id="trash-empty-btn" class="settings-action-btn" style="flex:1;color:#e53935;border-color:#e53935;">清空回收站</button>
-      </div>
-    `;
-    container.appendChild(trashSection);
-
-    async function updateTrashStats() {
-      const statsEl = document.getElementById('trash-stats');
-      if (!statsEl) return;
-      const [stats, sizes] = await Promise.all([getTrashStats(), getTrashSizes()]);
-      // Update size labels next to checkboxes
-      if (sizes) {
-        const sizeMap = {};
-        sizes.forEach(s => { sizeMap[s.table_name] = { count: Number(s.deleted_count), size: s.total_size }; });
-        TABLES.forEach(t => {
-          const el = document.getElementById(`data-size-${t.key}`);
-          if (el && sizeMap[t.key]) {
-            const info = sizeMap[t.key];
-            const parts2 = [info.size];
-            if (info.count > 0) parts2.push(`回收站${info.count}条`);
-            el.textContent = `(${parts2.join(', ')})`;
-          }
-        });
-      }
-      if (!stats || stats.total === 0) { statsEl.textContent = '回收站为空'; return; }
-      const parts = [];
-      if (stats.profiles) parts.push(`${stats.profiles} 个用户`);
-      if (stats.posts) parts.push(`${stats.posts} 条动态`);
-      if (stats.comments) parts.push(`${stats.comments} 条评论`);
-      if (stats.likes) parts.push(`${stats.likes} 个点赞`);
-      if (stats.friendships) parts.push(`${stats.friendships} 条好友关系`);
-      statsEl.textContent = `共 ${stats.total} 条：${parts.join('、')}`;
-    }
-    updateTrashStats();
-
-    document.getElementById('trash-restore-btn').addEventListener('click', async () => {
-      const label = getSelectedLabel();
-      if (!confirm(`确定从回收站恢复以下数据？\n${label}`)) return;
-      showToast('正在恢复...');
-      const tables = getSelectedTables() || TABLES.map(t => t.key);
-      const result = await restoreSelected(tables);
-      if (result.error) showToast('恢复失败: ' + result.error);
-      else {
-        showToast('数据已恢复 ✓');
-        await refreshAllData();
-        updateTrashStats();
-      }
-    });
-
-    document.getElementById('trash-empty-btn').addEventListener('click', async () => {
-      const label = getSelectedLabel();
-      if (!confirm(`⚠️ 以下数据将永久删除，无法恢复！\n${label}\n\n确定继续？`)) return;
-      if (!confirm('再次确认：真的要永久删除吗？')) return;
-      showToast('正在清空...');
-      const tables = getSelectedTables() || TABLES.map(t => t.key);
-      const result = await emptySelected(tables);
-      if (result.error) showToast('清空失败: ' + result.error);
-      else { showToast('回收站已清空'); updateTrashStats(); }
-    });
-  } else {
-    if (clearBtn) clearBtn.style.display = 'none';
-    if (clearHint) clearHint.style.display = 'none';
-  }
-}
-
 // ===== Init =====
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -700,12 +577,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('[Init] initSocial failed:', e.message);
   }
 
-  // Setup admin controls (needs Supabase to be initialized first)
-  try {
-    if (typeof setupAdminControls === 'function') await setupAdminControls();
-  } catch (e) {
-    console.error('[Init] setupAdminControls failed:', e.message);
-  }
+  // setupAdminControls 已由 SettingsPage.vue 处理
 
   // Listen for reminder confirmations from Electron main process
   try {
