@@ -27,132 +27,8 @@ function getHolidayInfo(dateStr) {
 // --- Calendar ---
 
 function renderCalendar() {
-  updateMonthLabel();
-  const grid = document.getElementById('calendar-grid');
-  grid.innerHTML = '';
-
-  const today = new Date();
-  const todayStr = dateToStr(today.getFullYear(), today.getMonth(), today.getDate());
-  const firstDay = getFirstDayOfWeek(currentYear, currentMonth);
-  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
-
-  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-  const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-  const daysInPrevMonth = getDaysInMonth(prevYear, prevMonth);
-
-  for (let i = firstDay - 1; i >= 0; i--) {
-    const day = daysInPrevMonth - i;
-    grid.appendChild(createDayCell(day, dateToStr(prevYear, prevMonth, day), true));
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = dateToStr(currentYear, currentMonth, day);
-    const cell = createDayCell(day, dateStr, false);
-    if (dateStr === todayStr) cell.classList.add('today');
-    if (dateStr === selectedDate) cell.classList.add('selected');
-    grid.appendChild(cell);
-  }
-
-  const remaining = grid.children.length % 7 === 0 ? 0 : 7 - (grid.children.length % 7);
-  const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
-  const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
-  for (let day = 1; day <= remaining; day++) {
-    grid.appendChild(createDayCell(day, dateToStr(nextYear, nextMonth, day), true));
-  }
-}
-
-function createDayCell(day, dateStr, isOtherMonth) {
-  const cell = document.createElement('div');
-  cell.className = 'day-cell' + (isOtherMonth ? ' other-month' : '');
-  cell.dataset.date = dateStr;
-
-  const num = document.createElement('span');
-  num.className = 'day-num';
-  num.textContent = day;
-  cell.appendChild(num);
-
-  // 农历标签
-  const parts = dateStr.split('-');
-  const lunar = Lunar.solar2lunar(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-  const lunarLabel = document.createElement('span');
-  lunarLabel.className = 'lunar-label' + (lunar.isFirstDay ? ' lunar-month' : '');
-  lunarLabel.textContent = lunar.text;
-  cell.appendChild(lunarLabel);
-
-  const dayData = allData[dateStr];
-  const holiday = getHolidayInfo(dateStr);
-
-  // Custom color
-  if (dayData && dayData.color) {
-    cell.style.background = dayData.color;
-  }
-
-  // Status label
-  if (dayData && dayData.status) {
-    cell.dataset.status = dayData.status;
-    const label = document.createElement('span');
-    label.className = 'status-label';
-    label.textContent = STATUS_CHARS[dayData.status] || '';
-    cell.appendChild(label);
-  }
-
-  // Note indicator
-  if (dayData && dayData.note) cell.classList.add('has-note');
-
-  // Tag indicator
-  if (dayData && dayData.tags && dayData.tags.length > 0) cell.classList.add('has-tag');
-
-  // Todo indicator
-  const todosForDay = getTodosForDate(dateStr);
-  if (todosForDay.length > 0) {
-    cell.classList.add('has-todo');
-    const todoCount = document.createElement('span');
-    todoCount.className = 'todo-count';
-    const undone = todosForDay.filter(t => !isTodoDone(t, dateStr)).length;
-    todoCount.textContent = undone > 0 ? undone : '';
-    cell.appendChild(todoCount);
-  }
-
-  // Clock-in indicator
-  const clockinStatus = getClockinStatusForDate(dateStr);
-  if (clockinStatus && !isOtherMonth) {
-    cell.classList.add('has-clockin');
-  }
-
-  // Holiday label
-  if (holiday && !isOtherMonth) {
-    cell.classList.add('has-holiday');
-    if (holiday.type === 'holiday') cell.classList.add('is-holiday-day');
-    if (holiday.type === 'workday') cell.classList.add('is-workday-day');
-    const hLabel = document.createElement('span');
-    hLabel.className = 'holiday-label';
-    hLabel.textContent = holiday.name;
-    cell.appendChild(hLabel);
-  }
-
-  cell.addEventListener('click', () => onDayClick(dateStr, isOtherMonth));
-  return cell;
-}
-
-function onDayClick(dateStr, isOtherMonth) {
-  if (isOtherMonth) {
-    const parts = dateStr.split('-');
-    currentYear = parseInt(parts[0]);
-    currentMonth = parseInt(parts[1]) - 1;
-    selectedDate = dateStr;
-    renderCalendar();
-    return;
-  }
-  // Toggle: click same day again to close detail panel
-  if (selectedDate === dateStr && document.getElementById('detail-panel').classList.contains('open')) {
-    closeDetailPanel();
-    return;
-  }
-  selectedDate = dateStr;
-  document.querySelectorAll('.day-cell.selected').forEach(el => el.classList.remove('selected'));
-  const cell = document.querySelector(`.day-cell[data-date="${dateStr}"]`);
-  if (cell) cell.classList.add('selected');
-  openDetailPanel(dateStr);
+  // 日历格子由 CalendarView.vue 渲染
+  window.__refreshCalendarGrid?.();
 }
 
 function openDetailPanel(dateStr) {
@@ -168,21 +44,25 @@ function closeDetailPanel() {
   document.querySelectorAll('.day-cell.selected').forEach(el => el.classList.remove('selected'));
 }
 
-// --- Color picker ---
-
-}
+// color picker 由 Vue ColorPicker 组件处理
 
 // --- Month change ---
 
 async function changeMonth(delta) {
+  // 日历视图由 Vue 管理，委托给 CalendarView
+  if (currentView === 'calendar') {
+    if (delta < 0) window.__calendarPrevMonth?.();
+    else window.__calendarNextMonth?.();
+    closeDetailPanel();
+    await loadAllData();
+    return;
+  }
   currentMonth += delta;
   if (currentMonth < 0) { currentMonth = 11; currentYear--; }
   if (currentMonth > 11) { currentMonth = 0; currentYear++; }
   closeDetailPanel();
   await loadAllData();
-  if (currentView === 'calendar') renderCalendar();
-  else if (currentView === 'stats') renderStats();
+  if (currentView === 'stats') renderStats();
   else if (currentView === 'clockin') renderClockinView();
-  // social/settings: only update label, don't re-render
   updateMonthLabel();
 }

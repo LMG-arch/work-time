@@ -42,7 +42,7 @@ function switchView(view) {
   currentView = view;
 
   // Vue 管理的页面先激活 Vue 容器并返回
-  const VUE_PAGES = ['settings', 'stats']
+  const VUE_PAGES = ['calendar', 'settings', 'stats']
   if (VUE_PAGES.includes(view)) {
     document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
     const appEl = document.getElementById('app');
@@ -126,14 +126,15 @@ async function updateAccountUI() {
 // ===== Event Listeners =====
 
 function setupEventListeners() {
-  // Touch swipe for month navigation
+  // Touch swipe for month navigation (calendar view)
   let touchStartX = 0, touchStartY = 0;
-  const calendarView = document.getElementById('calendar-view');
-  calendarView.addEventListener('touchstart', (e) => {
+  document.addEventListener('touchstart', (e) => {
+    if (currentView !== 'calendar') return;
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
   }, { passive: true });
-  calendarView.addEventListener('touchend', (e) => {
+  document.addEventListener('touchend', (e) => {
+    if (currentView !== 'calendar') return;
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
@@ -145,13 +146,18 @@ function setupEventListeners() {
   document.getElementById('next-month').addEventListener('click', () => changeMonth(1));
 
   document.getElementById('today-btn').addEventListener('click', async () => {
+    if (currentView === 'calendar') {
+      window.__calendarGoToday?.();
+      closeDetailPanel();
+      await loadAllData();
+      return;
+    }
     const today = new Date();
     currentYear = today.getFullYear();
     currentMonth = today.getMonth();
     closeDetailPanel();
     await loadAllData();
-    if (currentView === 'calendar') renderCalendar();
-    else if (currentView === 'stats') window.__refreshStats?.();
+    if (currentView === 'stats') window.__refreshStats?.();
     else renderClockinView();
     updateMonthLabel();
   });
