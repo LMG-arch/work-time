@@ -42,7 +42,7 @@ function switchView(view) {
   currentView = view;
 
   // Vue 管理的页面先激活 Vue 容器并返回
-  const VUE_PAGES = ['calendar', 'settings', 'stats']
+  const VUE_PAGES = ['calendar', 'settings', 'social', 'stats']
   if (VUE_PAGES.includes(view)) {
     document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
     const appEl = document.getElementById('app');
@@ -60,17 +60,12 @@ function switchView(view) {
   if (appEl) appEl.style.display = 'none';
   window.__vueDeactivate?.();
 
-  document.getElementById('calendar-view').style.display = view === 'calendar' ? '' : 'none';
-  document.getElementById('stats-view').style.display = view === 'stats' ? '' : 'none';
   document.getElementById('clockin-view').style.display = view === 'clockin' ? '' : 'none';
-  document.getElementById('settings-view').style.display = 'none';
-  document.getElementById('social-view').style.display = view === 'social' ? '' : 'none';
   document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
   const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
   const activeBtn = document.getElementById(activeMap[view]);
   if (activeBtn) activeBtn.classList.add('active');
   if (view === 'clockin') renderClockinView();
-  if (view === 'social') renderSocialView();
 }
 
 // Refresh all data from storage and re-render current view
@@ -511,9 +506,7 @@ function setupEventListeners() {
   // Todo add button
   document.getElementById('todo-add-btn').addEventListener('click', () => window.__openTodoModal?.());
 
-  // Post modal buttons
-  document.getElementById('post-modal-cancel').addEventListener('click', closePostModal);
-  document.getElementById('post-modal-submit').addEventListener('click', submitPost);
+  // Post modal 由 SocialPage.vue 处理
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
@@ -524,7 +517,6 @@ function setupEventListeners() {
     if (e.key === 'Escape') {
       closeDetailPanel();
       closeTodoModal();
-      closePostModal();
       window.__closeReminderSettings?.();
     }
   });
@@ -689,7 +681,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Setup interactive components (deferred from module load)
   try {
 // setupColorPicker/setupTagInputs/setupTodoModal 由 Vue 组件替代
-    if (typeof setupPostImagePicker === 'function') setupPostImagePicker();
+    // setupPostImagePicker 由 SocialPage.vue 处理
   } catch (e) {
     console.error('[Init] Interactive components setup failed:', e.message);
   }
