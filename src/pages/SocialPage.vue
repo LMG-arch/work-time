@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from 'reka-ui'
 
 const posts = ref([])
 const loading = ref(false)
@@ -114,10 +115,11 @@ async function addComment(postId, text) { if (typeof window.addPostComment === '
     </div>
 
     <!-- Post Modal -->
-    <Teleport to="body">
-      <div v-if="showPostModal" class="modal" style="display:flex;" @click.self="closePostModal">
-        <div class="modal-content">
-          <div class="modal-title">发布动态</div>
+    <DialogRoot v-model:open="showPostModal" @update:open="v => showPostModal = v">
+      <DialogPortal>
+        <DialogOverlay class="dialog-overlay" />
+        <DialogContent class="dialog-content" @interact-outside="closePostModal">
+          <DialogTitle class="dialog-title">发布动态</DialogTitle>
           <textarea v-model="postText" placeholder="分享你的心情..." rows="4" style="width:100%;border:1px solid var(--border,#ddd);border-radius:8px;padding:8px;font-size:13px;resize:vertical;box-sizing:border-box;margin-bottom:8px;"></textarea>
           <div v-if="postImage" style="position:relative;margin-bottom:8px;">
             <img :src="URL.createObjectURL(postImage)" style="max-width:100%;max-height:200px;border-radius:8px;">
@@ -129,11 +131,11 @@ async function addComment(postId, text) { if (typeof window.addPostComment === '
             </label>
           </div>
           <div class="modal-actions">
-            <button class="modal-btn cancel" @click="closePostModal">取消</button>
+            <DialogClose class="modal-btn cancel">取消</DialogClose>
             <button class="modal-btn confirm" @click="submitPost">发布</button>
           </div>
-        </div>
-      </div>
-    </Teleport>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   </div>
 </template>

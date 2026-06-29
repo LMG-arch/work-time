@@ -1416,3 +1416,45 @@ button:active::after {
 }
 
 .update-download:hover { opacity: 0.85; }
+
+/* ========== Reka UI Dialog + Global Beautification ========== */
+* { box-sizing: border-box; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+.dialog-overlay {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(0,0,0,0.4);
+  animation: overlay-show 200ms ease;
+}
+.dialog-content {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  z-index: 1000;
+  background: var(--card, #fff); border-radius: 12px;
+  padding: 20px; width: 90%; max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  animation: content-show 200ms ease;
+  max-height: 80vh; overflow-y: auto;
+}
+.dialog-title {
+  font-size: 16px; font-weight: 600; margin-bottom: 16px;
+}
+@keyframes overlay-show { from { opacity: 0; } to { opacity: 1; } }
+@keyframes content-show { from { opacity: 0; transform: translate(-50%,-48%) scale(0.96); } to { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
+
+/* UI Beautification: transitions & polish */
+.status-btn, .settings-action-btn, .nav-btn, .today-btn, .tool-btn, .modal-btn {
+  transition: all 0.15s ease;
+}
+.status-btn:hover, .settings-action-btn:hover, .nav-btn:hover, .today-btn:hover {
+  filter: brightness(1.05);
+}
+.reminder-card, .stat-card, .day-cell, .todo-item {
+  transition: box-shadow 0.2s ease;
+}
+.day-cell { border-radius: 6px; }
+.day-cell.today { box-shadow: 0 0 0 1.5px var(--accent); font-weight: 600; }
+.day-cell.selected { background: var(--selected, #e3f2fd) !important; }
+.stat-card { border-radius: 8px; padding: 8px; }
+.ratio-bar { border-radius: 8px; overflow: hidden; }
+.ratio-seg:first-child { border-radius: 8px 0 0 8px; }
+.ratio-seg:last-child { border-radius: 0 8px 8px 0; }

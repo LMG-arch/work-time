@@ -1,8 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from 'reka-ui'
 
 const visible = ref(false)
 const editingTodo = ref(null)
+
+function onOpenChange(open) { visible.value = open }
 
 const title = computed(() => editingTodo.value ? '编辑待办' : '添加待办')
 
@@ -147,10 +150,11 @@ async function confirm() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="visible" class="modal" style="display:flex;" @click.self="visible = false">
-      <div class="modal-content">
-        <div class="modal-title">{{ title }}</div>
+  <DialogRoot v-model:open="visible" @update:open="onOpenChange">
+    <DialogPortal>
+      <DialogOverlay class="dialog-overlay" />
+      <DialogContent class="dialog-content" @interact-outside="visible = false">
+        <DialogTitle class="dialog-title">{{ title }}</DialogTitle>
         <input v-model="text" type="text" placeholder="待办内容" maxlength="50" class="modal-input">
 
         <div class="modal-row">
@@ -213,10 +217,10 @@ async function confirm() {
         </div>
 
         <div class="modal-actions">
-          <button class="modal-btn cancel" @click="visible = false">取消</button>
+          <DialogClose class="modal-btn cancel">取消</DialogClose>
           <button class="modal-btn confirm" @click="confirm">确定</button>
         </div>
-      </div>
-    </div>
-  </Teleport>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
 </template>

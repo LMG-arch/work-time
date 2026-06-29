@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from 'reka-ui'
 
 const visible = ref(false)
 const items = ref([])
@@ -43,10 +44,11 @@ async function sendTest() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="visible" class="modal" style="display:flex;" @click.self="visible = false">
-      <div class="modal-content">
-        <div class="modal-title">打卡提醒设置</div>
+  <DialogRoot v-model:open="visible" @update:open="v => visible = v">
+    <DialogPortal>
+      <DialogOverlay class="dialog-overlay" />
+      <DialogContent class="dialog-content" @interact-outside="visible = false">
+        <DialogTitle class="dialog-title">打卡提醒设置</DialogTitle>
         <div class="reminder-settings-list">
           <div v-for="(item, idx) in items" :key="item.id" class="reminder-setting-item">
             <input type="time" v-model="item.time" class="setting-time-input">
@@ -67,12 +69,12 @@ async function sendTest() {
         </div>
         <div class="modal-actions">
           <button class="modal-btn" style="background:var(--accent);color:#fff;" @click="sendTest">测试通知</button>
-          <button class="modal-btn cancel" @click="visible = false">取消</button>
+          <DialogClose class="modal-btn cancel">取消</DialogClose>
           <button class="modal-btn confirm" @click="save">保存</button>
         </div>
-      </div>
-    </div>
-  </Teleport>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
 </template>
 
 <style scoped>
