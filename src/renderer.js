@@ -500,29 +500,10 @@ function setupEventListeners() {
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
   });
 
-  // Status buttons (work/rest/trip)
-  document.querySelectorAll('.status-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (!selectedDate) return;
-      const status = btn.dataset.status;
-      const dayData = getDayData(selectedDate);
-      const newStatus = dayData.status === status ? '' : status;
-      await saveCurrentDay(newStatus);
-      document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.status === newStatus));
-      renderCalendar();
-    });
-  });
+  // Status buttons 和备注保存由 Vue DetailPanel 处理
 
   // Todo add button
   document.getElementById('todo-add-btn').addEventListener('click', () => window.__openTodoModal?.());
-
-  // Save note button
-  document.getElementById('save-note-btn').addEventListener('click', async () => {
-    if (!selectedDate) return;
-    const note = document.getElementById('note-input').value;
-    await saveCurrentDay(null, note);
-    showToast('备注已保存');
-  });
 
   // Post modal buttons
   document.getElementById('post-modal-cancel').addEventListener('click', closePostModal);
@@ -701,9 +682,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Setup interactive components (deferred from module load)
   try {
-    if (typeof setupColorPicker === 'function') setupColorPicker();
-    if (typeof setupTagInputs === 'function') setupTagInputs();
-    // setupTodoModal 由 Vue TodoModal 组件替代
+// setupColorPicker/setupTagInputs/setupTodoModal 由 Vue 组件替代
     if (typeof setupPostImagePicker === 'function') setupPostImagePicker();
   } catch (e) {
     console.error('[Init] Interactive components setup failed:', e.message);
