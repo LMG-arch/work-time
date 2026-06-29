@@ -4,12 +4,18 @@ import { ref, computed, onMounted } from 'vue'
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth())
 
+const refreshCount = ref(0)
+window.__refreshStats = () => { refreshCount.value++ }
+
 onMounted(() => {
   currentYear.value = window.currentYear || new Date().getFullYear()
   currentMonth.value = window.currentMonth || new Date().getMonth()
 })
 
-const allData = computed(() => window.allData || {})
+const allData = computed(() => {
+  refreshCount.value
+  return window.allData || {}
+})
 const daysInMonth = computed(() => {
   return new Date(currentYear.value, currentMonth.value + 1, 0).getDate()
 })

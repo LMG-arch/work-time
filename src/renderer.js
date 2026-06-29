@@ -42,7 +42,7 @@ function switchView(view) {
   currentView = view;
 
   // Vue 管理的页面先激活 Vue 容器并返回
-  const VUE_PAGES = ['settings']
+  const VUE_PAGES = ['settings', 'stats']
   if (VUE_PAGES.includes(view)) {
     document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
     const appEl = document.getElementById('app');
@@ -69,7 +69,6 @@ function switchView(view) {
   const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
   const activeBtn = document.getElementById(activeMap[view]);
   if (activeBtn) activeBtn.classList.add('active');
-  if (view === 'stats') renderStats();
   if (view === 'clockin') renderClockinView();
   if (view === 'social') renderSocialView();
 }
@@ -83,7 +82,7 @@ async function refreshAllData() {
     allReminderRecords = await window.calendarAPI.getAllReminderRecords();
     renderCalendar();
     if (currentView === 'clockin') renderClockinView();
-    if (currentView === 'stats') renderStats();
+    if (currentView === 'stats') window.__refreshStats?.();
     // 如果当前在日历视图且详情面板打开，刷新待办列表
     if (currentView === 'calendar' && selectedDate) window.__refreshTodoList?.(selectedDate);
   } catch (e) {
@@ -152,7 +151,7 @@ function setupEventListeners() {
     closeDetailPanel();
     await loadAllData();
     if (currentView === 'calendar') renderCalendar();
-    else if (currentView === 'stats') renderStats();
+    else if (currentView === 'stats') window.__refreshStats?.();
     else renderClockinView();
     updateMonthLabel();
   });
