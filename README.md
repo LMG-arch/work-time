@@ -686,6 +686,11 @@ MIT
 
 ## 更新日志
 
+### v3.13.0 (2026-06-29) — Reka UI 全面集成 + UI 美化
+- **Reka UI Dialog**：TodoModal / ReminderSettings / 发帖弹窗改用 Reka UI Dialog（动画 + 焦点管理）
+- **CSS 美化**：平滑过渡动画、圆角优化、滚动条美化、hover 效果增强
+- **移除了所有手工 Teleport 弹窗**，统一使用 Reka UI DialogPortal
+
 ### v3.12.0 (2026-06-29) — renderer.js 清理收尾
 - **清理**：移除 setupAdminControls 等已被 Vue 替代的 130 行死代码
 
