@@ -1,12 +1,15 @@
 {
   "version": "3.13.0",
-  "versionCode": 31,
+  "versionCode": 27,
   "releaseDate": "2026-06-29",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.12.0/work-calendar-v3.12.0.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.13.0/work-calendar-v3.13.0.apk",
   "changelog": [
-    "好友圈迁移为 Vue 组件 — SocialPage.vue",
-    "renderer.js 清理 — 移除 setupAdminControls 等死代码 130 行",
-    "Vue 迁移全部完成：settings/todos/reminders/stats/calendar/social"
+    "修复 Web 平台通知完全失效问题",
+    "修复打卡视图待办列表重复渲染",
+    "修复 Vue 月份导航后统计页显示错误月份",
+    "修复 TodoModal 日期字段为空",
+    "修复 macOS/Linux 自动启动 IPC 挂起",
+    "修复传统 lunarToSolar 只搜索当年"
   ],
   "forceUpdate": false
 }
