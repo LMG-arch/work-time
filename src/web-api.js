@@ -14,7 +14,7 @@
         if (!store.reminders) store.reminders = null;
         return store;
       }
-    } catch {}
+    } catch (e) { console.warn('[Storage] Failed to parse work-calendar-data:', e.message); }
     return { days: {}, todos: [], reminders: null, reminderRecords: {} };
   }
 
@@ -77,7 +77,7 @@
 
     async addTodo(todo) {
       const store = getStore();
-      todo.id = crypto.randomUUID();
+      todo.id = (crypto.randomUUID && crypto.randomUUID()) || 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
       todo.updatedAt = new Date().toISOString();
       store.todos.push(todo);
       saveStore(store);
@@ -120,8 +120,8 @@
       const store = getStore();
       let reminders = null;
       let reminderRecords = {};
-      try { reminders = JSON.parse(localStorage.getItem('calendar-reminders')); } catch {}
-      try { reminderRecords = JSON.parse(localStorage.getItem('calendar-reminder-records')) || {}; } catch {}
+      try { reminders = JSON.parse(localStorage.getItem('calendar-reminders')); } catch (e) { console.warn('[Export] Failed to parse reminders:', e.message); }
+      try { reminderRecords = JSON.parse(localStorage.getItem('calendar-reminder-records')) || {}; } catch (e) { console.warn('[Export] Failed to parse records:', e.message); }
       const exportData = { ...store, reminders, reminderRecords };
       const json = JSON.stringify(exportData, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
@@ -231,7 +231,7 @@
           if (parsed && Array.isArray(parsed.items)) return parsed.items;
           return parsed;
         }
-      } catch {}
+      } catch (e) { console.warn('[Store] Failed to parse reminders:', e.message); }
       return [
         { id: 'r1', label: '上班打卡', time: '08:30', enabled: true },
         { id: 'r2', label: '午休下班', time: '12:00', enabled: true },
@@ -254,7 +254,7 @@
       try {
         const raw = localStorage.getItem(key);
         if (raw) records = JSON.parse(raw);
-      } catch {}
+      } catch (e) { console.warn('[Calendar] Failed to parse reminder records:', e.message); }
       if (!records[date]) records[date] = {};
       records[date][reminderId] = { confirmed: true, at: new Date().toISOString() };
       localStorage.setItem(key, JSON.stringify(records));
@@ -267,7 +267,7 @@
       try {
         const raw = localStorage.getItem(key);
         if (raw) return JSON.parse(raw);
-      } catch {}
+      } catch (e) { console.warn('[Calendar] Failed to parse reminder records:', e.message); }
       return {};
     },
 
@@ -282,6 +282,9 @@
 
     // --- App version ---
     async getAppVersion() {
+      // 优先从全局变量获取（可由 Vite/构建注入）
+      if (window.__APP_VERSION__) return window.__APP_VERSION__;
+
       // Capacitor 环境
       if (window.Capacitor && window.Capacitor.Plugins) {
         try {
@@ -290,15 +293,18 @@
             const info = await App.getInfo();
             return { versionName: info.version, versionCode: parseInt(info.build) || 0 };
           }
-        } catch {}
+        } catch (e) { console.warn('[Version] Capacitor getInfo failed:', e.message); }
       }
-      // 尝试从 package.json 读取版本号
-      let versionName = '3.2.3', versionCode = 19;
-      try {
-        // 读取远程 version.json 会在 updater.js 中处理
-        // 这里只用于 Capacitor 降级场景
-      } catch {}
-      return { versionName, versionCode };
+
+      // Electron 环境 (通过 preload 暴露的 API)
+      if (window.calendarAPI && window.calendarAPI.getAppVersion) {
+        try {
+          return await window.calendarAPI.getAppVersion();
+        } catch (e) { console.warn('[Version] Electron getAppVersion failed:', e.message); }
+      }
+
+      // Web 降级
+      return { versionName: '3.13.0', versionCode: 0 };
     }
   };
 })();

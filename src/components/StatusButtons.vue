@@ -1,19 +1,21 @@
 <script setup>
+import { useCalendarStore } from '../stores/calendarStore.js'
+
 const props = defineProps({
   selectedDate: String,
   currentStatus: String
 })
 const emit = defineEmits(['update'])
+const calendarStore = useCalendarStore()
 
 const STATUS_LABELS = { work: '上班', rest: '休息', trip: '出差', leave: '请假', annual: '年假', sick: '病假', personal: '事假' }
 
 async function setStatus(status) {
-  const dayData = window.allData?.[props.selectedDate]
-  const newStatus = (dayData?.status === status) ? '' : status
-  await window.calendarAPI.saveDay(props.selectedDate, newStatus, dayData?.note || '', dayData?.tags || [], dayData?.color || '')
-  if (!window.allData[props.selectedDate]) window.allData[props.selectedDate] = {}
-  window.allData[props.selectedDate].status = newStatus || undefined
+  const dayData = calendarStore.getDayData(props.selectedDate)
+  const newStatus = (dayData.status === status) ? '' : status
+  await calendarStore.saveDayData(props.selectedDate, newStatus, dayData.note || '', dayData.tags || [], dayData.color || '')
   window.renderCalendar?.()
+  window.__refreshCalendarGrid?.()
   emit('update')
 }
 </script>

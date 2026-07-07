@@ -53,7 +53,7 @@ async function renderSocialView() {
   try {
     const requests = await getFriendRequests();
     pendingCount = requests ? requests.length : 0;
-  } catch {}
+  } catch (e) { console.warn('[Social] Failed to get friend requests:', e.message); }
 
   html += '<div class="social-tabs">';
   html += `<span class="social-tab${socialTab === 'feed' ? ' active' : ''}" data-tab="feed">动态</span>`;
@@ -98,7 +98,7 @@ function getCachedFeed() {
   try {
     const raw = localStorage.getItem(FEED_CACHE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (e) { console.warn('[Social] Failed to parse cached feed:', e.message); }
   return null;
 }
 
@@ -106,7 +106,7 @@ function isFeedCacheFresh() {
   try {
     const t = parseInt(localStorage.getItem(FEED_CACHE_TIME_KEY) || '0');
     return Date.now() - t < FEED_CACHE_TTL;
-  } catch {}
+  } catch (e) { console.warn('[Social] Failed to parse feed cache time:', e.message); }
   return false;
 }
 
@@ -114,7 +114,7 @@ function setCachedFeed(posts) {
   try {
     localStorage.setItem(FEED_CACHE_KEY, JSON.stringify(posts));
     localStorage.setItem(FEED_CACHE_TIME_KEY, String(Date.now()));
-  } catch {}
+  } catch (e) { console.warn('[Social] Failed to cache feed:', e.message); }
 }
 
 function renderFeedPosts(container, posts) {
@@ -355,7 +355,7 @@ function bindPostEventsForElements(container, elements) {
         const ok = await deletePost(btn.dataset.id);
         if (ok) {
           showToast('已删除');
-          try { localStorage.removeItem(FEED_CACHE_KEY); localStorage.removeItem(FEED_CACHE_TIME_KEY); } catch {}
+          try { localStorage.removeItem(FEED_CACHE_KEY); localStorage.removeItem(FEED_CACHE_TIME_KEY); } catch (e) { console.warn('[Social] Failed to clear feed cache:', e.message); }
           renderSocialView();
         }
       });
@@ -630,10 +630,8 @@ async function renderProfile(container) {
 
 // ===== Helpers =====
 
-let _currentUserId = null;
-
 function getCurrentUserId() {
-  return _currentUserId;
+  return window._currentUserId || null;
 }
 
 function formatTime(isoStr) {
@@ -695,13 +693,18 @@ async function initSocial() {
   }
 
   // Auto-sync calendar data on login if sync enabled
+  // 使用同步锁防止初始化期间用户操作导致数据冲突
   if (typeof isSyncEnabled === 'function' && isSyncEnabled()) {
     try {
+      // 标记同步进行中，阻止 autoSyncPush 的并发写入
+      if (typeof window._syncInProgress !== 'undefined') window._syncInProgress = true;
       await syncCalendarData();
       if (typeof refreshAllData === 'function') await refreshAllData();
       console.log('[Social] Calendar data synced from cloud');
     } catch (e) {
       console.log('[Social] Calendar sync failed:', e.message);
+    } finally {
+      if (typeof window._syncInProgress !== 'undefined') window._syncInProgress = false;
     }
   }
 }

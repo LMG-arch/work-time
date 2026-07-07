@@ -1,5 +1,8 @@
 <script setup>
+import { useCalendarStore } from '../stores/calendarStore.js'
+
 const props = defineProps({ selectedDate: String, currentColor: String })
+const calendarStore = useCalendarStore()
 
 const COLORS = [
   { color: '', title: '无颜色' },
@@ -13,11 +16,10 @@ const COLORS = [
 ]
 
 async function setColor(color) {
-  const d = window.allData?.[props.selectedDate] || {}
-  await window.calendarAPI.saveDay(props.selectedDate, d.status || '', d.note || '', d.tags || [], color)
-  if (!window.allData[props.selectedDate]) window.allData[props.selectedDate] = {}
-  window.allData[props.selectedDate].color = color || undefined
+  const d = calendarStore.getDayData(props.selectedDate)
+  await calendarStore.saveDayData(props.selectedDate, d.status || '', d.note || '', d.tags || [], color)
   window.renderCalendar?.()
+  window.__refreshCalendarGrid?.()
 }
 </script>
 

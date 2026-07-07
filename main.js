@@ -69,8 +69,10 @@ function cleanupOldDays() {
 }
 
 function saveStore() {
+  const tempPath = dataPath + '.tmp';
   try {
-    fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+    fs.writeFileSync(tempPath, JSON.stringify(store, null, 2), 'utf-8');
+    fs.renameSync(tempPath, dataPath);
   } catch (e) {
     console.error('[Main] saveStore failed:', e.message);
   }
@@ -79,8 +81,10 @@ function saveStore() {
 
 // Save without triggering sync notification (used by sync-write to avoid loops)
 function saveStoreSilent() {
+  const tempPath = dataPath + '.tmp';
   try {
-    fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+    fs.writeFileSync(tempPath, JSON.stringify(store, null, 2), 'utf-8');
+    fs.renameSync(tempPath, dataPath);
   } catch (e) {
     console.error('[Main] saveStoreSilent failed:', e.message);
   }
@@ -93,8 +97,10 @@ function saveDayData(dateStr, status, note, tags, color) {
   } else {
     store.days[dateStr] = { status, note, tags: tags || [], color: color || '', updatedAt: new Date().toISOString(), deleted: false };
   }
+  const tempPath = dataPath + '.tmp';
   try {
-    fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
+    fs.writeFileSync(tempPath, JSON.stringify(store, null, 2), 'utf-8');
+    fs.renameSync(tempPath, dataPath);
   } catch (e) {
     console.error('[Main] saveDayData failed:', e.message);
   }
@@ -166,13 +172,6 @@ function registerIPC() {
     });
     if (canceled || !filePath) return { success: false };
 
-    // Include reminders and records in JSON export
-    const exportObj = filePath.endsWith('.csv') ? store : {
-      ...store,
-      reminders: (normalizeReminders(store.reminders) || { items: getDefaultReminders() }).items,
-      reminderRecords: store.reminderRecords || {}
-    };
-
     if (filePath.endsWith('.csv')) {
       const statusMap = { work: '上班', rest: '休息', trip: '出差' };
       let csv = '日期,状态,备注\n';
@@ -185,6 +184,12 @@ function registerIPC() {
       }
       fs.writeFileSync(filePath, '﻿' + csv, 'utf-8');
     } else {
+      // Include reminders and records in JSON export
+      const exportObj = {
+        ...store,
+        reminders: (normalizeReminders(store.reminders) || { items: getDefaultReminders() }).items,
+        reminderRecords: store.reminderRecords || {}
+      };
       fs.writeFileSync(filePath, JSON.stringify(exportObj, null, 2), 'utf-8');
     }
     return { success: true, path: filePath };
@@ -245,11 +250,7 @@ function registerIPC() {
         Object.assign(store.reminderRecords, imported.reminderRecords);
       }
       // 安全：禁止导入文件覆盖 supabase 配置，防止恶意服务器劫持
-      try {
-        fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), 'utf-8');
-      } catch (e) {
-        console.error('[Main] import writeFileSync failed:', e.message);
-      }
+      saveStore();
       scheduleReminders();
       scheduleTodoReminders();
       return { success: true };
@@ -259,14 +260,19 @@ function registerIPC() {
     }
   });
 
-    // Auto-launch: Windows only
-    if (process.platform === 'win32') {
-      ipcMain.handle('get-auto-launch', () => isAutoLaunchEnabled());
-      ipcMain.handle('set-auto-launch', (_, enable) => {
-        setAutoLaunch(enable);
-        return { success: true };
-      });
-    }
+    // Auto-launch: Windows only (IPC handlers always registered, but setAutoLaunch is no-op on non-Windows)
+    ipcMain.handle('get-app-version', () => {
+      return { versionName: app.getVersion(), versionCode: 0 };
+    });
+    ipcMain.handle('get-auto-launch', () => {
+      if (process.platform !== 'win32') return false;
+      return isAutoLaunchEnabled();
+    });
+    ipcMain.handle('set-auto-launch', (_, enable) => {
+      if (process.platform !== 'win32') return { success: false, error: '仅支持 Windows' };
+      setAutoLaunch(enable);
+      return { success: true };
+    });
 
   // Holidays
   const { HOLIDAYS, FIXED_HOLIDAYS } = require('./src/holidays.js');
@@ -340,21 +346,30 @@ function registerIPC() {
 
   // Sync bridge: read/write full store for cloud sync
   ipcMain.handle('sync-read', () => {
+    let modified = false;
     // Ensure all days have updatedAt for proper sync comparison
     const days = store.days || {};
     const now = new Date().toISOString();
     for (const date of Object.keys(days)) {
       if (!days[date].updatedAt) {
         days[date].updatedAt = now;
+        modified = true;
       }
     }
     // Ensure all todos have updatedAt
     const todos = (store.todos || []).map(t => {
       if (t && !t.updatedAt) {
+        modified = true;
         return { ...t, updatedAt: now };
       }
       return t;
     });
+    
+    if (modified) {
+        store.todos = todos;
+        saveStoreSilent();
+    }
+    
     return {
       days: days,
       todos: todos,
@@ -365,7 +380,23 @@ function registerIPC() {
 
   ipcMain.handle('sync-write', (_, data) => {
     if (!data) return;
-    if (data.days) store.days = { ...store.days, ...data.days };
+    if (data.days) {
+      // 深度合并：按 updatedAt 时间戳比较
+      const mergedDays = { ...store.days };
+      for (const [date, cloudDay] of Object.entries(data.days)) {
+        const localDay = mergedDays[date];
+        if (!localDay) {
+          mergedDays[date] = cloudDay;
+        } else {
+          const localTime = new Date(localDay.updatedAt || 0).getTime();
+          const cloudTime = new Date(cloudDay.updatedAt || 0).getTime();
+          if (cloudTime > localTime) {
+            mergedDays[date] = cloudDay;
+          }
+        }
+      }
+      store.days = mergedDays;
+    }
     if (data.todos) {
       const todoMap = {};
       (store.todos || []).forEach(t => { if (t && t.id) todoMap[t.id] = t; });
@@ -438,6 +469,8 @@ function scheduleReminders() {
   console.log('[Main] Scheduling reminders:', enabledReminders.map(r => r.label + '@' + r.time).join(', '));
 
   // Also schedule immediately for current minute
+  let _notifiedThisMinute = {};
+  
   function checkReminders() {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
@@ -445,11 +478,24 @@ function scheduleReminders() {
     const currentTime = `${hh}:${mm}`;
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
+    // 清理过期的分钟通知记录
+    for (const key of Object.keys(_notifiedThisMinute)) {
+      if (!key.endsWith(currentTime)) {
+        delete _notifiedThisMinute[key];
+      }
+    }
+
     for (const r of enabledReminders) {
       if (r.time !== currentTime) continue;
+      
+      const notifKey = `${r.id}-${currentTime}`;
+      if (_notifiedThisMinute[notifKey]) continue;
+
       // Check if already confirmed
       const records = store.reminderRecords?.[todayStr]?.[r.id];
       if (records && records.confirmed) continue;
+      
+      _notifiedThisMinute[notifKey] = true;
 
       const iconPath = path.join(__dirname, 'assets', 'icon.png');
       const iconOpts = fs.existsSync(iconPath) ? { icon: iconPath } : {};
@@ -496,25 +542,24 @@ function scheduleReminders() {
 function createWindow() {
   Menu.setApplicationMenu(null);
 
-  const isDev = !app.isPackaged;
-  // Dev mode needs 'unsafe-inline' for Vite HMR; prod can lock down scripts
-  const scriptSrc = isDev ? "'self' 'unsafe-inline'" : "'self'";
-
   // Security: set CSP to block inline scripts and external resources
+  // In development mode, allow Vite HMR WebSocket connections
+  const isDev = !app.isPackaged;
+  const devConnectSrc = isDev ? ' ws://localhost:* http://localhost:*' : '';
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';`
+          `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'${devConnectSrc} https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';`
         ]
       }
     });
   });
 
   win = new BrowserWindow({
-    width: 420,
-    height: 620,
+    width: 520,
+    height: 720,
     resizable: true,
     minWidth: 380,
     minHeight: 500,
@@ -525,9 +570,12 @@ function createWindow() {
     }
   });
 
+  // 开发模式通过 Vite dev server 加载（编译 Vue SFC + HMR）
+  // 生产模式加载构建后的 dist/index.html
   if (isDev) {
-    win.loadURL('http://localhost:5173');
-    win.webContents.openDevTools();
+    win.loadURL('http://localhost:5173').catch(() => {
+      win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+    });
   } else {
     win.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }
@@ -651,16 +699,18 @@ function scheduleTodoReminders() {
 
       if (remindTimeStr !== currentTime) continue;
 
-      // Check if already reminded
+      // Check if already reminded (persist to store so it survives restart)
       const remindedKey = `todo-reminded-${todo.id}-${todayStr}`;
       if (!store._todoReminded) store._todoReminded = {};
       if (store._todoReminded[remindedKey]) continue;
       store._todoReminded[remindedKey] = Date.now();
-      // Clean up old keys (keep last 7 days)
+      // Clean up old keys (keep last 7 days), and persist to disk
       const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
       for (const key of Object.keys(store._todoReminded)) {
         if (store._todoReminded[key] < cutoff) delete store._todoReminded[key];
       }
+      // 持久化去重标记到文件，防止重启后重复提醒
+      saveStoreSilent();
 
       const iconPath = path.join(__dirname, 'assets', 'icon.png');
       const iconOpts = fs.existsSync(iconPath) ? { icon: iconPath } : {};

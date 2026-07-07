@@ -29,13 +29,12 @@
       </div>
       <div id="calendar-grid" class="calendar-grid"></div>
       <div id="detail-panel" class="detail-panel">
-        <div id="detail-panel-vue"></div>
         <div class="todo-section">
           <div class="todo-header-row">
             <span class="todo-title">待办</span>
             <button id="todo-add-btn" class="todo-add-btn">+ 添加待办</button>
           </div>
-          <div id="todo-list-vue" class="todo-list"></div>
+          <!-- Todo list rendered by TodoListApp.vue via DetailPanel -->
         </div>
       </div>
     </div>
@@ -45,28 +44,7 @@
       <div id="stats-content" class="stats-content"></div>
     </div>
 
-    <!-- Clock-in & Todo View -->
-    <div id="clockin-view" class="page-view" style="display:none;">
-      <div class="clockin-view-content">
-        <div class="clockin-header-row">
-          <div class="clockin-today-label" id="clockin-today-label"></div>
-          <button id="clockin-settings-btn" class="clockin-settings-btn" title="提醒设置">&#x2699;</button>
-        </div>
-        <div id="reminder-list-vue" class="clockin-today-reminders"></div>
-        <div id="water-tracker" class="water-tracker"></div>
-        <div class="clockin-history-section">
-          <div class="clockin-history-title">打卡记录</div>
-          <div id="reminder-history-vue" class="clockin-history"></div>
-        </div>
-        <div id="clockin-todo-section" class="todo-section" style="margin-top:16px;">
-          <div id="todo-view-content" class="todo-view-content"></div>
-          <div id="todo-view-vue" class="todo-view-content"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Reminder Settings Modal (Vue) -->
-    <div id="reminder-settings-vue"></div>
+    <!-- Clock-in & Todo View (Vue renders ClockinPage.vue into #app) -->
 
     <!-- Social View -->
     <div id="social-view" class="page-view" style="display:none;">
@@ -93,9 +71,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Add Todo Modal (Vue) -->
-    <div id="todo-modal-vue"></div>
 
     <!-- Settings View -->
     <div id="settings-view" class="page-view" style="display:none;">
@@ -202,15 +177,15 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <button id="home-btn" class="tool-btn active" title="日历">日历</button>
-      <button id="clockin-btn" class="tool-btn primary-btn" title="打卡待办">打卡</button>
-      <button id="social-btn" class="tool-btn" title="好友圈">好友</button>
-      <button id="stats-btn" class="tool-btn" title="月度统计">统计</button>
-      <button id="settings-btn" class="tool-btn" title="设置">设置</button>
-    </div>
+  <!-- Toolbar (移到 .app 外面，作为 body 的直接子元素，永远固定在底部) -->
+  <div class="toolbar">
+    <button id="home-btn" class="tool-btn active" title="日历">日历</button>
+    <button id="clockin-btn" class="tool-btn primary-btn" title="打卡待办">打卡</button>
+    <button id="social-btn" class="tool-btn" title="好友圈">好友</button>
+    <button id="stats-btn" class="tool-btn" title="月度统计">统计</button>
+    <button id="settings-btn" class="tool-btn" title="设置">设置</button>
   </div>
 
   <script src="lib/supabase.min.js"></script>
@@ -218,7 +193,9 @@
   <script src="holidays.js"></script>
   <script src="lunar.js"></script>
   <script src="web-api.js"></script>
-  <script src="supabase.js"></script>
+  <script src="supabase-core.js"></script>
+  <script src="supabase-social.js"></script>
+  <script src="supabase-sync.js"></script>
   <script src="social.js"></script>
   <script src="calendar.js"></script>
   <script src="todos.js"></script>
@@ -226,9 +203,6 @@
   <script src="stats.js"></script>
   <script src="settings.js"></script>
   <script src="updater.js"></script>
-  <script type="module" src="./vue-todos.js"></script>
-  <script type="module" src="./vue-reminders.js"></script>
-  <script type="module" src="./vue-calendar.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

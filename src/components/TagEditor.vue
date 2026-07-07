@@ -1,8 +1,10 @@
 <script setup>
 import { ref } from 'vue'
+import { useCalendarStore } from '../stores/calendarStore.js'
 
 const props = defineProps({ selectedDate: String, tags: { type: Array, default: () => [] } })
 const tagInput = ref('')
+const calendarStore = useCalendarStore()
 
 const QUICK_TAGS = ['加班','迟到','早退','会议','培训','请假','远程','外勤']
 
@@ -17,11 +19,10 @@ function removeTag(tag) {
   saveTags(props.tags.filter(t => t !== tag))
 }
 async function saveTags(newTags) {
-  const d = window.allData?.[props.selectedDate] || {}
-  await window.calendarAPI.saveDay(props.selectedDate, d.status || '', d.note || '', newTags, d.color || '')
-  if (!window.allData[props.selectedDate]) window.allData[props.selectedDate] = {}
-  window.allData[props.selectedDate].tags = [...newTags]
+  const d = calendarStore.getDayData(props.selectedDate)
+  await calendarStore.saveDayData(props.selectedDate, d.status || '', d.note || '', newTags, d.color || '')
   window.renderCalendar?.()
+  window.__refreshCalendarGrid?.()
 }
 </script>
 

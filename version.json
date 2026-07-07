@@ -1,15 +1,14 @@
 {
-  "version": "3.13.0",
-  "versionCode": 27,
-  "releaseDate": "2026-06-29",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.13.0/work-calendar-v3.13.0.apk",
+  "version": "3.13.1",
+  "versionCode": 28,
+  "releaseDate": "2026-07-07",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.13.1/work-calendar-v3.13.1.apk",
   "changelog": [
-    "修复 Web 平台通知完全失效问题",
-    "修复打卡视图待办列表重复渲染",
-    "修复 Vue 月份导航后统计页显示错误月份",
-    "修复 TodoModal 日期字段为空",
-    "修复 macOS/Linux 自动启动 IPC 挂起",
-    "修复传统 lunarToSolar 只搜索当年"
+    "修复 Electron 页面切换不显示（Vue SFC 编译问题）",
+    "修复 Electron 启动失败（isDev 重复声明）",
+    "修复喝水记录 emoji 显示为问号",
+    "修复页面布局不自适应窗口宽度（移除 420px 硬编码）",
+    "新增一键构建启动脚本"
   ],
   "forceUpdate": false
 }

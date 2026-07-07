@@ -1,17 +1,19 @@
 <script setup>
 import { ref, watch } from 'vue'
+import { useCalendarStore } from '../stores/calendarStore.js'
 
 const props = defineProps({ selectedDate: String, note: String })
+const calendarStore = useCalendarStore()
 const noteText = ref(props.note || '')
 
 watch(() => props.note, (v) => { noteText.value = v || '' })
 watch(() => props.selectedDate, () => { noteText.value = props.note || '' })
 
 async function saveNote() {
-  const d = window.allData?.[props.selectedDate] || {}
-  await window.calendarAPI.saveDay(props.selectedDate, d.status || '', noteText.value, d.tags || [], d.color || '')
-  if (!window.allData[props.selectedDate]) window.allData[props.selectedDate] = {}
-  window.allData[props.selectedDate].note = noteText.value
+  const d = calendarStore.getDayData(props.selectedDate)
+  await calendarStore.saveDayData(props.selectedDate, d.status || '', noteText.value, d.tags || [], d.color || '')
+  window.renderCalendar?.()
+  window.__refreshCalendarGrid?.()
   window.showToast?.('备注已保存')
 }
 </script>

@@ -13,23 +13,24 @@ async function getLocalVersion() {
         const info = await App.getInfo();
         return { versionName: info.version, versionCode: info.build || 0 };
       }
-    } catch {}
+    } catch (e) { console.warn('[Updater] Capacitor getAppInfo failed:', e.message); }
   }
   // Electron 环境
   if (window.calendarAPI && window.calendarAPI.getAppVersion) {
     try {
       return await window.calendarAPI.getAppVersion();
-    } catch {}
+    } catch (e) { console.warn('[Updater] Electron getAppVersion failed:', e.message); }
   }
-  // Web 降级：从 version.json 读取（与发布版本同步）
+  // Web 降级：从 version.json 读取
   try {
     const resp = await fetch('version.json');
     if (resp.ok) {
       const v = await resp.json();
       return { versionName: v.version, versionCode: v.versionCode || 0 };
     }
-  } catch {}
-  return { versionName: '3.2.3', versionCode: 19 };
+  } catch (e) { console.warn('[Updater] Failed to fetch version.json:', e.message); }
+  // 最终回退：使用 package.json 中的版本号
+  return { versionName: '3.13.0', versionCode: 0 };
 }
 
 // 版本比较：返回 1 (a>b), 0 (a=b), -1 (a<b)

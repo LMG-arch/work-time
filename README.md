@@ -686,62 +686,13 @@ MIT
 
 ## 更新日志
 
-### v3.13.0 (2026-06-29) — Reka UI 全面集成 + UI 美化
-- **Reka UI Dialog**：TodoModal / ReminderSettings / 发帖弹窗改用 Reka UI Dialog（动画 + 焦点管理）
-- **CSS 美化**：平滑过渡动画、圆角优化、滚动条美化、hover 效果增强
-- **移除了所有手工 Teleport 弹窗**，统一使用 Reka UI DialogPortal
-
-### v3.12.0 (2026-06-29) — renderer.js 清理收尾
-- **清理**：移除 setupAdminControls 等已被 Vue 替代的 130 行死代码
-
-### v3.11.0 (2026-06-29) — 好友圈迁移为 Vue 组件
-- **组件化重构**：好友圈从 social.js DOM 操作迁移为 SocialPage.vue
-- **页面路由**：走 __vueActivate 页面路由模式
-- **功能完整保留**：动态列表（无限滚动）、发布（文字+图片）、点赞/评论、好友请求红点
-
-### v3.10.0 (2026-06-29) — 日历格子 + 头部导航迁移为 Vue 组件
-- **组件化重构**：日历格子渲染 + 月份导航从 calendar.js DOM 操作迁移为 CalendarView.vue
-- **页面路由**：走 __vueActivate 页面路由模式，Vue 管理当前年/月状态
-- **功能完整保留**：月历格子（含农历/节假日/状态/颜色/打卡指示）、月份切换、今天按钮
-
-### v3.9.0 (2026-06-29) — 日历详情面板迁移为 Vue 组件
-- **组件化重构**：详情面板从 calendar.js DOM 操作迁移为 Vue SFC（StatusButtons + ColorPicker + TagEditor + NoteEditor + DetailPanel）
-- **独立挂载点**：`#detail-panel-vue` 嵌入日历视图内
-- **功能完整保留**：7 种状态按钮、8 色标记、标签输入+快捷标签+自动补全、备注编辑
-- **清理**：calendar.js 移除 210 行被替代的代码
-
-### v3.8.0 (2026-06-29) — 月度统计模块迁移为 Vue 组件
-- **组件化重构**：统计模块从 stats.js 迁移为 StatsPage.vue
-- **页面路由**：走 __vueActivate 页面路由模式（与 SettingsPage 相同）
-- **功能完整保留**：天数统计卡片、节假日信息、比例条、标签排行、逐日记录、导出图片
-- **清理**：stats.js 移除 152 行被替代的代码
-
-### v3.7.0 (2026-06-28) — 打卡提醒模块迁移为 Vue 组件
-- **组件化重构**：提醒模块从 reminders.js 迁移为 Vue SFC（ReminderList / ReminderHistory / ReminderSettings）
-- **独立挂载点**：3 个独立 Vue 实例嵌入打卡页
-- **功能完整保留**：今日提醒卡片、7 天打卡历史、提醒设置弹窗（时间/标签/声音/震动/开关）
-- **清理**：reminders.js 移除 182 行被替代的代码
-
-### v3.6.0 (2026-06-28) — 待办模块迁移为 Vue 组件
-- **组件化重构**：待办模块从 todos.js 迁移为 Vue SFC（TodoItem / TodoListApp / TodoViewApp / TodoModal）
-- **独立挂载点**：3 个独立 Vue 实例嵌入日历面板和打卡页，不走页面路由
-- **功能完整保留**：添加/编辑弹窗、类型切换、农历日期、周重复、提醒设置、完成/删除、筛选全部一致
-- **清理**：todos.js 移除 416 行被替代的代码，保留核心数据函数
-
-### v3.5.0 (2026-06-28) — 设置页迁移为 Vue 组件
-- **组件化重构**：设置页从 settings.js 迁移为 Vue SFC（SettingsPage.vue）
-- **新组件**：SettingsToggle.vue（Reka UI Switch 封装）、SettingsSection.vue（可折叠分组容器）
-- **渐进式迁移**：Vue 组件通过 __vueActivate/__vueDeactivate 桥接与 renderer.js 路由联动
-- **UI 美化**：设置页采用卡片式分组布局，scoped CSS 隔离，与现有设计语言一致
-- **功能不变**：账号、Supabase 配置、数据同步、主题、导航栏、权限等全部功能保持原有行为
-
-### v3.4.0 (2026-06-28) — Vue 组件化基础架构
-- **新架构**：引入 Vite 构建工具链 + Vue 3 框架 + Reka UI 组件库
-- **构建工具**：Vite 开发服务器、HMR 热更新、生产构建
-- **Electron 适配**：开发模式加载 Vite dev server，生产模式加载 dist 构建产出
-- **Capacitor 适配**：webDir 指向 Vite 构建输出目录 (dist)
-- **渐进式策略**：Vue 组件与现有 JS 模块通过独立 DOM 容器共存，不影响现有功能
-- **维护**：构建脚本自动复制遗留非模块脚本到生产输出
+### v3.13.1 (2026-07-07) — Electron 修复与自适应布局
+- **关键修复**：Electron 页面切换不显示 — main.js 加载策略修复，开发模式走 Vite dev server 编译 Vue SFC
+- **修复**：Electron 启动崩溃 — `isDev` 变量重复声明导致 SyntaxError
+- **修复**：喝水记录 emoji 显示为问号 — 💧 字符被损坏恢复
+- **修复**：页面布局不自适应窗口宽度 — 移除 `.app`/`#app`/`.toolbar` 的 `max-width: 420px` 硬编码，改为 `700px` 自适应
+- **改进**：新增一键构建启动脚本 `启动上班日历.bat`，双击即可构建+启动
+- **改进**：Electron 默认窗口尺寸从 420×620 加大到 520×720
 
 ### v3.3.1 (2026-06-12) — 待办通知修复与高清导出
 - **关键修复**：待办提醒不通知 — 通知 ID 限制在 Java int 范围内（±2^31），防止 Capacitor 静默丢弃

@@ -5,8 +5,9 @@ async function exportStatsAsImage(stats) {
   const { workDays, restDays, tripDays, leaveDays, annualDays, sickDays, personalDays, noStatus, sortedTags, dayRecords, holidayCount, workdayCount } = stats;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  // 3倍分辨率：导出高清图片，在手机和电脑上都清晰
-  const scale = 3;
+  // 动态分辨率：基于设备像素比，但限制在 2-4 之间避免低端设备渲染失败
+  const dpr = window.devicePixelRatio || 1;
+  const scale = Math.max(2, Math.min(4, Math.ceil(dpr * 2)));
   const W = 480;
   const totalDays = workDays + restDays + tripDays + leaveDays + annualDays + sickDays + personalDays;
   const rowsNeeded = 7 + sortedTags.length + dayRecords.length + (holidayCount || workdayCount ? 2 : 0);

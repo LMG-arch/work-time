@@ -1,6 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from 'reka-ui'
+import { useTodoStore } from '../stores/todoStore.js'
+import { useCalendarStore } from '../stores/calendarStore.js'
+
+const todoStore = useTodoStore()
+const calendarStore = useCalendarStore()
 
 const visible = ref(false)
 const editingTodo = ref(null)
@@ -35,7 +40,7 @@ window.__openTodoModal = (todo) => {
     editingTodo.value = null
     text.value = ''
     type.value = 'once'
-    dateVal.value = typeof window.selectedDate !== 'undefined' ? (window.selectedDate || '') : ''
+    dateVal.value = calendarStore.selectedDate || ''
     lunarMonth.value = 1
     lunarDay.value = 1
     calType.value = 'solar'
@@ -67,13 +72,18 @@ const lunarHint = computed(() => {
 })
 
 function lunarToSolar(lunarM, lunarD) {
+  if (typeof window.lunarToSolar === 'function') {
+    return window.lunarToSolar(new Date().getFullYear(), lunarM, lunarD);
+  }
   const year = new Date().getFullYear()
-  for (let m = 0; m < 12; m++) {
-    const dim = new Date(year, m + 1, 0).getDate()
-    for (let d = 1; d <= dim; d++) {
-      const lunar = window.Lunar.solar2lunar(year, m, d)
-      if (lunar.lunarMonth === lunarM && lunar.lunarDay === lunarD && !lunar.isLeap) {
-        return `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+  for (const y of [year - 1, year, year + 1]) {
+    for (let m = 0; m < 12; m++) {
+      const dim = new Date(y, m + 1, 0).getDate()
+      for (let d = 1; d <= dim; d++) {
+        const lunar = window.Lunar.solar2lunar(y, m, d)
+        if (lunar.lunarMonth === lunarM && lunar.lunarDay === lunarD && !lunar.isLeap) {
+          return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+        }
       }
     }
   }
@@ -128,8 +138,7 @@ async function confirm() {
       Object.assign(editingTodo.value, updates)
       window.showToast?.('待办已更新')
     } else {
-      const saved = await window.calendarAPI.addTodo(updates)
-      window.allTodos.push(saved)
+      await window.calendarAPI.addTodo(updates)
       window.showToast?.('待办已添加')
     }
   } catch (e) {
@@ -139,13 +148,12 @@ async function confirm() {
   }
 
   visible.value = false
+  todoStore.refreshFromWindow()
   if (typeof window.__refreshTodoList === 'function') {
-    window.__refreshTodoList(window.selectedDate)
-  }
-  if (typeof window.__refreshTodoView === 'function') {
-    window.__refreshTodoView()
+    window.__refreshTodoList(calendarStore.selectedDate)
   }
   if (typeof window.renderCalendar === 'function') window.renderCalendar()
+  window.__refreshCalendarGrid?.()
 }
 </script>
 

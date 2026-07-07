@@ -1,5 +1,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useCalendarStore } from '../stores/calendarStore.js'
+import { useAppStore } from '../stores/appStore.js'
+
+const calendarStore = useCalendarStore()
+const appStore = useAppStore()
 
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth())
@@ -14,7 +19,7 @@ onMounted(() => {
 
 const allData = computed(() => {
   refreshCount.value
-  return window.allData || {}
+  return calendarStore.daysData
 })
 const daysInMonth = computed(() => {
   return new Date(currentYear.value, currentMonth.value + 1, 0).getDate()
@@ -70,7 +75,7 @@ function exportImage() {
 </script>
 
 <template>
-  <div class="stats-content">
+  <div class="stats-content" style="padding:4px 0 16px;">
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
       <button class="settings-action-btn" style="font-size:11px;padding:4px 10px;" @click="exportImage">导出统计图片</button>
     </div>

@@ -1,5 +1,8 @@
 <script setup>
 import { computed } from 'vue'
+import { useTodoStore } from '../stores/todoStore.js'
+
+const todoStore = useTodoStore()
 
 const props = defineProps({
   todo: { type: Object, required: true },
@@ -44,27 +47,30 @@ async function toggleDone() {
     console.error('[TodoItem] toggleDone IPC failed:', e.message)
   }
   emit('refresh')
+  todoStore.refreshFromWindow()
   if (typeof window.renderCalendar === 'function') window.renderCalendar()
+  window.__refreshCalendarGrid?.()
 }
 
 async function deleteTodo() {
+  if (!confirm('确定删除该待办？')) return
   try {
-    await window.calendarAPI.deleteTodo(props.todo.id)
+    const result = await window.calendarAPI.deleteTodo(props.todo.id)
+    if (result && result.success) {
+      emit('refresh')
+      todoStore.refreshFromWindow()
+      if (typeof window.renderCalendar === 'function') window.renderCalendar()
+      window.__refreshCalendarGrid?.()
+      if (typeof window.showToast === 'function') window.showToast('已删除待办')
+    }
   } catch (e) {
     console.error('[TodoItem] delete IPC failed:', e.message)
-    return
+    if (typeof window.showToast === 'function') window.showToast('删除失败，请重试')
   }
-  const idx = window.allTodos.findIndex(t => t.id === props.todo.id)
-  if (idx >= 0) window.allTodos.splice(idx, 1)
-  emit('refresh')
-  if (typeof window.renderCalendar === 'function') window.renderCalendar()
-  if (typeof window.showToast === 'function') window.showToast('已删除待办')
 }
 
 function openEdit() {
-  if (typeof window.__openTodoModal === 'function') {
-    window.__openTodoModal(props.todo)
-  }
+  todoStore.startEdit(props.todo)
 }
 </script>
 

@@ -1,6 +1,9 @@
 <script setup>
 import { ref } from 'vue'
+import { useTodoStore } from '../stores/todoStore.js'
 import TodoItem from './TodoItem.vue'
+
+const todoStore = useTodoStore()
 
 const selectedDate = ref(null)
 const todos = ref([])
@@ -15,8 +18,7 @@ function updateList() {
   const ds = selectedDate.value
   const d = new Date(ds + 'T00:00:00')
   const weekday = d.getDay()
-  const all = window.allTodos || []
-  todos.value = all.filter(t => {
+  todos.value = todoStore.todos.filter(t => {
     if (t.type === 'once') return t.date === ds
     if (t.type === 'weekly') return (t.weekdays || []).includes(weekday)
     return false
@@ -24,6 +26,7 @@ function updateList() {
 }
 
 function onRefresh() {
+  todoStore.refreshFromWindow()
   updateList()
 }
 </script>

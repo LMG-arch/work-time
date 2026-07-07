@@ -11,45 +11,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 4。输出说重点，砍掉一切不改变决策的信息。
 ## 项目概述
 
-上班日历 — 跨平台打卡提醒日历应用，支持 Electron 桌面端和 Capacitor Android 端。纯 HTML/CSS/JavaScript，无框架、无构建步骤、无 TypeScript。
+上班日历 — 跨平台打卡提醒日历应用，支持 Electron 桌面端和 Capacitor Android 端。项目正处于从纯 JS 向 Vue.js (3.5+) 渐进式迁移阶段。
 
 ## 常用命令
 
 ```bash
-npm start              # 启动 Electron 桌面端开发模式
-npm run pack           # 打包 Windows x64 应用（electron-packager + 设置图标 + 清理语言文件）
+npm run dev            # 启动 Vite 开发服务器并开启 Electron 调试
+npm start              # 直接启动 Electron（跳过 Vite）
+npm run build          # 构建生产环境 Web 资源
+npm run pack           # 构建、打包 Windows x64 应用
 npx cap sync android   # 同步 Web 资源到 Android 项目
 ```
 
-Android 构建需要 `JAVA_HOME` 和 `ANDROID_HOME` 环境变量，然后在 `android/` 目录执行 `./gradlew assembleRelease`。签名配置在 `android/local.properties`（不入 git）。
-
 ## 架构要点
 
-**三进程架构**：
-- `main.js` — Electron 主进程：窗口管理、数据持久化（JSON 文件存到 userData）、开机自启、通知推送、IPC 服务端
-- `preload.js` — 通过 `contextBridge` 暴露 `calendarAPI` 给渲染进程
-- `src/` — 渲染进程，纯 JS 单页应用，各模块通过全局变量协作
-
-**核心模块**（全在 `src/` 下）：
-- `renderer.js` — 主渲染逻辑，页面路由和全局状态
-- `calendar.js` — 日历视图、日期选择、状态标记
-- `reminders.js` — 打卡提醒和确认逻辑
-- `todos.js` — 待办管理
-- `social.js` — 好友圈社交功能
-- `supabase.js` — Supabase 云服务集成（认证、数据同步、Storage）
-- `stats.js` — 月度统计
-- `settings.js` — 设置页
-- `utils.js` — 工具函数
-- `web-api.js` — 平台适配层，安卓端通过 Capacitor 桥接原生 API
-
-**跨平台策略**：同一套 `src/` 代码同时用于 Electron 和 Capacitor。`web-api.js` 检测平台并提供统一 API（通知、文件系统等）。
+**混合架构**：
+- `main.js` (Electron 主进程)：负责窗口管理、原子化 JSON 数据持久化、开机自启、系统级通知。
+- `preload.js`：通过 `calendarAPI` 安全暴露 IPC 接口。
+- `src/` (渲染进程)：
+    - **Vue 模块**：主要业务逻辑实现（日历视图、设置、统计、社交），通过 Vite 构建。
+    - **旧版 JS 模块**：作为兼容层或正在迁移的代码（`calendar.js`, `todos.js` 等），通过全局变量与 Vue 桥接。
+    - **独立 Vue 实例**：目前存在多个挂载点（`vue-calendar.js`, `vue-todos.js` 等），正逐步收敛。
 
 **数据存储**：
-- 桌面端：JSON 文件写入 Electron `userData` 目录
-- 云端：Supabase PostgreSQL + RLS 行级安全策略
-- 好友圈图片：Supabase Storage
-
-**Supabase 客户端库**：`lib/supabase.min.js` 和 `src/lib/supabase.min.js`（两份副本），非 npm 依赖。
+- 桌面端：原子化写入 `userData/calendar-data.json`。
+- 云端���Supabase PostgreSQL + RLS + 智能时间戳合并同步。
 
 ## 开发规范
 
@@ -68,10 +54,10 @@ Android 构建需要 `JAVA_HOME` 和 `ANDROID_HOME` 环境变量，然后在 `an
 **工作流程**：所有操作都在 Claude Code 技能（superpowers）指导下进行，遵循技能流程规范。
 
 **代码风格**：
-- 纯 JavaScript，不引入 TypeScript 或框架
-- 无构建步骤，`src/` 目录即为最终 Web 资源
-- 模块间通过全局变量和 DOM 事件通信，不使用 ES modules 的 import/export
-- 修改功能时需同时考虑桌面端和安卓端的兼容性
+- **混合开发**：核心业务逻辑正由纯 JS 向 Vue.js (3.5+) 迁移。
+- **构建链**：使用 Vite 进行开发调试和生产构建。`src/` 目录包含 Vue 源码及 legacy JS 模块。
+- **状态管理**：使用 `src/store.js` (Reactive) 统一管理 Vue 状态，并通过 window 全局变量与旧模块桥接。
+- **跨平台一致性**：修改功能时需同时考虑桌面端 (Electron) 和安卓端 (Capacitor) 的兼容性。
 
 **项目约定**：
 - `.claude/` 目录已加入 `.gitignore`，不入版本控制

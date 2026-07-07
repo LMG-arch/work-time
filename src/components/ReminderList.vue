@@ -1,14 +1,19 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
+import { useReminderStore } from '../stores/reminderStore.js'
+import { useCalendarStore } from '../stores/calendarStore.js'
+
+const reminderStore = useReminderStore()
+const calendarStore = useCalendarStore()
 
 const todayStr = computed(() => {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 })
 
-const reminders = computed(() => window.allReminders || [])
-const todayData = computed(() => (window.allData || {})[todayStr.value])
-const records = computed(() => (window.allReminderRecords || {})[todayStr.value] || {})
+const reminders = computed(() => reminderStore.reminders)
+const todayData = computed(() => calendarStore.getDayData(todayStr.value))
+const records = computed(() => reminderStore.getRecordsByDate(todayStr.value))
 
 const nonWorkStatuses = ['rest', 'leave', 'annual', 'sick', 'personal']
 const isRestDay = computed(() => todayData.value && nonWorkStatuses.includes(todayData.value.status))
@@ -30,14 +35,14 @@ function getCardStatus(r) {
 }
 
 async function confirmReminder(r) {
-  await window.calendarAPI.confirmReminder(todayStr.value, r.id)
-  if (!window.allReminderRecords[todayStr.value]) window.allReminderRecords[todayStr.value] = {}
-  window.allReminderRecords[todayStr.value][r.id] = { confirmed: true, at: new Date().toISOString() }
+  await reminderStore.confirmReminder(todayStr.value, r.id)
   window.renderCalendar?.()
+  window.__refreshCalendarGrid?.()
   window.showToast?.('打卡成功 ✓')
 }
 
-window.__refreshReminderList = () => {}
+// backward compat
+window.__refreshReminderList = () => reminderStore.refreshFromWindow()
 </script>
 
 <template>

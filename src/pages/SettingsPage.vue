@@ -124,7 +124,7 @@ async function handleLogin() {
       regUsername.value = ''
       regPassword.value = ''
       await updateAccountUI()
-      try { await syncCalendarData(); await refreshAllData() } catch {}
+      try { await syncCalendarData(); await window.refreshAllData?.() } catch (e) { console.warn('[Sync] Post-login sync failed:', e.message) }
     }
   } finally {
     isSubmitting.value = false
@@ -200,7 +200,7 @@ async function testSupabase() {
       try {
         const { data: prof } = await window.sb.from('profiles').select('display_id').eq('id', data.user.id).maybeSingle()
         if (prof && prof.display_id) log(true, '数字ID: ' + prof.display_id)
-      } catch {}
+      } catch (e) { console.debug('[Test] Profile query failed:', e.message) }
     }
   } catch (e) { log(false, '匿名登录异常: ' + e.message) }
 
@@ -218,19 +218,7 @@ async function testSupabase() {
     else log(true, 'posts 表可访问')
   } catch (e) { log(false, 'posts 表异常: ' + e.message) }
 
-  showDiag(results.join('\n'))
-}
-
-function showDiag(message) {
-  const existing = document.getElementById('diag-panel')
-  if (existing) existing.remove()
-  const panel = document.createElement('div')
-  panel.id = 'diag-panel'
-  panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:90%;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-size:13px;white-space:pre-line;line-height:1.8;color:var(--text);'
-  panel.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px;">🔍 诊断结果</div><div>' + escapeHtml(message).replace(/\n/g, '<br>') + '</div>' +
-    '<button id="diag-close" style="margin-top:16px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);cursor:pointer;font-size:13px;">关闭</button>'
-  document.body.appendChild(panel)
-  document.getElementById('diag-close').addEventListener('click', () => panel.remove())
+  window.showDiag?.(results.join('\n'))
 }
 
 // ===== 数据同步 =====
@@ -250,7 +238,7 @@ async function toggleSync() {
     isSyncing.value = true
     const r = await syncCalendarData()
     if (r.error) showToast('同步失败: ' + r.error)
-    else { showToast('同步完成 ✓'); await refreshAllData() }
+    else { showToast('同步完成 ✓'); await window.refreshAllData?.() }
     isSyncing.value = false
   }
 }
@@ -260,7 +248,7 @@ async function syncNow() {
   try {
     const r = await syncCalendarData()
     if (r.error) showToast('同步失败: ' + r.error)
-    else { showToast('同步完成 ✓'); await refreshAllData() }
+    else { showToast('同步完成 ✓'); await window.refreshAllData?.() }
   } finally { isSyncing.value = false }
 }
 
@@ -280,7 +268,7 @@ async function pullFromCloudHandler() {
   try {
     const r = await pullFromCloud()
     if (r.error) showToast('下载失败: ' + r.error)
-    else { showToast('云端数据已下载到本地 ✓'); await refreshAllData() }
+    else { showToast('云端数据已下载到本地 ✓'); await window.refreshAllData?.() }
   } finally { isSyncing.value = false }
 }
 
@@ -332,7 +320,7 @@ async function restoreData() {
   showToast('正在恢复...')
   const r = await restoreSelected(getSelectedTables())
   if (r.error) showToast('恢复失败: ' + r.error)
-  else { showToast('数据已恢复 ✓'); await refreshAllData(); await updateTrashStats() }
+  else { showToast('数据已恢复 ✓'); await window.refreshAllData?.(); await updateTrashStats() }
 }
 
 async function emptyTrash() {
@@ -375,10 +363,10 @@ async function checkAndroidPermissions() {
         try {
           const exact = await LocalNotifications.checkExactNotificationSetting()
           permStatuses.value['exact-alarm'] = exact.exact_alarm === 'granted'
-        } catch { permStatuses.value['exact-alarm'] = false }
+        } catch (e) { console.warn('[Perm] Exact alarm check failed:', e.message); permStatuses.value['exact-alarm'] = false }
       }
     }
-  } catch {}
+  } catch (e) { console.warn('[Perm] Notification check failed:', e.message) }
   permStatuses.value.overlay = null
   permStatuses.value.battery = null
   permStatuses.value.install = null
@@ -389,10 +377,10 @@ async function openAppSettings() {
     const { App } = window.Capacitor.Plugins
     const appId = 'com.workcalendar.app'
     if (App?.openUrl) {
-      try { await App.openUrl({ url: `package:${appId}` }); return } catch {}
+      try { await App.openUrl({ url: `package:${appId}` }); return } catch (e) { console.debug('[Settings] App.openUrl failed:', e.message) }
     }
-    try { window.open(`intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;package=${appId};end`, '_system'); return } catch {}
-    try { window.open(`market://details?id=${appId}`, '_system'); return } catch {}
+    try { window.open(`intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;package=${appId};end`, '_system'); return } catch (e) { console.debug('[Settings] Intent URL failed:', e.message) }
+    try { window.open(`market://details?id=${appId}`, '_system'); return } catch (e) { console.debug('[Settings] Market URL failed:', e.message) }
     showToast('请手动前往：系统设置 > 应用管理 > 上班日历 > 权限')
   } catch (e) {
     showToast('请手动前往：系统设置 > 应用管理 > 上班日历 > 权限')
@@ -434,7 +422,7 @@ const allNavItems = [
 const navEnabled = ref(getNavItems())
 
 function getNavItems() {
-  try { const raw = localStorage.getItem(NAV_ITEMS_KEY); if (raw) return JSON.parse(raw) } catch {}
+  try { const raw = localStorage.getItem(NAV_ITEMS_KEY); if (raw) return JSON.parse(raw) } catch (e) { console.warn('[Settings] Failed to parse nav items:', e.message) }
   return allNavItems.map(n => n.id)
 }
 function saveNavItems(items) {
@@ -467,7 +455,7 @@ async function exportData() {
 async function importData() {
   const result = await window.calendarAPI.importData()
   if (result.success) {
-    await refreshAllData()
+    await window.refreshAllData?.()
     showToast('数据已导入')
   } else if (result.error) {
     showToast('导入失败: ' + result.error)
@@ -703,12 +691,12 @@ onUnmounted(() => {
 .settings-scroll {
   overflow-y: auto;
   height: 100%;
-  padding: 16px;
+  padding: 4px 0 16px;
   box-sizing: border-box;
 }
 .settings-hint {
   font-size: 12px;
-  color: var(--text-secondary, #888);
+  color: var(--text2, #888);
   line-height: 1.5;
 }
 .settings-field {
@@ -717,7 +705,7 @@ onUnmounted(() => {
 .settings-field label {
   display: block;
   font-size: 12px;
-  color: var(--text-secondary, #666);
+  color: var(--text2, #666);
   margin-bottom: 4px;
 }
 .settings-input {
@@ -725,7 +713,7 @@ onUnmounted(() => {
   padding: 8px 12px;
   border: 1px solid var(--border, #e0e0e0);
   border-radius: 8px;
-  background: var(--bg, #fff);
+  background: var(--card, #fff);
   color: var(--text, #333);
   font-size: 13px;
   outline: none;
@@ -845,15 +833,15 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 .perm-status.ok {
-  background: var(--success, #4caf50);
+  background: #4caf50;
   color: #fff;
 }
 .perm-status.bad {
-  background: var(--danger, #e53935);
+  background: #e53935;
   color: #fff;
 }
 .perm-status.warn {
-  background: var(--warning, #ff9800);
+  background: #ff9800;
   color: #fff;
 }
 .settings-scroll a {

@@ -1,5 +1,8 @@
 <script setup>
 import { computed } from 'vue'
+import { useReminderStore } from '../stores/reminderStore.js'
+
+const reminderStore = useReminderStore()
 
 const WEEKDAYS = ['日','一','二','三','四','五','六']
 
@@ -17,8 +20,8 @@ const last7Days = computed(() => {
   return days
 })
 
-const reminders = computed(() => window.allReminders || [])
-const allRecords = computed(() => window.allReminderRecords || {})
+const reminders = computed(() => reminderStore.reminders)
+const allRecords = computed(() => reminderStore.reminderRecords)
 
 const hasRecords = computed(() => {
   return last7Days.value.some(d => {
@@ -27,7 +30,7 @@ const hasRecords = computed(() => {
   })
 })
 
-window.__refreshReminderHistory = () => {}
+window.__refreshReminderHistory = () => reminderStore.refreshFromWindow()
 </script>
 
 <template>

@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('calendarAPI', {
   deleteTodo: (id) => ipcRenderer.invoke('delete-todo', id),
   // Todo notification
   notifyTodo: (text, time) => ipcRenderer.send('notify-todo', text, time),
+  // App version
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   // Reminders
   getReminders: () => ipcRenderer.invoke('get-reminders'),
   saveReminders: (reminders) => ipcRenderer.invoke('save-reminders', reminders),
@@ -38,8 +40,5 @@ contextBridge.exposeInMainWorld('calendarAPI', {
   // Sync bridge: read/write full store for cloud sync
   syncRead: () => ipcRenderer.invoke('sync-read'),
   syncWrite: (data) => ipcRenderer.invoke('sync-write', data),
-  onDataChanged: (callback) => {
-    ipcRenderer.removeAllListeners('data-changed');
-    ipcRenderer.on('data-changed', () => callback());
-  }
+  onDataChanged: (callback) => safeOn('data-changed', callback)
 });

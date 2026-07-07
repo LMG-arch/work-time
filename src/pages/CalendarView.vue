@@ -1,5 +1,15 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useCalendarStore } from '../stores/calendarStore.js'
+import { useTodoStore } from '../stores/todoStore.js'
+import { useReminderStore } from '../stores/reminderStore.js'
+import { useAppStore } from '../stores/appStore.js'
+import DetailPanel from '../components/DetailPanel.vue'
+
+const calendarStore = useCalendarStore()
+const todoStore = useTodoStore()
+const reminderStore = useReminderStore()
+const appStore = useAppStore()
 
 const refreshCount = ref(0)
 const currentYear = ref(new Date().getFullYear())
@@ -10,6 +20,13 @@ window.__refreshCalendarGrid = () => { refreshCount.value++ }
 window.__calendarGoToday = goToday
 window.__calendarPrevMonth = prevMonth
 window.__calendarNextMonth = nextMonth
+
+window.__calendarSyncDate = (year, month, selected) => {
+  if (year !== undefined) currentYear.value = year
+  if (month !== undefined) currentMonth.value = month
+  if (selected !== undefined) selectedDate.value = selected
+  refreshCount.value++
+}
 
 const DAYS_CN = ['一', '二', '三', '四', '五', '六', '日']
 
@@ -39,7 +56,7 @@ const prevDaysInMonth = computed(() => new Date(prevYearVal.value, prevMonthVal.
 
 const calendarDays = computed(() => {
   const days = []
-  refreshCount.value // 依赖，触发重新计算
+  refreshCount.value
   for (let i = firstDay.value - 1; i >= 0; i--) {
     const day = prevDaysInMonth.value - i
     const ds = `${prevYearVal.value}-${String(prevMonthVal.value+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
@@ -57,7 +74,7 @@ const calendarDays = computed(() => {
   return days
 })
 
-function dayData(dateStr) { return window.allData?.[dateStr] || {} }
+function dayData(dateStr) { return calendarStore.getDayData(dateStr) }
 function holidayInfo(dateStr) {
   if (!window.holidayData) return null
   if (window.holidayData.HOLIDAYS?.[dateStr]) return window.holidayData.HOLIDAYS[dateStr]
@@ -70,10 +87,10 @@ function lunar(yr, mo, dy) {
   return window.Lunar.solar2lunar(yr, mo - 1, dy)
 }
 function todosForDate(dateStr) {
-  if (!window.allTodos) return []
+  if (!todoStore.todos) return []
   const d = new Date(dateStr + 'T00:00:00')
   const wd = d.getDay()
-  return window.allTodos.filter(t => {
+  return todoStore.todos.filter(t => {
     if (t.type === 'once') return t.date === dateStr
     if (t.type === 'weekly') return (t.weekdays || []).includes(wd)
     return false
@@ -86,9 +103,9 @@ function undoneCount(dateStr) {
   }).length
 }
 function clockinStatus(dateStr) {
-  const enabled = (window.allReminders || []).filter(r => r.enabled)
+  const enabled = (reminderStore.reminders || []).filter(r => r.enabled)
   if (enabled.length === 0) return null
-  const records = window.allReminderRecords?.[dateStr] || {}
+  const records = reminderStore.getRecordsByDate(dateStr)
   const confirmed = enabled.filter(r => records[r.id] && records[r.id].confirmed)
   return confirmed.length > 0 ? { confirmed: confirmed.length, total: enabled.length } : null
 }
@@ -104,7 +121,10 @@ function selectDate(dateStr, isOther) {
     selectedDate.value = null
     return
   }
-  if (selectedDate.value === dateStr) { selectedDate.value = null; return }
+  if (selectedDate.value === dateStr) {
+    selectedDate.value = null
+    return
+  }
   selectedDate.value = dateStr
   window.__vueDetailPanel?.(dateStr)
 }
@@ -128,7 +148,7 @@ function goToday() {
 </script>
 
 <template>
-  <div class="calendar-view">
+  <div class="calendar-view" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
     <div class="calendar-header">
       <button class="nav-btn" @click="prevMonth">&lt;</button>
       <div class="month-label-group">
@@ -143,7 +163,7 @@ function goToday() {
       <span v-for="d in DAYS_CN" :key="d">{{ d }}</span>
     </div>
 
-    <div class="calendar-grid">
+    <div class="calendar-grid" style="flex-shrink:0;">
       <div v-for="(cd, idx) in calendarDays" :key="idx"
         class="day-cell" :class="{ 'other-month': cd.isOther, today: cd.dateStr === todayStr, selected: cd.dateStr === selectedDate, 'has-note': dayData(cd.dateStr).note, 'has-tag': dayData(cd.dateStr).tags?.length > 0, 'has-todo': todosForDate(cd.dateStr).length > 0 }"
         :style="dayData(cd.dateStr).color ? { background: dayData(cd.dateStr).color } : {}"
@@ -156,5 +176,9 @@ function goToday() {
         <div v-if="hasClockin(cd.dateStr) && !cd.isOther" class="clockin-dot"></div>
       </div>
     </div>
-</div>
+
+    <div style="flex:1;overflow-y:auto;overflow-x:hidden;">
+      <DetailPanel :selectedDate="selectedDate" />
+    </div>
+  </div>
 </template>

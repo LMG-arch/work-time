@@ -1,13 +1,18 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useTodoStore } from '../stores/todoStore.js'
 import TodoItem from './TodoItem.vue'
 
-const filter = ref('all')
+const todoStore = useTodoStore()
 
-window.__refreshTodoView = () => {}
+const filter = ref('all')
+const refreshTick = ref(0)
+
+window.__refreshTodoView = () => { refreshTick.value++ }
 
 const onceTodos = computed(() => {
-  return (window.allTodos || []).filter(t => {
+  refreshTick.value
+  return todoStore.todos.filter(t => {
     if (t.type !== 'once') return false
     if (filter.value === 'all') return true
     if (filter.value === 'done') return !!t.done
@@ -16,7 +21,8 @@ const onceTodos = computed(() => {
 })
 
 const weeklyTodos = computed(() => {
-  return (window.allTodos || []).filter(t => t.type === 'weekly')
+  refreshTick.value
+  return todoStore.todos.filter(t => t.type === 'weekly')
 })
 
 const todayStr = computed(() => {
@@ -25,9 +31,7 @@ const todayStr = computed(() => {
 })
 
 function filterBy(key) { filter.value = key }
-function onItemRefresh() {
-  window.__refreshTodoView = () => {}
-}
+function onItemRefresh() { refreshTick.value++; todoStore.refreshFromWindow() }
 </script>
 
 <template>

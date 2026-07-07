@@ -3,6 +3,7 @@
 //             calendar.js, todos.js, reminders.js, stats.js, settings.js
 
 // ===== Global State =====
+// 通过 window 暴露全局状态，供 Vue 组件桥接访问
 
 let currentYear, currentMonth;
 let selectedDate = null;
@@ -14,6 +15,23 @@ let holidayData = null;
 let allReminders = [];
 let allReminderRecords = {};
 let reminderNotifTimer = null;
+
+// 同步桥接：每次修改 currentYear/currentMonth/selectedDate 后调用
+function syncToWindow() {
+  window.currentYear = currentYear;
+  window.currentMonth = currentMonth;
+  window.selectedDate = selectedDate;
+  // 同步给 Vue 日历组件
+  if (window.__calendarSyncDate) {
+    window.__calendarSyncDate(currentYear, currentMonth, selectedDate);
+  }
+}
+// 暴露全局引用（对象类型自动同步，基本类型需手动调用 syncToWindow）
+window.allData = allData;
+window.allTodos = allTodos;
+window.allReminders = allReminders;
+window.allReminderRecords = allReminderRecords;
+window.holidayData = holidayData;
 
 const WEEKDAYS_CN = ['日', '一', '二', '三', '四', '五', '六'];
 const STATUS_LABELS = { work: '上班', rest: '休息', trip: '出差', leave: '请假', annual: '年假', sick: '病假', personal: '事假' };
@@ -40,11 +58,13 @@ const THEMES = [
 
 function switchView(view) {
   currentView = view;
+  syncToWindow();
 
-  // Vue 管理的页面先激活 Vue 容器并返回
-  const VUE_PAGES = ['calendar', 'settings', 'social', 'stats']
+  // Vue 管理的页面：隐藏传统 .app，显示 #app
+  const VUE_PAGES = ['calendar', 'clockin', 'settings', 'social', 'stats']
   if (VUE_PAGES.includes(view)) {
-    document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
+    const tradApp = document.querySelector('.app');
+    if (tradApp) tradApp.style.display = 'none';
     const appEl = document.getElementById('app');
     if (appEl) appEl.style.display = '';
     window.__vueActivate?.(view);
@@ -55,31 +75,44 @@ function switchView(view) {
     return;
   }
 
-  // 非 Vue 页面：隐藏 Vue 容器
+  // 非 Vue 页面：隐藏 #app，显示传统 .app
   const appEl = document.getElementById('app');
   if (appEl) appEl.style.display = 'none';
   window.__vueDeactivate?.();
+  const tradApp = document.querySelector('.app');
+  if (tradApp) tradApp.style.display = '';
 
-  document.getElementById('clockin-view').style.display = view === 'clockin' ? '' : 'none';
+  document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
   document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
   const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
   const activeBtn = document.getElementById(activeMap[view]);
   if (activeBtn) activeBtn.classList.add('active');
-  if (view === 'clockin') renderClockinView();
 }
 
 // Refresh all data from storage and re-render current view
 async function refreshAllData() {
   try {
     allData = await window.calendarAPI.getAllData();
+    window.allData = allData;
     allTodos = await window.calendarAPI.getTodos();
+    window.allTodos = allTodos;
     allReminders = await window.calendarAPI.getReminders();
+    window.allReminders = allReminders;
     allReminderRecords = await window.calendarAPI.getAllReminderRecords();
-    renderCalendar();
-    if (currentView === 'clockin') renderClockinView();
+    window.allReminderRecords = allReminderRecords;
+    // 仅在非 Vue 日历视图时调用传统 DOM 渲染
+    if (currentView !== 'calendar' && currentView !== 'stats' && currentView !== 'settings' && currentView !== 'social') renderCalendar();
+    // 通知 Vue 组件刷新
+    if (currentView === 'calendar') {
+      window.__refreshCalendarGrid?.();
+      if (selectedDate) window.__refreshTodoList?.(selectedDate);
+    }
+    if (currentView === 'clockin') {
+      renderClockinView();
+      window.__refreshReminderList?.();
+      window.__refreshReminderHistory?.();
+    }
     if (currentView === 'stats') window.__refreshStats?.();
-    // 如果当前在日历视图且详情面板打开，刷新待办列表
-    if (currentView === 'calendar' && selectedDate) window.__refreshTodoList?.(selectedDate);
   } catch (e) {
     console.error('[refreshAllData] Failed:', e.message);
   }
@@ -133,7 +166,13 @@ function setupEventListeners() {
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx > 0) changeMonth(-1); else changeMonth(1);
+      // 当 Vue 日历视图激活时，使用 Vue 的导航方法
+      if (window.__calendarPrevMonth && window.__calendarNextMonth) {
+        if (dx > 0) window.__calendarPrevMonth();
+        else window.__calendarNextMonth();
+      } else {
+        if (dx > 0) changeMonth(-1); else changeMonth(1);
+      }
     }
   }, { passive: true });
 
@@ -216,7 +255,7 @@ function setupEventListeners() {
         try {
           const { data: prof } = await sb.from('profiles').select('display_id').eq('id', authData.user.id).maybeSingle();
           if (prof && prof.display_id) log(true, '你的数字ID: ' + prof.display_id);
-        } catch {}
+        } catch (e) { console.debug('[Test] Profile query failed:', e.message); }
       }
     } catch (e) { log(false, '匿名登录异常: ' + e.message); }
 
@@ -237,23 +276,11 @@ function setupEventListeners() {
     showDiag(results.join('\n'));
   });
 
-  function showDiag(message) {
-    const existing = document.getElementById('diag-panel');
-    if (existing) existing.remove();
-    const panel = document.createElement('div');
-    panel.id = 'diag-panel';
-    panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:90%;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-size:13px;white-space:pre-line;line-height:1.8;color:var(--text);';
-    panel.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px;">诊断结果</div><div>' + escapeHtml(message).replace(/\n/g, '<br>') + '</div>' +
-      '<button id="diag-close" style="margin-top:16px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);cursor:pointer;font-size:13px;">关闭</button>';
-    document.body.appendChild(panel);
-    document.getElementById('diag-close').addEventListener('click', () => panel.remove());
-  }
-
   // 管理员回收站功能已由 SettingsPage.vue 处理
   // Called after initSocial() so Supabase client is ready
 
   // Clock-in settings
-  document.getElementById('clockin-settings-btn').addEventListener('click', () => window.__openReminderSettings?.());
+  document.getElementById('clockin-settings-btn')?.addEventListener('click', () => window.__openReminderSettings?.());
   // 提醒设置弹窗由 Vue ReminderSettings 组件处理
 
   // Auto-launch toggle
@@ -453,7 +480,7 @@ function setupEventListeners() {
     ];
 
     function getNavItems() {
-      try { const raw = localStorage.getItem(NAV_ITEMS_KEY); if (raw) return JSON.parse(raw); } catch {}
+      try { const raw = localStorage.getItem(NAV_ITEMS_KEY); if (raw) return JSON.parse(raw); } catch (e) { console.warn('[Settings] Failed to parse nav items:', e.message); }
       return allNavItems.map(n => n.id);
     }
     function saveNavItems(items) { localStorage.setItem(NAV_ITEMS_KEY, JSON.stringify(items)); }
@@ -511,8 +538,14 @@ function setupEventListeners() {
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    if (e.key === 'ArrowLeft') changeMonth(-1);
-    if (e.key === 'ArrowRight') changeMonth(1);
+    if (e.key === 'ArrowLeft') {
+      if (currentView === 'calendar') window.__calendarPrevMonth?.();
+      else changeMonth(-1);
+    }
+    if (e.key === 'ArrowRight') {
+      if (currentView === 'calendar') window.__calendarNextMonth?.();
+      else changeMonth(1);
+    }
     if (e.key === 't' && !e.ctrlKey && !e.metaKey) { window.__openTodoModal?.(); e.preventDefault(); }
     if (e.key === 'Escape') {
       closeDetailPanel();
@@ -585,8 +618,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.calendarAPI.onReminderConfirmed(async (data) => {
         if (!allReminderRecords[data.date]) allReminderRecords[data.date] = {};
         allReminderRecords[data.date][data.reminderId] = { confirmed: true, at: new Date().toISOString() };
-        if (currentView === 'clockin') renderClockinView();
+        window.allReminderRecords = allReminderRecords;
+        if (currentView === 'clockin') {
+          renderClockinView();
+          window.__refreshReminderList?.();
+          window.__refreshReminderHistory?.();
+        }
         renderCalendar();
+        window.__refreshCalendarGrid?.();
         showToast('打卡成功 ✓');
       });
     }

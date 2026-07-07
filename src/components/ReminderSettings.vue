@@ -1,12 +1,15 @@
 <script setup>
 import { ref } from 'vue'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from 'reka-ui'
+import { useReminderStore } from '../stores/reminderStore.js'
+
+const reminderStore = useReminderStore()
 
 const visible = ref(false)
 const items = ref([])
 
 window.__openReminderSettings = () => {
-  items.value = (window.allReminders || []).map(r => ({
+  items.value = (reminderStore.reminders || []).map(r => ({
     id: r.id,
     label: r.label,
     time: r.time,
@@ -29,8 +32,8 @@ async function save() {
   }))
   window.allReminders = updated
   await window.calendarAPI.saveReminders(updated)
+  reminderStore.refreshFromWindow()
   visible.value = false
-  window.__refreshReminderList?.()
   if (typeof window.scheduleReminderNotifications === 'function') window.scheduleReminderNotifications()
   if (typeof window.scheduleTodoReminders === 'function') window.scheduleTodoReminders()
   window.showToast?.('提醒设置已保存')
