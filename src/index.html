@@ -58,7 +58,7 @@
         <textarea id="post-text-input" placeholder="分享你的心情..." rows="4"></textarea>
         <div id="post-image-preview" class="post-image-preview" style="display:none;">
           <img id="post-image-preview-img" src="">
-          <span id="post-image-remove" class="post-image-remove">&times;</span>
+          <span id="post-image-remove" class="post-image-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
         </div>
         <div class="post-modal-toolbar">
           <label id="post-image-label" class="post-image-btn">图片
@@ -134,7 +134,7 @@
           </div>
           <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
             <button id="supabase-clear-btn" class="settings-action-btn" style="color:#e53935;border-color:#e53935;">清除云端数据</button>
-            <div class="settings-hint" style="margin-top:4px;">⚠️ 管理员功能：重置全部数据（移入回收站，可恢复），不影响配置</div>
+            <div class="settings-hint" style="margin-top:4px;"><svg class="icon-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 9v5M12 17.5v.5"/></svg>管理员功能：重置全部数据（移入回收站，可恢复），不影响配置</div>
           </div>
         </div>
         <div class="settings-group">
@@ -145,24 +145,24 @@
             <button id="sync-now-btn" class="settings-action-btn">立即同步</button>
           </div>
           <div class="settings-btn-row" style="margin-top:8px;">
-            <button id="push-to-cloud-btn" class="settings-action-btn">↑ 上传本地数据</button>
-            <button id="pull-from-cloud-btn" class="settings-action-btn">↓ 下载云端数据</button>
+            <button id="push-to-cloud-btn" class="settings-action-btn"><svg class="icon-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>上传本地数据</button>
+            <button id="pull-from-cloud-btn" class="settings-action-btn"><svg class="icon-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>下载云端数据</button>
           </div>
           <div class="settings-hint" style="margin-top:4px;font-size:11px;color:#999;">上传：本地覆盖云端 | 下载：云端覆盖本地</div>
         </div>
         <div class="settings-group">
-          <div class="settings-group-title settings-collapsible" id="theme-toggle">主题风格 <span class="collapse-arrow">▾</span></div>
+          <div class="settings-group-title settings-collapsible" id="theme-toggle">主题风格 <svg class="collapse-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
           <div id="settings-theme-grid" class="theme-grid" style="display:none;"></div>
         </div>
         <div class="settings-group">
-          <div class="settings-group-title settings-collapsible" id="nav-toggle">导航栏设置 <span class="collapse-arrow">▾</span></div>
+          <div class="settings-group-title settings-collapsible" id="nav-toggle">导航栏设置 <svg class="collapse-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
           <div id="nav-settings-content" style="display:none;">
             <div class="settings-hint" style="margin-bottom:8px;">选择底部导航栏显示的功能</div>
             <div id="nav-items-list"></div>
           </div>
         </div>
         <div class="settings-group" id="android-perms-group" style="display:none;">
-          <div class="settings-group-title settings-collapsible" id="perms-toggle">安卓权限 <span class="collapse-arrow">▾</span></div>
+          <div class="settings-group-title settings-collapsible" id="perms-toggle">安卓权限 <svg class="collapse-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
           <div id="perms-content" style="display:none;">
             <div class="settings-hint" style="margin-bottom:8px;">以下权限影响通知和更新功能，建议全部开启</div>
             <div id="perms-list"></div>
@@ -181,11 +181,41 @@
 
   <!-- Toolbar (移到 .app 外面，作为 body 的直接子元素，永远固定在底部) -->
   <div class="toolbar">
-    <button id="home-btn" class="tool-btn active" title="日历">日历</button>
-    <button id="clockin-btn" class="tool-btn primary-btn" title="打卡待办">打卡</button>
-    <button id="social-btn" class="tool-btn" title="好友圈">好友</button>
-    <button id="stats-btn" class="tool-btn" title="月度统计">统计</button>
-    <button id="settings-btn" class="tool-btn" title="设置">设置</button>
+    <div class="toolbar-indicator"></div>
+    <button id="home-btn" class="tool-btn active" title="日历">
+      <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9h17M8 2.5v4M16 2.5v4"/></svg>
+      <span>日历</span>
+    </button>
+    <button id="clockin-btn" class="tool-btn primary-btn" title="打卡待办">
+      <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+      <span>打卡</span>
+    </button>
+    <button id="social-btn" class="tool-btn" title="好友圈">
+      <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 19a4.8 4.8 0 0 1 5-4.2"/></svg>
+      <span>好友</span>
+    </button>
+    <button id="stats-btn" class="tool-btn" title="月度统计">
+      <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M7 20v-7M12 20V6M17 20v-4"/></svg>
+      <span>统计</span>
+    </button>
+    <button id="settings-btn" class="tool-btn" title="设置">
+      <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
+      <span>设置</span>
+    </button>
+  </div>
+
+  <!-- 星海绽放主题：右上角开花标记（仅 cosmic 主题显示） -->
+  <div class="bloom-mark" aria-hidden="true">
+    <svg viewBox="0 0 100 100" width="100%" height="100%">
+      <g class="bloom-petals" fill="#ff8fab">
+        <ellipse cx="50" cy="26" rx="13" ry="22"/>
+        <ellipse cx="50" cy="26" rx="13" ry="22" transform="rotate(72 50 50)"/>
+        <ellipse cx="50" cy="26" rx="13" ry="22" transform="rotate(144 50 50)"/>
+        <ellipse cx="50" cy="26" rx="13" ry="22" transform="rotate(216 50 50)"/>
+        <ellipse cx="50" cy="26" rx="13" ry="22" transform="rotate(288 50 50)"/>
+      </g>
+      <circle cx="50" cy="50" r="12" fill="#ffd166"/>
+    </svg>
   </div>
 
   <script src="lib/supabase.min.js"></script>

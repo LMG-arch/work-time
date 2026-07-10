@@ -41,7 +41,7 @@ function setTheme(themeId) {
 }
 
 function loadTheme() {
-  const saved = localStorage.getItem('calendar-theme') || 'default';
+  const saved = localStorage.getItem('calendar-theme') || 'cosmic';
   document.body.dataset.theme = saved;
 }
 

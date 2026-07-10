@@ -49,13 +49,21 @@ const THEMES = window.THEMES || [
   { id: 'lavender', name: '薰衣草', color: '#9575cd' },
   { id: 'mint', name: '薄荷', color: '#26a69a' },
   { id: 'slate', name: '石板', color: '#546e7a' },
+  { id: 'cosmic', name: '星海绽放', color: '#9d8cff' },
 ]
 const currentTheme = ref(document.body.dataset.theme || 'default')
 
 function setTheme(themeId) {
-  currentTheme.value = themeId
-  document.body.dataset.theme = themeId
-  localStorage.setItem('calendar-theme', themeId)
+  const apply = () => {
+    currentTheme.value = themeId
+    document.body.dataset.theme = themeId
+    localStorage.setItem('calendar-theme', themeId)
+  }
+  if (document.startViewTransition) {
+    document.startViewTransition(apply)
+  } else {
+    apply()
+  }
 }
 
 // ===== 账号状态 =====
@@ -573,7 +581,7 @@ onUnmounted(() => {
               </span>
             </label>
           </div>
-          <button class="settings-action-btn" style="margin-top:8px;color:#e53935;border-color:#e53935;" @click="clearData">清除云端数据</button>
+          <button class="settings-action-btn btn-danger-ghost" style="margin-top:8px;" @click="clearData">清除云端数据</button>
           <div class="settings-hint" style="margin-top:4px;">⚠️ 管理员功能：重置全部数据（移入回收站，可恢复），不影响配置</div>
         </div>
 
@@ -592,7 +600,7 @@ onUnmounted(() => {
           </div>
           <div style="display:flex;gap:8px;">
             <button class="settings-action-btn" style="flex:1;" @click="restoreData">恢复数据</button>
-            <button class="settings-action-btn" style="flex:1;color:#e53935;border-color:#e53935;" @click="emptyTrash">清空回收站</button>
+            <button class="settings-action-btn btn-danger-ghost" style="flex:1;" @click="emptyTrash">清空回收站</button>
           </div>
         </div>
       </template>
@@ -617,7 +625,7 @@ onUnmounted(() => {
         <button class="settings-action-btn" :disabled="isSyncing" @click="pushToCloudHandler">↑ 上传本地数据</button>
         <button class="settings-action-btn" :disabled="isSyncing" @click="pullFromCloudHandler">↓ 下载云端数据</button>
       </div>
-      <div class="settings-hint" style="margin-top:4px;font-size:11px;color:#999;">上传：本地覆盖云端 | 下载：云端覆盖本地</div>
+      <div class="settings-hint" style="margin-top:4px;font-size:11px;">上传：本地覆盖云端 | 下载：云端覆盖本地</div>
     </SettingsSection>
 
     <!-- ===== 主题风格 ===== -->
@@ -672,7 +680,7 @@ onUnmounted(() => {
         </div>
       </div>
       <button class="settings-action-btn full" style="margin-top:8px;" @click="openAppSettings">前往系统设置</button>
-      <button class="settings-action-btn full" style="margin-top:8px;background:#2196F3;" @click="diagnoseNotifications">🔍 诊断通知问题</button>
+      <button class="settings-action-btn full btn-primary" style="margin-top:8px;" @click="diagnoseNotifications">🔍 诊断通知问题</button>
     </SettingsSection>
 
     <!-- ===== 其他 ===== -->

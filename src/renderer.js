@@ -52,9 +52,22 @@ const THEMES = [
   { id: 'lavender',name: '薰衣草', color: '#9575cd' },
   { id: 'mint',    name: '薄荷', color: '#26a69a' },
   { id: 'slate',   name: '石板', color: '#546e7a' },
+  { id: 'cosmic',  name: '星海绽放', color: '#9d8cff' },
 ];
 
 // ===== View Router =====
+
+// 底部导航滑动指示块：定位到当前激活的 .tool-btn
+function moveToolbarIndicator() {
+  const bar = document.querySelector('.toolbar');
+  if (!bar) return;
+  const indicator = bar.querySelector('.toolbar-indicator');
+  const active = bar.querySelector('.tool-btn.active');
+  if (!indicator || !active) return;
+  const w = Math.max(18, active.offsetWidth * 0.5);
+  indicator.style.width = w + 'px';
+  indicator.style.transform = `translateX(${active.offsetLeft + (active.offsetWidth - w) / 2}px)`;
+}
 
 function switchView(view) {
   currentView = view;
@@ -72,6 +85,7 @@ function switchView(view) {
     const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
     const activeBtn = document.getElementById(activeMap[view]);
     if (activeBtn) activeBtn.classList.add('active');
+    moveToolbarIndicator();
     return;
   }
 
@@ -87,6 +101,7 @@ function switchView(view) {
   const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
   const activeBtn = document.getElementById(activeMap[view]);
   if (activeBtn) activeBtn.classList.add('active');
+  moveToolbarIndicator();
 }
 
 // Refresh all data from storage and re-render current view
@@ -490,6 +505,7 @@ function setupEventListeners() {
         const btn = document.getElementById(item.id + '-btn');
         if (btn) btn.style.display = enabled.includes(item.id) ? '' : 'none';
       });
+      moveToolbarIndicator();
     }
 
     document.getElementById('nav-toggle').addEventListener('click', () => {
@@ -665,5 +681,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof autoCheckUpdate === 'function') autoCheckUpdate();
   } catch (e) {
     console.error('[Init] autoCheckUpdate failed:', e.message);
+  }
+
+  // 关键修复：应用启动即激活 Vue 层，默认显示现代化日历视图。
+  // 否则 #app 始终 display:none，用户看到的是遗留的传统 .app 旧界面，
+  // 所有 Vue 现代化改造（CalendarView/SettingsPage 等）永远不会显示。
+  try {
+    if (typeof window.__vueActivate === 'function') {
+      switchView('calendar');
+    } else {
+      console.warn('[Init] Vue 层尚未就绪，回退到传统渲染');
+      renderCalendar();
+    }
+  } catch (e) {
+    console.error('[Init] 激活 Vue 层失败，回退传统渲染:', e.message);
+    renderCalendar();
+  }
+
+  // 导航指示块：首屏布局稳定后定位，并随窗口尺寸变化重定位
+  try {
+    requestAnimationFrame(moveToolbarIndicator);
+    window.addEventListener('resize', moveToolbarIndicator);
+  } catch (e) {
+    console.error('[Init] 导航指示块初始化失败:', e.message);
   }
 });

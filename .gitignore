@@ -12,5 +12,6 @@ local.properties
 .DS_Store
 Thumbs.db
 .claude/
+.workbuddy/
 docs/superpowers/
 nul

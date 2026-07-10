@@ -28,6 +28,7 @@ function formatDateCN(dateStr) {
 }
 
 function updateData() {
+  if (!selectedDate.value) { dayData.value = {}; return }
   dayData.value = calendarStore.getDayData(selectedDate.value)
 }
 
@@ -37,12 +38,10 @@ window.__vueDetailPanel = (dateStr) => {
   updateData()
 }
 
-// Prop mode: CalendarView passes selectedDate directly
+// Prop mode: CalendarView passes selectedDate directly（含 null = 收起面板）
 watch(() => props.selectedDate, (newVal) => {
-  if (newVal) {
-    selectedDate.value = newVal
-    updateData()
-  }
+  selectedDate.value = newVal
+  if (newVal) updateData()
 }, { immediate: true })
 
 watch(selectedDate, updateData)

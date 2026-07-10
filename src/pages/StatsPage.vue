@@ -75,9 +75,9 @@ function exportImage() {
 </script>
 
 <template>
-  <div class="stats-content" style="padding:4px 0 16px;">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-      <button class="settings-action-btn" style="font-size:11px;padding:4px 10px;" @click="exportImage">导出统计图片</button>
+  <div class="stats-content">
+    <div class="stats-toolbar">
+      <button class="settings-action-btn btn-xs" @click="exportImage">导出统计图片</button>
     </div>
 
     <div class="stats-cards">

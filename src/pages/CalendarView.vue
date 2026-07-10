@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useCalendarStore } from '../stores/calendarStore.js'
 import { useTodoStore } from '../stores/todoStore.js'
 import { useReminderStore } from '../stores/reminderStore.js'
@@ -145,6 +145,19 @@ function goToday() {
   currentMonth.value = d.getMonth()
   selectedDate.value = null
 }
+
+// 挂载时从持久层加载数据到 Pinia store。
+// 若不加载，daysData 初始为 {}，日历网格只会渲染日期、不渲染用户数据（状态/备注/标签/待办角标全部空白）。
+onMounted(async () => {
+  try {
+    await calendarStore.loadData()
+    await todoStore.loadTodos()
+    await reminderStore.loadReminders()
+    await reminderStore.loadRecords()
+  } catch (e) {
+    console.error('[CalendarView] 初始数据加载失败:', e.message)
+  }
+})
 </script>
 
 <template>
