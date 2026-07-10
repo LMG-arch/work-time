@@ -60,7 +60,7 @@ npx cap sync android   # 同步 Web 资源到 Android 项目
 - **跨平台一致性**：修改功能时需同时考虑桌面端 (Electron) 和安卓端 (Capacitor) 的兼容性。
 
 **项目约定**：
-- `.claude/` 目录已加入 `.gitignore`，不入版本控制
+- `.claude/` 与 `.workbuddy/` 目录已加入 `.gitignore`，不入版本控制
 
 **注意事项**：
 - `holidays.js` 包含中国法定节假日数据，需手动更新年份
