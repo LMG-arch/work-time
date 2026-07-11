@@ -50,6 +50,9 @@ let uninstallSignature = null
 const showSplash = ref(true)
 
 onMounted(() => {
+  // 双保险：无论 SplashScreen 内部计时是否异常，最长 4s 后强制收起闪屏，
+  // 杜绝「只剩导航栏 / 一片空白」的永久盖屏（沙箱无法跑真机，此为防御性兜底）。
+  setTimeout(() => { showSplash.value = false }, 4000)
   // 全局按钮墨水波纹：受 premium 总开关与 prefers-reduced-motion 守卫
   installRipple()
   // 磁吸倾斜卡片：全局委托，受 premium 总开关与 prefers-reduced-motion 守卫

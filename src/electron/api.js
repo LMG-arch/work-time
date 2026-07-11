@@ -32,6 +32,9 @@ function getStore() {
   return loadStore();
 }
 
+// 保留 Electron preload 注入的真实 IPC 桥（若有），供 getAppVersion 调用，避免自递归
+const PRELOAD_API = (typeof window !== 'undefined' && window.calendarAPI) ? window.calendarAPI : null;
+
 window.calendarAPI = {
   // --- Day data ---
   async getAllData() {
@@ -298,10 +301,10 @@ window.calendarAPI = {
       } catch (e) { console.warn('[Version] Capacitor getInfo failed:', e.message); }
     }
 
-    // Electron 环境（通过 preload 暴露的 API）
-    if (window.calendarAPI && window.calendarAPI.getAppVersion) {
+    // Electron 环境（通过 preload 暴露的真实 IPC 桥，已在文件顶部捕获为 PRELOAD_API）
+    if (PRELOAD_API && PRELOAD_API.getAppVersion) {
       try {
-        return await window.calendarAPI.getAppVersion();
+        return await PRELOAD_API.getAppVersion();
       } catch (e) { console.warn('[Version] Electron getAppVersion failed:', e.message); }
     }
 

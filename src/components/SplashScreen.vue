@@ -61,7 +61,8 @@ watch(
   () => props.visible,
   (v) => {
     if (v) start()
-  }
+  },
+  { immediate: true } // 修复：初始 visible=true 时必须立即 start()，否则 start() 永不调用、done 永不 emit、闪屏永久盖屏
 )
 
 onBeforeUnmount(() => clearTimeout(timer))

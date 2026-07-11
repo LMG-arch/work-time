@@ -647,6 +647,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     if (typeof window.__vueActivate === 'function') {
       switchView('calendar');
+      // 兜底：若 Vue 在某些运行时未渲染出内容（如组件 setup 抛错被静默吞掉），
+      // #app 会空白。延时检测，若仍为空则回退传统界面，杜绝「只剩导航栏」的白屏。
+      setTimeout(() => {
+        try {
+          const appEl = document.getElementById('app');
+          if (appEl && appEl.childElementCount === 0) {
+            console.error('[Init] Vue 未渲染内容，回退传统界面');
+            appEl.style.display = 'none';
+            const trad = document.querySelector('.app');
+            if (trad) trad.style.display = '';
+            renderCalendar();
+          }
+        } catch (e2) {
+          console.error('[Init] 回退传统渲染失败:', e2.message);
+        }
+      }, 300);
     } else {
       console.warn('[Init] Vue 层尚未就绪，回退到传统渲染');
       renderCalendar();

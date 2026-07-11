@@ -1,18 +1,13 @@
 {
-  "version": "3.16.2",
-  "versionCode": 36,
+  "version": "3.17.0",
+  "versionCode": 37,
   "releaseDate": "2026-07-11",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.16.2/work-calendar-v3.16.2.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.0/work-calendar-v3.17.0.apk",
   "changelog": [
-    "忙闲热力月历：月历日格内叠加忙闲色阶（暖色=忙，基于待办/备注/标签/打卡密度），闲置日保持清爽",
-    "统计环形月览：SVG 环形图按状态占比着色，中心显示已记录天数，图例同步",
-    "每周面积图：当月每日忙闲密度的平滑面积曲线，按周划分网格，主题色渐变填充",
-    "连续打卡成长苗：SVG 植物随连续打卡天数生长（种子→嫩芽→小苗→灌木→树→满树繁花），里程碑换形态",
-    "三项可视化均主题感知、尊重 prefers-reduced-motion；作为数据展示常驻，不依赖 premium 开关",
-    "成长苗里程碑庆祝：连续打卡跨过 7/30/100 天时触发 Phase 4 花瓣庆祝，并附卡片脉冲反馈（双反馈闭环）",
-    "忙闲图例 + 面积图 hover：日历底部新增「色越深越忙」色阶图例；面积图新增悬停提示（X日·忙闲N）与标记点",
-    "代码审查修复 M1–M4：面积图周网格按真实周一边界对齐；连跨多里程碑只庆祝最高档；图例色阶/透明度对齐日格；渐变 id 用 useId 防多实例冲突",
-    "修正安卓版本元数据（build.gradle versionName/versionCode 与 version.json 对齐），修复更新检查死循环"
+    "全量迁移：遗留经典 JS 脚本逐字节包裹为 Vue 3 ES 模块，运行时已无自有经典 <script>（仅保留第三方 Supabase 客户端，零更改）",
+    "过渡垫片（shims.js / shared.js）完成全局状态与函数桥接，行为保持等价",
+    "五轮代码审查（安全 / 质量 / 架构 / shim 契约一致性 / 性能与 IPC 边界）并修复跨模块裸调用、死分支、裸赋值等阻断问题",
+    "清理孤儿根文件（supabase-core / -social / -sync.js、web-api.js），Electron 主进程入口保留"
   ],
   "forceUpdate": false
 }
