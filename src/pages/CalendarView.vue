@@ -183,7 +183,7 @@ onMounted(async () => {
 
     <div class="calendar-grid" style="flex-shrink:0;">
       <div v-for="(cd, idx) in calendarDays" :key="idx"
-        class="day-cell" :class="{ 'other-month': cd.isOther, today: cd.dateStr === todayStr, selected: cd.dateStr === selectedDate, 'has-note': dayData(cd.dateStr).note, 'has-tag': dayData(cd.dateStr).tags?.length > 0, 'has-todo': todosForDate(cd.dateStr).length > 0 }"
+        class="day-cell" data-tilt data-tilt-max="5" data-tilt-lift="0" :class="{ 'other-month': cd.isOther, today: cd.dateStr === todayStr, selected: cd.dateStr === selectedDate, 'has-note': dayData(cd.dateStr).note, 'has-tag': dayData(cd.dateStr).tags?.length > 0, 'has-todo': todosForDate(cd.dateStr).length > 0 }"
         :style="dayData(cd.dateStr).color ? { background: dayData(cd.dateStr).color } : {}"
         :data-date="cd.dateStr" @click="selectDate(cd.dateStr, cd.isOther)">
         <span class="day-num">{{ cd.day }}</span>

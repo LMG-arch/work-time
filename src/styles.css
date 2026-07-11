@@ -2344,3 +2344,22 @@ body[data-theme] .post-modal-content::before {
   }
   .daily-poetic { animation: cardIn .8s ease both; }
 }
+
+/* ============================================================
+   2026-07-11 · Phase 2 微交互（磁吸倾斜 + 空状态品牌插画）
+   - [data-tilt] 元素：由 effects/tilt.js 注入内联 transform（perspective 倾斜 + 抬升）
+   - 本处只负责「平滑复位过渡」与 transform 过渡兜底：
+     玻璃块（Phase 1）刻意把 .day-cell 的过渡去掉了 transform 项，这里补回，
+     保证倾斜离开后顺滑归位；倾斜过程中由 JS 临时关闭 transform 过渡以跟手。
+   - 倾斜不与 :hover 抬升 / :active 缩放 / dayIn 入场动画冲突（内联让位于更高优先级的动画）。
+   ============================================================ */
+body[data-theme] [data-tilt] {
+  transition: transform .42s cubic-bezier(.16, 1, .3, 1), box-shadow .25s ease;
+  transform-style: preserve-3d;
+}
+
+/* 空状态品牌插画：与 .empty-tip / .social-state.empty 容器协调（居中、留白） */
+.empty-tip .empty-illustration,
+.social-state.empty .empty-illustration {
+  margin: 6px auto 2px;
+}

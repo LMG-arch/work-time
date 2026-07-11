@@ -9,6 +9,7 @@ import TodoModal from './TodoModal.vue'
 import ReminderSettings from './ReminderSettings.vue'
 import EffectLayer from '../effects/EffectLayer.vue'
 import { installRipple } from '../effects/ripple'
+import { installTilt } from '../effects/tilt'
 
 const PAGES = {
   calendar: CalendarView,
@@ -42,6 +43,8 @@ const currentComponent = computed(() => (activePage.value ? PAGES[activePage.val
 onMounted(() => {
   // 全局按钮墨水波纹：受 premium 总开关与 prefers-reduced-motion 守卫
   installRipple()
+  // 磁吸倾斜卡片：全局委托，受 premium 总开关与 prefers-reduced-motion 守卫
+  installTilt()
 })
 </script>
 

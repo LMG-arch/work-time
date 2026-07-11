@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, nextTick, watch, onUnmounted } from 'vue'
+import EmptyIllustration from '../components/EmptyIllustration.vue'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from 'reka-ui'
 
 const posts = ref([])
@@ -209,7 +210,7 @@ function switchToFriends() {
     </div>
 
     <div class="social-scroll" @scroll="onScroll">
-      <div v-for="post in posts" :key="post.id" class="post-card">
+      <div v-for="post in posts" :key="post.id" class="post-card" data-tilt data-tilt-max="5" data-tilt-lift="4">
         <div class="post-author-row">
           <div class="feed-avatar">
             <img v-if="post.avatar" :src="post.avatar" alt="">
@@ -242,7 +243,7 @@ function switchToFriends() {
       </div>
       <div v-if="loading" class="social-state">加载中...</div>
       <div v-if="!hasMore && posts.length > 0" class="social-state end">没有更多了</div>
-      <div v-if="!loading && posts.length === 0" class="social-state empty">暂无动态</div>
+      <div v-if="!loading && posts.length === 0" class="social-state empty"><EmptyIllustration variant="calendar" label="暂无动态" :size="108" /></div>
     </div>
 
     <!-- Post Modal -->

@@ -8,7 +8,7 @@ const open = ref(true)
 </script>
 
 <template>
-  <div class="settings-group">
+  <div class="settings-group" data-tilt data-tilt-max="5" data-tilt-lift="3">
     <div
       v-if="collapsible"
       class="settings-group-title settings-collapsible"

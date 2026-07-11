@@ -686,6 +686,15 @@ MIT
 
 ## 更新日志
 
+### v3.15.1 (2026-06-29) — Phase 2 微交互（手感质变）
+- **磁吸倾斜卡片**：新增 `effects/tilt.js`，全局 `pointermove` 委托（rAF 节流）按光标位置计算 `perspective` 倾斜（`rotateX/Y`）+ 轻抬升，离开平滑复位
+- **应用范围**：统计卡、设置卡（SettingsSection）、日历日格、好友圈动态卡均接入 `data-tilt`，可按元素 `data-tilt-max/lift/persp` 微调
+- **零冲突设计**：采用内联 `transform` 注入，不与既有 `:hover` 抬升 / `:active` 缩放 / `dayIn` 入场动画打架；倾斜过程临时关闭 `transform` 过渡以「跟手」
+- **守卫完备**：受 `premium` 总开关与 `prefers-reduced-motion` 守卫；仅 `mouse/pen` 生效（触屏跳过），离开/滚动/失焦即复位
+- **空状态品牌插画**：新增 `EmptyIllustration.vue`，手绘风 SVG 三意象（星海 / 苗 / 日历拟人），跟随主题色（`--accent` / `--text3`），带轻柔浮动与星点呼吸（尊重 reduced-motion）
+- **接入空状态**：统计空（星海）、好友圈空（日历拟人）、待办空（苗）三处空态替换为品牌插画 + 文案
+- **版本**：3.15.0 → 3.15.1（versionCode 30 → 31）
+
 ### v3.15.0 (2026-06-29) — Phase 1 质感与排版
 - **标题字体性格**：引入衬线中文标题字体栈（Noto Serif SC / Songti SC / STSong），用于日历诗意条与统计区块标题，营造编辑感（离线优先，不依赖远程字体）
 - **数字等宽对齐**：统计数字、月份标题、记录日期、标签次数统一 `tabular-nums`（`tnum`），列项对齐更稳定

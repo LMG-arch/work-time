@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useTodoStore } from '../stores/todoStore.js'
 import TodoItem from './TodoItem.vue'
+import EmptyIllustration from './EmptyIllustration.vue'
 
 const todoStore = useTodoStore()
 
@@ -41,7 +42,7 @@ function onItemRefresh() { refreshTick.value++; todoStore.refreshFromWindow() }
       <span class="todo-filter-tab" :class="{ active: filter === 'undone' }" @click="filterBy('undone')">未完成</span>
       <span class="todo-filter-tab" :class="{ active: filter === 'done' }" @click="filterBy('done')">已完成</span>
     </div>
-    <div v-if="onceTodos.length === 0 && weeklyTodos.length === 0" class="empty-tip">暂无待办事项</div>
+    <div v-if="onceTodos.length === 0 && weeklyTodos.length === 0" class="empty-tip"><EmptyIllustration variant="sprout" label="暂无待办事项" :size="96" /></div>
     <div class="todo-view-list" v-else>
       <template v-if="onceTodos.length > 0">
         <div class="todo-group-title">指定日期</div>

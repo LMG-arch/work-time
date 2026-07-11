@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCalendarStore } from '../stores/calendarStore.js'
 import { useAppStore } from '../stores/appStore.js'
+import EmptyIllustration from '../components/EmptyIllustration.vue'
 
 const calendarStore = useCalendarStore()
 const appStore = useAppStore()
@@ -81,14 +82,14 @@ function exportImage() {
     </div>
 
     <div class="stats-cards">
-      <div class="stat-card work"><div class="stat-num">{{ stats.workDays }}</div><div class="stat-label">上班</div></div>
-      <div class="stat-card rest"><div class="stat-num">{{ stats.restDays }}</div><div class="stat-label">休息</div></div>
-      <div class="stat-card trip"><div class="stat-num">{{ stats.tripDays }}</div><div class="stat-label">出差</div></div>
-      <div v-if="stats.leaveDays > 0" class="stat-card leave"><div class="stat-num">{{ stats.leaveDays }}</div><div class="stat-label">请假</div></div>
-      <div v-if="stats.annualDays > 0" class="stat-card annual"><div class="stat-num">{{ stats.annualDays }}</div><div class="stat-label">年假</div></div>
-      <div v-if="stats.sickDays > 0" class="stat-card sick"><div class="stat-num">{{ stats.sickDays }}</div><div class="stat-label">病假</div></div>
-      <div v-if="stats.personalDays > 0" class="stat-card personal"><div class="stat-num">{{ stats.personalDays }}</div><div class="stat-label">事假</div></div>
-      <div class="stat-card total"><div class="stat-num">{{ stats.noStatus }}</div><div class="stat-label">未记录</div></div>
+      <div class="stat-card work" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.workDays }}</div><div class="stat-label">上班</div></div>
+      <div class="stat-card rest" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.restDays }}</div><div class="stat-label">休息</div></div>
+      <div class="stat-card trip" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.tripDays }}</div><div class="stat-label">出差</div></div>
+      <div v-if="stats.leaveDays > 0" class="stat-card leave" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.leaveDays }}</div><div class="stat-label">请假</div></div>
+      <div v-if="stats.annualDays > 0" class="stat-card annual" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.annualDays }}</div><div class="stat-label">年假</div></div>
+      <div v-if="stats.sickDays > 0" class="stat-card sick" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.sickDays }}</div><div class="stat-label">病假</div></div>
+      <div v-if="stats.personalDays > 0" class="stat-card personal" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.personalDays }}</div><div class="stat-label">事假</div></div>
+      <div class="stat-card total" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.noStatus }}</div><div class="stat-label">未记录</div></div>
     </div>
 
     <div v-if="stats.holidayCount > 0 || stats.workdayCount > 0" class="ratio-section">
@@ -145,6 +146,6 @@ function exportImage() {
         </div>
       </div>
     </div>
-    <div v-else class="empty-tip">本月暂无记录</div>
+    <div v-else class="empty-tip"><EmptyIllustration variant="star" label="本月暂无记录" :size="108" /></div>
   </div>
 </template>

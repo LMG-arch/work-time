@@ -1,14 +1,14 @@
 {
-  "version": "3.15.0",
-  "versionCode": 30,
+  "version": "3.15.1",
+  "versionCode": 31,
   "releaseDate": "2026-06-29",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.15.0/work-calendar-v3.15.0.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.15.1/work-calendar-v3.15.1.apk",
   "changelog": [
-    "标题衬线中文字体 + 数字等宽对齐（tnum）",
-    "玻璃卡片极淡颗粒质感（feTurbulence 噪声）",
-    "日历顶栏每日诗意 / 节气文案",
-    "按钮墨水波纹（主题色，受开关与 reduced-motion 守卫）",
-    "列表错落入场动画（stagger）"
+    "磁吸倾斜卡片：光标跟随的 perspective 倾斜 + 轻抬升（统计卡 / 设置卡 / 日历格 / 动态卡）",
+    "倾斜过程跟手、离开平滑复位，受 premium 总开关与 prefers-reduced-motion 守卫",
+    "空状态品牌插画：手绘风 SVG（星海 / 苗 / 日历拟人），随主题换色 + 轻柔浮动",
+    "接入统计空、好友圈空、待办空三种空状态",
+    "延续 Phase 0 单一 RAF 调度与 reduced-motion 守卫，零额外性能开销"
   ],
   "forceUpdate": false
 }
