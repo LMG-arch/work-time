@@ -149,3 +149,14 @@
 - 验证：`grep -P '[^\x00-\x7F]'` 确认两个 `.bat` 已无任何非 ASCII 字节；`kill-dev.cjs` 在沙箱实测可正常发现并 `taskkill` 掉 5173 监听进程。
 
 > 经验：**用工具链改动 Windows `.bat` 时，若有中文必须确认以 GBK/ANSI 或纯 ASCII 保存；UTF-8 + `chcp 65001` 组合在中文系统上不可靠**。最稳做法是启动器全程 ASCII。
+
+## 启动后「只剩导航栏」的真·根因（#app 可见性被绑死在 IPC 数据加载上）🔴
+- 用户 `git pull` 重跑修好的 `.bat` 后**仍只显示导航栏**（`.tool-bar` 是 `body` 直接子元素，永远在）。前几轮修的是阻塞层（端口/闪屏），打通后第一次暴露**底层渲染本身**的问题。
+- 架构关键点：`src/index.html`（Vite `root:'src'`，故在 `src/` 不在根）里 `<div id="app" style="display:none">`，而 `.app`（遗留传统 DOM）默认可见、`.tool-bar` 在两者之外永远显示。`#app` 的「揭开」**只发生在 `renderer.js` 的 `DOMContentLoaded` 末尾 `switchView('calendar')`**（约第 39 行 `appEl.style.display=''`）。而 `switchView` 排在 `await Promise.all([loadAllData()...])` **之后**，`loadAllData` 走的是 `window.calendarAPI.getAllData()` 这个 **Electron IPC 调用**。
+- 为何 headless 测试「能渲染」却真机「只剩导航栏」：headless 无 preload，`window.calendarAPI` 为 undefined → `loadAllData` 立即**抛错被 catch** → 继续往下 → `switchView` 执行 → `#app` 揭开。真机 Electron 里 `calendarAPI` 是真实的，**一旦该 IPC 卡住不返回**，`Promise.all` 永远不 resolve，`switchView` 永远不跑，`#app` 永远是 `display:none` → **只剩导航栏，且没有任何报错**（不是抛错，是「永远没执行完」）。这完美解释了矛盾。
+- **修复（提交 `1e7e7af`，已 push）**：把 UI 揭幕与页面渲染**彻底解耦于 IPC 数据加载**：
+  1. `src/index.html`：`<div id="app">`（默认即可见，由启动闪屏覆盖加载过程）+ `<div class="app" style="display:none">`（遗留界面默认隐藏，仅 Vue 不可用时回退）。
+  2. `src/components/App.vue`：`activePage` 默认值由 `null` 改 `'calendar'` —— Vue SPA 挂载即渲染日历页，**不等 `renderer.js` 来 activate**。
+  3. `src/renderer.js` 重构 `DOMContentLoaded` 顺序：**「接线导航栏 + `switchView('calendar')` 揭开 #app」提前到 `await Promise.all(数据加载)` 之前**；数据加载即使卡住也绝不阻塞 UI。删掉末尾重复的 `switchView` 调用与后置的 `setupEventListeners`（避免事件重复绑定 / 二次激活）。
+- 实证（忠实复现真机）：headless Chrome 注入「`calendarAPI` 数据方法返回永不 resolve 的 Promise」模拟 IPC 卡死 —— 结果 `appDisplay:"flex"`、`appChildCount:1`、`appInnerLen:10943`、`calendarGridInApp:true`、`fatalExists:false` → **PASS：#app 可见且日历已渲染（修复生效）**。即无论 IPC 是否卡死，日历都照常显示。
+- 残留观察（与「白屏」无关，非阻塞）：诊断日志有一条 `Failed to load resource: 404`（疑似 favicon 或缺字体外链），不影响渲染；若 `calendarAPI` IPC 真在真机卡死，提醒/待办等数据标记要等 IPC 通了才填充——届时若数据不出现，那是**独立的 IPC 通道问题**，与本修复无关，可另行排查 `src/electron/api.js` 的 preload 桥。
