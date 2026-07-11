@@ -24,7 +24,9 @@ const PAGES = {
 }
 const NAV_ORDER = ['calendar', 'clockin', 'social', 'stats', 'settings']
 
-const activePage = ref(null)
+// 默认即渲染日历页：不依赖 renderer.js 后续调用 activate()，
+// 即使其初始化因 IPC 卡住而未执行，Vue 层也立即显示内容，杜绝「只剩导航栏」。
+const activePage = ref('calendar')
 const prevIndex = ref(0)
 const transitionDir = ref('fade')
 

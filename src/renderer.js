@@ -544,6 +544,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   currentYear = today.getFullYear();
   currentMonth = today.getMonth();
 
+  // ===== UI 引导（同步、不依赖 IPC）=====
+  // 关键修复：上一轮 Electron 真机「只剩导航栏」的根因是——数据 IPC（window.calendarAPI.*）
+  // 一旦卡住/未就绪，下方 await Promise.all 永不返回，导致末尾的 switchView('calendar')
+  // 永远不执行，#app 始终 display:none。这里把「接线导航栏 + 激活 Vue 层」提前到数据加载之前，
+  // 即使 IPC 卡住，UI 也照常显示。
+  try {
+    setupEventListeners();
+  } catch (e) {
+    console.error('[Init] setupEventListeners failed:', e.message);
+  }
+  try {
+    if (typeof window.__vueActivate === 'function') {
+      switchView('calendar');
+    } else {
+      console.warn('[Init] Vue 层尚未就绪，回退到传统渲染');
+      renderCalendar();
+    }
+  } catch (e) {
+    console.error('[Init] 激活 Vue 层失败，回退传统渲染:', e.message);
+    renderCalendar();
+  }
+
   try {
     await Promise.all([loadAllData(), loadHolidays(), loadTodos(), loadReminders(), loadReminderRecords()]);
   } catch (e) {
@@ -556,15 +578,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('[Init] renderCalendar failed:', e.message);
   }
 
-  try {
-    setupEventListeners();
-  } catch (e) {
-    console.error('[Init] setupEventListeners failed:', e.message);
-  }
-
   // Setup interactive components (deferred from module load)
   try {
-// setupColorPicker/setupTagInputs/setupTodoModal 由 Vue 组件替代
+    // setupColorPicker/setupTagInputs/setupTodoModal 由 Vue 组件替代
     // setupPostImagePicker 由 SocialPage.vue 处理
   } catch (e) {
     console.error('[Init] Interactive components setup failed:', e.message);
@@ -639,37 +655,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof autoCheckUpdate === 'function') autoCheckUpdate();
   } catch (e) {
     console.error('[Init] autoCheckUpdate failed:', e.message);
-  }
-
-  // 关键修复：应用启动即激活 Vue 层，默认显示现代化日历视图。
-  // 否则 #app 始终 display:none，用户看到的是遗留的传统 .app 旧界面，
-  // 所有 Vue 现代化改造（CalendarView/SettingsPage 等）永远不会显示。
-  try {
-    if (typeof window.__vueActivate === 'function') {
-      switchView('calendar');
-      // 兜底：若 Vue 在某些运行时未渲染出内容（如组件 setup 抛错被静默吞掉），
-      // #app 会空白。延时检测，若仍为空则回退传统界面，杜绝「只剩导航栏」的白屏。
-      setTimeout(() => {
-        try {
-          const appEl = document.getElementById('app');
-          if (appEl && appEl.childElementCount === 0) {
-            console.error('[Init] Vue 未渲染内容，回退传统界面');
-            appEl.style.display = 'none';
-            const trad = document.querySelector('.app');
-            if (trad) trad.style.display = '';
-            renderCalendar();
-          }
-        } catch (e2) {
-          console.error('[Init] 回退传统渲染失败:', e2.message);
-        }
-      }, 300);
-    } else {
-      console.warn('[Init] Vue 层尚未就绪，回退到传统渲染');
-      renderCalendar();
-    }
-  } catch (e) {
-    console.error('[Init] 激活 Vue 层失败，回退传统渲染:', e.message);
-    renderCalendar();
   }
 
   // 导航指示块：首屏布局稳定后定位，并随窗口尺寸变化重定位
