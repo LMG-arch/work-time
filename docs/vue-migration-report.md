@@ -135,3 +135,17 @@
 
 ### 安卓 APK 不受影响
 `dist` 在 CSP 下同样验证可正常挂载（见 §8 的 `dist-diag` 复现），故已发布的 `v3.17.0` APK 本身正常；安卓侧白屏多为**覆盖安装到旧构建产物**所致，重新安装 `work-calendar-v3.17.0.apk` 即可。
+
+## 10. 追加根因（编码层）：`.bat` 的 UTF-8 写入导致清理步骤「假执行」
+
+§9 的修复方向（kill-dev + strictPort）本身正确，但提交 `064c2fe` 后用户**仍报 `Error: Port 5173 is already in use`**。进一步定位：
+
+- `启动-开发模式.bat` 经 Write 工具重写后存为 **UTF-8**，内含 `chcp 65001` 与中文 `echo`/`REM`。在 **cp936（GBK）中文 Windows** 上，`chcp 65001` 配合 UTF-8 批处理文件存在已知的**不稳定解析**：中文行被当成 GBK 错读成乱码（`渶鎵嬪姩鏋勫缓` 一类），`echo` 关键字被吞掉，整行变成「`XXX 不是内部或外部命令`」。
+- 结果：清理行 `node "%~dp0scripts\kill-dev.cjs"` 因前面行解析错乱**未真正执行**，5173 上的旧 vite 始终未被杀死；而 `strictPort:true` 会让新 vite 在端口占用时**直接报错退出**（不再静默切 5174），于是 `npm run dev` 整段失败 → 用户看到的正是 `Port 5173 is already in use`。
+
+### 修复（提交 `69beac0`）
+- **两个启动器改纯 ASCII**：`启动-开发模式.bat` 与 `启动-生产模式.bat` 全部内容与注释改为英文/ASCII（ASCII 在 UTF-8 与 GBK 下字节完全一致，绝不乱码）。移除 `chcp 65001`。
+- **`scripts/kill-dev.cjs` 加固**：端口匹配由 `includes(':5173')` 改为正则 `/:5173\b.*LISTENING\s+(\d+)$/i`，避免误杀 `:51734`；`taskkill` 增加 `/T` 杀进程树。
+- 验证：`grep -P '[^\x00-\x7F]'` 确认两个 `.bat` 已无任何非 ASCII 字节；`kill-dev.cjs` 在沙箱实测可正常发现并 `taskkill` 掉 5173 监听进程。
+
+> 经验：**用工具链改动 Windows `.bat` 时，若有中文必须确认以 GBK/ANSI 或纯 ASCII 保存；UTF-8 + `chcp 65001` 组合在中文系统上不可靠**。最稳做法是启动器全程 ASCII。
