@@ -229,6 +229,9 @@ body[data-theme]::after {
   background:
     radial-gradient(ellipse 72% 60% at 83% 4%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
     radial-gradient(ellipse 58% 50% at 8% 98%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 60%);
+  /* Phase 3 · 鼠标视差：跟随指针轻微位移（系数 ~14px，< 0.05 视口） */
+  transform: translate3d(calc(var(--px, 0) * 14px), calc(var(--py, 0) * 14px), 0);
+  will-change: transform, opacity;
 }
 
 /* ========== Cosmic Bloom（星海绽放）主题 ========== */
@@ -274,6 +277,29 @@ body[data-theme="cosmic"]::before {
 }
 @keyframes starDrift { from { transform: translate3d(0,0,0); } to { transform: translate3d(-260px, -130px, 0); } }
 @keyframes starTwinkle { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+/* ============================================================
+   Phase 3 · 氛围与生命感（2026-06-29）
+   - 背景呼吸：全局辉光层缓慢明暗（纯 opacity 关键帧，不触发重排）
+   - 鼠标视差：辉光层随指针位移（transform 由 --px/--py 驱动，与呼吸不冲突）
+   二者作用于不同属性（opacity vs transform），可同时生效。
+   ============================================================ */
+:root { --px: 0; --py: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  body[data-theme]::after { animation: ambientBreath 11s ease-in-out infinite; }
+  /* cosmic 星云更缓、更克制 */
+  body[data-theme="cosmic"]::after { animation: ambientBreathCosmic 13s ease-in-out infinite; }
+}
+@keyframes ambientBreath { 0%, 100% { opacity: 0.78; } 50% { opacity: 1; } }
+@keyframes ambientBreathCosmic { 0%, 100% { opacity: 0.82; } 50% { opacity: 1; } }
+
+/* premium 总开关关闭时：纯 CSS 氛围效果彻底静止并归位 */
+html.fx-off body[data-theme]::after,
+html.fx-off body[data-theme="cosmic"]::after {
+  animation: none;
+  transform: none;
+}
 
 /* 玻璃拟态卡片 + 开花入场 */
 body[data-theme="cosmic"] .stat-card,

@@ -19,6 +19,10 @@ export const effectRegistry = {
   get size() {
     return effects.size
   },
+  /** 当前所有活跃效果对象的快照（数组）。供 EffectLayer 遍历绘制，避免直接暴露内部 Set。 */
+  get list() {
+    return [...effects]
+  },
   /** 注册一个效果，返回注销函数 */
   register(effect) {
     effects.add(effect)

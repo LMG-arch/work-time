@@ -32,7 +32,7 @@ function resize() {
 function render(dt, now) {
   ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
   const env = { w: window.innerWidth, h: window.innerHeight, dt, now }
-  for (const effect of effectRegistry.effects) {
+  for (const effect of effectRegistry.list) {
     if (effect.resize) effect.resize(env)
     if (effect.draw) effect.draw(ctx, env)
   }

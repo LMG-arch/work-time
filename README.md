@@ -686,6 +686,14 @@ MIT
 
 ## 更新日志
 
+### v3.15.2 (2026-06-29) — Phase 3 氛围与生命感（宇宙感拉满）
+- **背景呼吸**：全局辉光层（`body[data-theme]::after`）缓慢明暗呼吸，纯 `opacity` 关键帧、合成层零重排，cosmic 星云采用更缓更克制的节奏
+- **鼠标视差**：指针位置写入 CSS 变量 `--px`/`--py`，背景辉光随光标轻微位移（系数 ~14px，< 0.05 视口），与呼吸分别作用于 `transform`/`opacity` 互不打架
+- **光标辉光拖尾**：跟随指针的渐隐光点（上限 18 点，`lighter` 加色混色），颜色取主题 `--accent`
+- **节气粒子**：依月份切换 雪（冬）/ 星尘（夏，主题色）/ 花瓣（春）/ 落叶（秋），数量随屏宽自适应（24–70）、`DPR≤2`、随主题与季节换色
+- **架构**：Phase 3 全部效果并入 Phase 0 的 `effectRegistry` + `EffectLoop` 单一 RAF，受 `premium` 总开关与 `prefers-reduced-motion` 守卫；`premium` 关闭时纯 CSS 氛围效果（`html.fx-off`）归位静止
+- **版本**：3.15.1 → 3.15.2（versionCode 31 → 32）
+
 ### v3.15.1 (2026-06-29) — Phase 2 微交互（手感质变）
 - **磁吸倾斜卡片**：新增 `effects/tilt.js`，全局 `pointermove` 委托（rAF 节流）按光标位置计算 `perspective` 倾斜（`rotateX/Y`）+ 轻抬升，离开平滑复位
 - **应用范围**：统计卡、设置卡（SettingsSection）、日历日格、好友圈动态卡均接入 `data-tilt`，可按元素 `data-tilt-max/lift/persp` 微调
