@@ -1,10 +1,10 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 
-// 每周面积图：绘制当月每日「忙闲密度」的平滑面积曲线，按周划分网格线。
+// 每周面积图：绘制当月每日「忙闲密度」的平滑面积曲线，按真实周一边界划分网格线。
 const props = defineProps({
   series: { type: Array, required: true }, // [{ day, score }]
-  weeks: { type: Number, default: 5 },
+  weekBoundaries: { type: Array, default: () => [] }, // 周一对应的「日」序号（含 1），用于对齐周网格线
   height: { type: Number, default: 120 },
 })
 
@@ -13,6 +13,8 @@ const H = computed(() => props.height)
 const pad = 10
 const maxScore = computed(() => Math.max(1, ...props.series.map((s) => s.score)))
 const n = computed(() => props.series.length)
+// 唯一渐变 id：避免同页多个实例时 url(#areaFill) 引用冲突（M4）。
+const gradId = 'areaFill-' + useId().replace(/[^a-zA-Z0-9_-]/g, '')
 
 const pts = computed(() =>
   props.series.map((s, i) => {
@@ -45,12 +47,13 @@ const areaPath = computed(() => {
   return `${linePath.value} L ${p[p.length - 1].x} ${H.value - pad} L ${p[0].x} ${H.value - pad} Z`
 })
 
+// 周网格线：对齐真实周一边界（而非等距切分），使「按周」标签名副其实（M1）。
 const weekLines = computed(() => {
-  const lines = []
-  for (let w = 1; w < props.weeks; w++) {
-    lines.push(pad + (w / props.weeks) * (W - 2 * pad))
-  }
-  return lines
+  const len = props.series.length
+  if (len <= 1 || !props.weekBoundaries.length) return []
+  return props.weekBoundaries
+    .filter((d) => d > 1) // 跳过首日（左边缘无需竖线）
+    .map((d) => pad + ((d - 1) / (len - 1)) * (W - 2 * pad))
 })
 
 // hover 提示：定位最近数据点，浮动显示「X日 · 忙闲 N」。
@@ -82,7 +85,7 @@ const hoverInfo = computed(() => (hoverIdx.value >= 0 ? props.series[hoverIdx.va
   <div class="weekly-area" @mousemove="onMove" @mouseleave="onLeave">
     <svg ref="svgRef" :viewBox="`0 0 ${W} ${H}`" preserveAspectRatio="none" class="area-svg">
       <defs>
-        <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient :id="gradId" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.40" />
           <stop offset="100%" stop-color="var(--accent)" stop-opacity="0" />
         </linearGradient>
@@ -90,7 +93,7 @@ const hoverInfo = computed(() => (hoverIdx.value >= 0 ? props.series[hoverIdx.va
       <line v-for="(x, i) in weekLines" :key="'w' + i"
             :x1="x" :y1="pad" :x2="x" :y2="H - pad"
             class="area-week" vector-effect="non-scaling-stroke" />
-      <path :d="areaPath" fill="url(#areaFill)" class="area-fill" />
+      <path :d="areaPath" :fill="`url(#${gradId})`" class="area-fill" />
       <path :d="linePath" fill="none" stroke="var(--accent)" stroke-width="2"
             vector-effect="non-scaling-stroke" pathLength="1" class="area-line" />
       <circle v-if="hoverIdx >= 0" :cx="pts[hoverIdx].x" :cy="pts[hoverIdx].y" r="3.5" class="area-marker" />

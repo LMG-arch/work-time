@@ -2573,10 +2573,11 @@ body[data-theme] [data-tilt] {
   display: inline-block;
   border: 1px solid color-mix(in srgb, var(--text3) 12%, transparent);
 }
-.busy-legend-cell[data-busy="1"] { background: color-mix(in srgb, var(--trip) 60%, #fff); opacity: .55; }
-.busy-legend-cell[data-busy="2"] { background: color-mix(in srgb, var(--trip) 72%, #fff); opacity: .65; }
-.busy-legend-cell[data-busy="3"] { background: color-mix(in srgb, var(--trip) 82%, #fff); opacity: .78; }
-.busy-legend-cell[data-busy="4"] { background: color-mix(in srgb, var(--trip) 90%, #ffd54f); opacity: .92; }
+/* 与日格 .busy-heat 完全一致的色阶与透明度（M3）：图例即日格的等比微缩 */
+.busy-legend-cell[data-busy="1"] { background: linear-gradient(135deg, color-mix(in srgb, var(--trip) 60%, #fff), color-mix(in srgb, var(--trip) 32%, #fff)); opacity: .14; }
+.busy-legend-cell[data-busy="2"] { background: linear-gradient(135deg, color-mix(in srgb, var(--trip) 72%, #fff), color-mix(in srgb, var(--trip) 44%, #fff)); opacity: .20; }
+.busy-legend-cell[data-busy="3"] { background: linear-gradient(135deg, color-mix(in srgb, var(--trip) 82%, #fff), color-mix(in srgb, var(--trip) 54%, #fff)); opacity: .26; }
+.busy-legend-cell[data-busy="4"] { background: linear-gradient(135deg, color-mix(in srgb, var(--trip) 90%, #ffd54f), color-mix(in srgb, var(--trip) 60%, #fff)); opacity: .33; }
 
 /* #10 本月概览：环形 + 面积图布局 */
 .overview-section { margin: 16px 0 4px; }

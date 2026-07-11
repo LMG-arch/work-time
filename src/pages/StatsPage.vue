@@ -112,6 +112,16 @@ const busySeries = computed(() => {
   return arr
 })
 
+// 周网格边界：每月 1 日与各周一对应的「日」序号，供面积图对齐真实周边界（而非等距切分）。
+const weekBoundaries = computed(() => {
+  const firstDow = new Date(currentYear.value, currentMonth.value, 1).getDay()
+  const bounds = []
+  for (let d = 1; d <= daysInMonth.value; d++) {
+    if (d === 1 || (firstDow + d - 1) % 7 === 1) bounds.push(d)
+  }
+  return bounds
+})
+
 const ringSegments = computed(() => [
   { label: '上班', value: stats.value.workDays, color: 'var(--work)' },
   { label: '休息', value: stats.value.restDays, color: 'var(--rest)' },
@@ -161,7 +171,7 @@ function exportImage() {
         </div>
         <div class="overview-area">
           <div class="area-caption">每日忙闲密度 · 按周</div>
-          <WeeklyArea :series="busySeries" :weeks="Math.ceil(daysInMonth / 7)" />
+          <WeeklyArea :series="busySeries" :week-boundaries="weekBoundaries" />
         </div>
       </div>
     </div>

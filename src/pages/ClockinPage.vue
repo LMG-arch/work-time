@@ -40,14 +40,16 @@ let flashTimer = null
 watch(streak, (n) => {
   if (prevSeen === null) { prevSeen = n; return } // 首次（含加载）仅记录基线，不庆祝
   if (n > prevSeen) {
+    // 若一次连跨多个里程碑（理论极值，如 6→31），仅庆祝其中最高一档，避免重复撒花（M2）。
+    let hit = 0
     for (const m of MILESTONES) {
-      if (prevSeen < m && n >= m) {
-        window.__celebrate?.(m)
-        milestoneFlash.value = true
-        clearTimeout(flashTimer)
-        flashTimer = setTimeout(() => { milestoneFlash.value = false }, 1400)
-        break
-      }
+      if (prevSeen < m && n >= m) hit = m
+    }
+    if (hit > 0) {
+      window.__celebrate?.(hit)
+      milestoneFlash.value = true
+      clearTimeout(flashTimer)
+      flashTimer = setTimeout(() => { milestoneFlash.value = false }, 1400)
     }
   }
   prevSeen = n
