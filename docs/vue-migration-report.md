@@ -241,3 +241,30 @@ const scriptSrc = isDev ? "'self' 'unsafe-inline'" : "'self'";
 ### 经验
 - **静态 ESM 模块的「静默整体失败」是 Electron + Vite dev 路上的经典坑**：排查白屏时，优先把入口改成 `import().catch()` 让错误可见，而不是反复猜 CSP。
 - **Electron 最小化到托盘 ≠ 退出**：任何「重跑还是旧样」的现象，第一反应应是「残留进程窗口」，用 PID 文件 / 进程名+路径精准清理，切忌 `taskkill /IM electron.exe` 一刀切（会杀掉 VS Code 等）。
+
+## 14. §14 诊断面板定位 `file://` 协议白屏（`abf5085`）
+
+### 现象
+用户截图显示：Electron 窗口地址栏为 `file:///D:/ai/上班日历/src/index.html`（非 Vite dev server 的 `http://localhost:5173`），诊断面板红色错误：**`[ERROR] Module fetch FAILED: Failed to fetch — network/CSP blocking`**。
+
+### 根因
+1. `main.js` 原 `loadURL('http://localhost:5173').catch(() => fallback)` — **一失败立即 fallback**，不等待 Vite 启动
+2. concurrently 启动时 vite 和 electron 几乎同时开始，electron 先于 vite 就绪 → loadURL 失败 → fallback 到本地文件
+3. `file://` 协议下浏览器安全策略**禁止 ESM 动态 `import()`**（跨源限制）→ 模块无法加载 → 白屏
+
+### 修复（`abf5085`）
+1. **`main.js` loadURL 重试机制**：
+   - 失败后不再立即 fallback，而是**每 1.5s 重试一次，最多 10 次（共 ~15s）**
+   - 给 Vite 充足启动时间；重试期间控制台输出 attempt 计数
+   - 全部耗尽后依次 fallback：`dist/index.html` → `src/index.html`（最后手段）
+   - 窗口标题标记 `[DEV SERVER OFFLINE] 上班日历`，一眼可辨
+2. **`index.html` file:// 协议检测**：
+   - 诊断脚本顶部即检测 `location.protocol === 'file:'`
+   - 发现后立即显示**橙色警告**（非错误红），提示使用 bat 或 `npm run dev`
+   - 不等 8s 超时就立刻告知用户问题所在
+3. **错误信息精细化**：
+   - `import().catch()` 在 file:// 下输出特有提示：「file:// protocol blocks ESM import(). Use npm run dev」
+   - 超时 fetch 检测也区分 file:// vs CSP vs 网络，缩短排查路径
+
+### 验证
+- `node --check main.js` 语法绿；逻辑路径覆盖：正常情况 attempt 1 即成功、Vite 延迟时中间某次重试成功、Vite 完全没启时最终 fallback + 标题标记。
