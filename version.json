@@ -1,14 +1,14 @@
 {
-  "version": "3.15.3",
-  "versionCode": 33,
+  "version": "3.16.0",
+  "versionCode": 34,
   "releaseDate": "2026-06-29",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.15.3/work-calendar-v3.15.3.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.16.0/work-calendar-v3.16.0.apk",
   "changelog": [
-    "主题切换绽放：切换主题时在屏幕中心绽放一圈主题色辉光环（复用 Phase 0 单一 RAF + reduced-motion 守卫）",
-    "启动闪屏：App 启动 / 从托盘唤醒时全屏 LOGO 描边绘制 + 星海汇聚，≤1.2s 可跳过，尊重 reduced-motion",
-    "成功涟漪：打卡成功 / 保存成功 / 任务完成时从点击点扩散成功色涟漪（拦截 showToast 一处接入、全局生效）",
-    "花瓣庆祝：连续打卡里程碑（7/30/100 天）从顶部飘落花瓣，密度随里程碑递增（EffectLayer 全局画布）",
-    "复用 Phase 0 效果引擎与 premium 总开关；premium 关闭 / reduced-motion 时全部优雅降级"
+    "忙闲热力月历：月历日格内叠加忙闲色阶（暖色=忙，基于待办/备注/标签/打卡密度），闲置日保持清爽",
+    "统计环形月览：SVG 环形图按状态占比着色，中心显示已记录天数，图例同步",
+    "每周面积图：当月每日忙闲密度的平滑面积曲线，按周划分网格，主题色渐变填充",
+    "连续打卡成长苗：SVG 植物随连续打卡天数生长（种子→嫩芽→小苗→灌木→树→满树繁花），里程碑换形态",
+    "三项可视化均主题感知、尊重 prefers-reduced-motion；作为数据展示常驻，不依赖 premium 开关"
   ],
   "forceUpdate": false
 }

@@ -1,12 +1,42 @@
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import ReminderList from '../components/ReminderList.vue'
 import ReminderHistory from '../components/ReminderHistory.vue'
 import TodoViewApp from '../components/TodoViewApp.vue'
+import GrowthPlant from '../components/GrowthPlant.vue'
+import { useReminderStore } from '../stores/reminderStore.js'
 
-onMounted(() => {
+const reminderStore = useReminderStore()
+
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function dayHasClockin(records, date) {
+  const day = records[fmtDate(date)]
+  if (!day) return false
+  return Object.values(day).some((r) => r && r.confirmed)
+}
+// 连续打卡天数：从今天往回数（今天未打卡时从昨天起算，避免未打卡前视觉断裂）。
+const streak = computed(() => {
+  const records = reminderStore.reminderRecords || {}
+  let s = 0
+  const cur = new Date()
+  cur.setHours(0, 0, 0, 0)
+  if (!dayHasClockin(records, cur)) cur.setDate(cur.getDate() - 1)
+  while (dayHasClockin(records, cur)) {
+    s++
+    cur.setDate(cur.getDate() - 1)
+  }
+  return s
+})
+
+onMounted(async () => {
   // 触发旧 JS 更新非 Vue 部分（today-label, water-tracker）
   window.renderClockinView?.()
+  try {
+    await reminderStore.loadReminders()
+    await reminderStore.loadRecords()
+  } catch (e) { /* ignore */ }
 })
 </script>
 
@@ -15,6 +45,9 @@ onMounted(() => {
     <div class="clockin-header-row">
       <div class="clockin-today-label" id="clockin-today-label"></div>
       <button id="clockin-settings-btn" class="clockin-settings-btn" title="提醒设置">&#x2699;</button>
+    </div>
+    <div class="growth-card">
+      <GrowthPlant :streak="streak" />
     </div>
     <ReminderList />
     <div id="water-tracker" class="water-tracker"></div>

@@ -2,10 +2,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCalendarStore } from '../stores/calendarStore.js'
 import { useAppStore } from '../stores/appStore.js'
+import { useTodoStore } from '../stores/todoStore.js'
+import { useReminderStore } from '../stores/reminderStore.js'
 import EmptyIllustration from '../components/EmptyIllustration.vue'
+import StatsRing from '../components/StatsRing.vue'
+import WeeklyArea from '../components/WeeklyArea.vue'
 
 const calendarStore = useCalendarStore()
 const appStore = useAppStore()
+const todoStore = useTodoStore()
+const reminderStore = useReminderStore()
 
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth())
@@ -13,9 +19,15 @@ const currentMonth = ref(new Date().getMonth())
 const refreshCount = ref(0)
 window.__refreshStats = () => { refreshCount.value++ }
 
-onMounted(() => {
+onMounted(async () => {
   currentYear.value = window.currentYear || new Date().getFullYear()
   currentMonth.value = window.currentMonth || new Date().getMonth()
+  try {
+    await calendarStore.loadData()
+    await todoStore.loadTodos()
+    await reminderStore.loadReminders()
+    await reminderStore.loadRecords()
+  } catch (e) { /* ignore */ }
 })
 
 const allData = computed(() => {
@@ -67,6 +79,50 @@ const stats = computed(() => {
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 const STATUS_LABELS = { work: '上班', rest: '休息', trip: '出差', leave: '请假', annual: '年假', sick: '病假', personal: '事假' }
 
+// 忙闲密度：与日历热力同源，用于面积图（待办 + 备注 + 标签 + 打卡）。
+function busyScoreForDate(dateStr) {
+  let s = 0
+  const d = allData.value[dateStr]
+  if (d) {
+    if (d.note) s += 1
+    if (d.tags && d.tags.length) s += d.tags.length * 0.5
+    if (d.status) s += 0.5
+  }
+  const todos = (todoStore.todos || []).filter((t) => {
+    if (t.type === 'once') return t.date === dateStr
+    if (t.type === 'weekly') {
+      const wd = new Date(dateStr + 'T00:00:00').getDay()
+      return (t.weekdays || []).includes(wd)
+    }
+    return false
+  })
+  s += todos.length
+  const rec = reminderStore.getRecordsByDate(dateStr)
+  const enabled = (reminderStore.reminders || []).filter((r) => r.enabled)
+  if (enabled.length && enabled.some((r) => rec[r.id] && rec[r.id].confirmed)) s += 1
+  return s
+}
+
+const busySeries = computed(() => {
+  const arr = []
+  for (let day = 1; day <= daysInMonth.value; day++) {
+    const ds = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    arr.push({ day, score: busyScoreForDate(ds) })
+  }
+  return arr
+})
+
+const ringSegments = computed(() => [
+  { label: '上班', value: stats.value.workDays, color: 'var(--work)' },
+  { label: '休息', value: stats.value.restDays, color: 'var(--rest)' },
+  { label: '出差', value: stats.value.tripDays, color: 'var(--trip)' },
+  { label: '请假', value: stats.value.leaveDays, color: 'var(--leave)' },
+  { label: '年假', value: stats.value.annualDays, color: 'var(--annual)' },
+  { label: '病假', value: stats.value.sickDays, color: 'var(--sick)' },
+  { label: '事假', value: stats.value.personalDays, color: 'var(--personal)' },
+])
+const ringTotal = computed(() => stats.value.totalRecorded)
+
 function exportImage() {
   if (typeof window.exportStatsAsImage === 'function') {
     const s = stats.value
@@ -90,6 +146,24 @@ function exportImage() {
       <div v-if="stats.sickDays > 0" class="stat-card sick" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.sickDays }}</div><div class="stat-label">病假</div></div>
       <div v-if="stats.personalDays > 0" class="stat-card personal" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.personalDays }}</div><div class="stat-label">事假</div></div>
       <div class="stat-card total" data-tilt data-tilt-max="6" data-tilt-lift="6"><div class="stat-num">{{ stats.noStatus }}</div><div class="stat-label">未记录</div></div>
+    </div>
+
+    <div v-if="ringTotal > 0" class="overview-section">
+      <div class="theme-title">本月概览</div>
+      <div class="overview-grid">
+        <div class="overview-ring">
+          <StatsRing :segments="ringSegments" :center-value="ringTotal" center-label="已记录天" />
+          <div class="ring-legend">
+            <span v-for="s in ringSegments.filter((x) => x.value > 0)" :key="s.label" class="ring-legend-item">
+              <i class="dot" :style="{ background: s.color }"></i>{{ s.label }} {{ s.value }}
+            </span>
+          </div>
+        </div>
+        <div class="overview-area">
+          <div class="area-caption">每日忙闲密度 · 按周</div>
+          <WeeklyArea :series="busySeries" :weeks="Math.ceil(daysInMonth / 7)" />
+        </div>
+      </div>
     </div>
 
     <div v-if="stats.holidayCount > 0 || stats.workdayCount > 0" class="ratio-section">

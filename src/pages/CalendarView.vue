@@ -114,6 +114,26 @@ function clockinStatus(dateStr) {
 }
 function hasClockin(dateStr) { return !!clockinStatus(dateStr) }
 
+// 忙闲密度：综合 待办/备注/标签/打卡 估算当日“繁忙度”，用于月历热力叠色。
+function busyScore(dateStr) {
+  let s = 0
+  const d = dayData(dateStr)
+  if (d.note) s += 1
+  if (d.tags && d.tags.length) s += d.tags.length * 0.5
+  if (d.status) s += 0.5
+  s += todosForDate(dateStr).length
+  if (hasClockin(dateStr)) s += 1
+  return s
+}
+function busyLevel(dateStr) {
+  const s = busyScore(dateStr)
+  if (s <= 0) return 0
+  if (s <= 1.5) return 1
+  if (s <= 3.5) return 2
+  if (s <= 6) return 3
+  return 4
+}
+
 const STATUS_CHARS = { work: '班', rest: '休', trip: '差', leave: '假', annual: '年', sick: '病', personal: '事' }
 
 function selectDate(dateStr, isOther) {
@@ -185,7 +205,8 @@ onMounted(async () => {
       <div v-for="(cd, idx) in calendarDays" :key="idx"
         class="day-cell" data-tilt data-tilt-max="5" data-tilt-lift="0" :class="{ 'other-month': cd.isOther, today: cd.dateStr === todayStr, selected: cd.dateStr === selectedDate, 'has-note': dayData(cd.dateStr).note, 'has-tag': dayData(cd.dateStr).tags?.length > 0, 'has-todo': todosForDate(cd.dateStr).length > 0 }"
         :style="dayData(cd.dateStr).color ? { background: dayData(cd.dateStr).color } : {}"
-        :data-date="cd.dateStr" @click="selectDate(cd.dateStr, cd.isOther)">
+        :data-date="cd.dateStr" :data-busy="cd.isOther ? 0 : busyLevel(cd.dateStr)" @click="selectDate(cd.dateStr, cd.isOther)">
+        <div class="busy-heat" aria-hidden="true"></div>
         <span class="day-num">{{ cd.day }}</span>
         <span class="lunar-label" :class="{ 'lunar-month': lunar(currentYear, currentMonth + 1, cd.day).isFirstDay }">{{ lunar(currentYear, currentMonth + 1, cd.day).text }}</span>
         <span v-if="dayData(cd.dateStr).status && !cd.isOther" class="status-label">{{ STATUS_CHARS[dayData(cd.dateStr).status] }}</span>

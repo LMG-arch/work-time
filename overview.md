@@ -1,42 +1,49 @@
-# Phase 4 — 招牌瞬间（记忆点成型）交付概览
+# Phase 5 — 数据与信息（v3.16.0）交付概览
 
-> 上班日历 · 目标版本 v3.15.3（versionCode 33）· 2026-06-29
-> 全部复用 Phase 0 单一 RAF 效果引擎，受 `premium` 总开关与 `prefers-reduced-motion` 守卫
+> 上班日历 UI 美化最后一阶段：把「数据」变成可感知的画面，信息密度升级。
+> 三项均为数据可视化，常驻可见（不依赖 premium 开关），颜色全部读取 CSS 变量 / `color-mix`，跟随主题；动画均受 `prefers-reduced-motion` 守卫。
 
-## 交付的 4 个招牌瞬间
+## 交付清单
 
-| # | 瞬间 | 触发时机 | 实现位置 | 技术要点 |
-|---|------|----------|----------|----------|
-| 4 | **主题切换绽放** | 切换主题时 | `src/effects/signature.js` | `MutationObserver` 监听 `body[data-theme]` → 屏幕中心绽放主题色辉光环（additive `lighter` + 缓出扩散），复用 Phase 0 全局画布 |
-| 3 | **启动闪屏** | App 启动 / 从托盘唤醒 | `src/components/SplashScreen.vue` | SVG LOGO `stroke-dashoffset` 描边绘制 + 26 星点从外围收束中心；≤1.2s 自动隐藏、点击/Esc 可跳过 |
-| 2 | **成功涟漪** | 打卡/保存/任务完成 | `src/effects/ripple.js` | 拦截全局 `showToast` 一处接入，从点击点扩散主题感知绿色涟漪（`color-mix(--accent,#2ecc71)`），亦支持 `calendar:success` 事件 |
-| 1 | **花瓣庆祝** | 连续打卡里程碑（7/30/100 天） | `src/effects/signature.js` | 花瓣从顶部飘落，密度随里程碑递增；`ReminderList` 打卡成功派发 `calendar:celebrate {days}` 事件驱动 |
+### #9 忙闲热力月历（日历网格叠色）
+- **文件**：`src/pages/CalendarView.vue`（新增 `busyScore` / `busyLevel`）、`src/styles.css`（Phase 5 块）
+- **逻辑**：每日忙闲度 = 待办数 + 备注(+1) + 标签(×0.5) + 状态(+0.5) + 打卡(+1)，映射为 `data-busy` 强度 0–4
+- **视觉**：日格内 `.busy-heat` 暖色（`color-mix(var(--trip)…)`）渐变叠层，opacity 0.14→0.33 分级；闲置日（0）无叠色，保持清爽
+- **细节**：`.day-cell { isolation: isolate }` 让叠层 `z-index:-1` 静默垫在内容之下，不干扰既有角标
 
-## 改动文件清单
+### #10 统计环形月览 + 每周面积图
+- **文件**：`src/components/StatsRing.vue`（新）、`src/components/WeeklyArea.vue`（新）、`src/pages/StatsPage.vue`（「本月概览」区块）
+- **StatsRing**：SVG 环形图，按状态（上班/休息/出差/请假/年假/病假/事假）占比分段着色，中心显示「已记录天」数，下方图例同步；挂载时环形缩放淡入
+- **WeeklyArea**：当月每日忙闲密度的平滑面积曲线（`Q` 二次贝塞尔平滑 + 渐变填充），按周划分虚线网格；描边用 `pathLength=1` 做绘制动画
+- **数据**：`StatsPage` 挂载时补全加载 `calendarStore/todoStore/reminderStore`，`busySeries` 与日历热力同源
 
-- **新增** `src/effects/signature.js` —— 主题绽放 + 花瓣庆祝引擎（注册进 `effectRegistry`）
-- **新增** `src/components/SplashScreen.vue` —— 启动闪屏组件
-- **升级** `src/effects/ripple.js` —— 新增成功涟漪 + `showToast` 拦截 + `calendar:success` 监听
-- **编辑** `src/components/App.vue` —— `installSignature()` + 挂载 `<SplashScreen>` + 托盘唤醒重播 + 卸载清理
-- **编辑** `src/components/ReminderList.vue` —— 打卡成功派发 `calendar:celebrate`
-- **编辑** `src/styles.css` —— `.ripple.success` / `.splash*` 样式 + reduced-motion 降级
-- **版本** `package.json`(3.15.3) / `version.json`(v3.15.3, code 33)
-- **文档** `README.md` 更新日志 + `docs/UI美化落地计划.md` 进度
+### #11 连续打卡成长苗
+- **文件**：`src/components/GrowthPlant.vue`（新）、`src/pages/ClockinPage.vue`（连续打卡计算 + 挂载）
+- **逻辑**：从今天往回数连续打卡天数（今天未打卡时从昨天起算，避免未打卡前视觉断裂）
+- **形态里程碑**：0 种子 → 1–2 嫩芽 → 3–6 小苗 → 7–20 灌木 → 21–49 树 → 50+ 满树繁花；颜色用 `color-mix` 偏绿并随主题微调
+- **动效**：生长缩放 + 轻摆（6s 缓动），`prefers-reduced-motion` 时静止
 
-## 性能与无障碍守卫
+## 改动文件总览
+| 文件 | 类型 | 说明 |
+|------|------|------|
+| `src/components/StatsRing.vue` | 新增 | 状态占比环形图 |
+| `src/components/WeeklyArea.vue` | 新增 | 忙闲密度面积图 |
+| `src/components/GrowthPlant.vue` | 新增 | 连续打卡成长苗 |
+| `src/pages/CalendarView.vue` | 编辑 | 忙闲热力计算 + `data-busy` + 叠层 |
+| `src/pages/StatsPage.vue` | 编辑 | 本月概览区块 + 数据加载 |
+| `src/pages/ClockinPage.vue` | 编辑 | 连续打卡计算 + 成长苗 |
+| `src/styles.css` | 编辑 | Phase 5 样式块 |
+| `package.json` / `version.json` | 编辑 | 3.16.0 / versionCode 34 |
+| `README.md` / `docs/UI美化落地计划.md` | 编辑 | 更新日志 + 进度 |
 
-- 主题绽放 / 花瓣庆祝走 `EffectLayer` 全局画布，**仅复用 Phase 0 单一 RAF**，无新增循环
-- `premium.enabled === false` → 纯 CSS 氛围归位（`fx-off`），canvas 类效果停绘，闪屏降级极简
-- `prefers-reduced-motion: reduce` → 关闭绽放/花瓣/成功涟漪动画、闪屏不播放星海与绘制（仅极简 LOGO，360ms）
-- 成功涟漪挂 `document.body`（`position:fixed`），不被按钮 `overflow:hidden` 裁剪
+## 验证步骤
+1. `npm run build` 通过（无新增错误）
+2. `npm run dev` 后：
+   - 日历有数据的日格呈现暖色热力，越忙越深；空日无叠色
+   - 统计页出现「本月概览」：环形 + 图例 + 面积曲线
+   - 打卡页顶部出现成长苗，连续打卡天数越高形态越繁茂
+   - 切换主题：三者颜色跟随变化
+   - 系统开启「减少动态效果」：面积图/环形/成长苗动画降级为静态
 
-## 如何验证
-
-1. `npm run dev` 启动 → 首次进入见启动闪屏（1.2s，点击可跳过）
-2. 设置页切换主题 → 屏幕中心绽放主题色辉光环
-3. 待办/提醒页点「确认打卡」→ 点击点扩散绿色成功涟漪 + 顶部飘落花瓣
-4. 任意保存成功提示 → 同样触发成功涟漪
-5. 设置关闭「高级效果」或系统开启「减少动态效果」→ 上述动效均优雅降级
-
----
-**前端开发工程师** · Phase 4 已完成 · `npm run build` 通过（exit 0）
+## 状态
+Phase 1–5 全部交付，美化主线收官。建议用户在 dev 模式实际感受热力与成长苗后再决定是否收尾/发版。
