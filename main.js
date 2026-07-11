@@ -542,16 +542,18 @@ function scheduleReminders() {
 function createWindow() {
   Menu.setApplicationMenu(null);
 
-  // Security: set CSP to block inline scripts and external resources
-  // In development mode, allow Vite HMR WebSocket connections
+  // Security: set CSP to block dangerous resources
+  // Development mode: allow 'unsafe-inline' for Vite HMR + diagnostic inline scripts
+  // Production mode: strict (dist bundle has no inline scripts)
   const isDev = !app.isPackaged;
   const devConnectSrc = isDev ? ' ws://localhost:* http://localhost:*' : '';
+  const scriptSrc = isDev ? "'self' 'unsafe-inline'" : "'self'";
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'${devConnectSrc} https://*.supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';`
+          `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'${devConnectSrc} https://*.supabase.co https://supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';`
         ]
       }
     });
