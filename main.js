@@ -575,9 +575,34 @@ function createWindow() {
   // 开发模式通过 Vite dev server 加载（编译 Vue SFC + HMR）
   // 生产模式加载构建后的 dist/index.html
   if (isDev) {
-    win.loadURL('http://localhost:5173').catch(() => {
-      win.loadFile(path.join(__dirname, 'dist', 'index.html'));
-    });
+    // 重试逻辑：Vite 可能还没就绪（尤其 concurrently 启动时 vite 和 electron 几乎同时开始），
+    // 不能一失败就 fallback 到 dist（dist 可能是旧的或不存在的），而是等待 Vite 就绪。
+    const DEV_URL = 'http://localhost:5173';
+    const MAX_RETRIES = 10;       // 最多重试 10 次
+    const RETRY_DELAY = 1500;     // 每次间隔 1.5s（总等待约 15s）
+
+    async function loadWithRetry(attempt) {
+      attempt = attempt || 1;
+      try {
+        await win.loadURL(DEV_URL);
+        console.log('[Main] Dev server loaded on attempt', attempt);
+      } catch (e) {
+        console.warn('[Main] Dev server not ready (attempt ' + attempt + '/' + MAX_RETRIES + '):', e.message);
+        if (attempt < MAX_RETRIES) {
+          await new Promise(function(res) { setTimeout(res, RETRY_DELAY); });
+          return loadWithRetry(attempt + 1);
+        }
+        // 所有重试耗尽，fallback 到 dist 并在标题中标记
+        console.error('[Main] Dev server unreachable after ' + MAX_RETRIES + ' attempts, falling back to dist/');
+        try { win.loadFile(path.join(__dirname, 'dist', 'index.html')); } catch (e2) {
+          console.error('[Main] Fallback also failed:', e2.message);
+          // 最后手段：加载 src 目录原始文件（至少能看到界面）
+          win.loadFile(path.join(__dirname, 'src', 'index.html'));
+        }
+        win.setTitle('[DEV SERVER OFFLINE] 上班日历');
+      }
+    }
+    loadWithRetry();
   } else {
     win.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }

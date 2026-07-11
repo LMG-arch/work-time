@@ -15,6 +15,10 @@
       .then(function () { (window.__bootLog || console.log)('bootstrap OK — vue-main.js evaluated'); })
       .catch(function (e) {
         var m = (e && (e.stack || e.message)) ? (e.stack || e.message) : String(e);
+        // 区分 file:// 协议限制 vs 其他原因
+        if (location.protocol === 'file:') {
+          m = 'file:// protocol blocks ESM import(). Use "npm run dev" or the launcher bat to start Vite dev server. Raw: ' + m;
+        }
         if (window.__bootError) window.__bootError('Module load/eval FAILED: ' + m);
         else console.error('Module load/eval FAILED:', m);
       });
@@ -38,6 +42,22 @@
     // ===== 启动诊断核心（在任何模块执行前就绪）=====
     var _bootSteps = [];
     var _bootErr = null;
+
+    // 🔍 协议检测：file:// 协议无法加载 ESM 模块（浏览器安全限制），立即提示
+    if (location.protocol === 'file:') {
+      _bootErr = 'FILE_PROTOCOL_BLOCKED';
+      document.getElementById('boot-text').textContent =
+        '[WARN] Opened via file:// — ESM modules blocked by browser. Please use the launcher bat or start with "npm run dev".';
+      document.getElementById('boot-text').style.color = '#f0883e';
+      document.getElementById('boot-dot').style.background = '#f0883e';
+      var diag = document.getElementById('boot-diag');
+      if (diag) {
+        diag.style.borderBottomColor = 'rgba(240,136,62,0.6)';
+        diag.style.background = 'rgba(240,136,62,0.15)';
+      }
+      console.warn('[BOOT] File protocol detected — dynamic import() will be blocked by browser security policy');
+    }
+
     window.__bootLog = function(msg) {
       _bootSteps.push(msg);
       var el = document.getElementById('boot-text');
@@ -88,10 +108,18 @@
         // 主动探测：尝试 fetch 模块文件本身
         fetch('./vue-main.js', { method: 'HEAD', cache: 'no-store' })
           .then(function(r) {
-            window.__bootError('Module fetchable (status=' + r.status + ', type=' + (r.headers.get('content-type')||'?') + ') but did not EXECUTE — likely blocked by CSP/script-src for modules');
+            if (location.protocol === 'file:') {
+              window.__bootError('Module file exists but file:// protocol blocks ESM execution. Start with "npm run dev" (Vite dev server).');
+            } else {
+              window.__bootError('Module fetchable (status=' + r.status + ', type=' + (r.headers.get('content-type')||'?') + ') but did not EXECUTE — likely blocked by CSP/script-src for modules');
+            }
           })
           .catch(function(e) {
-            window.__bootError('Module fetch FAILED: ' + e.message + ' — network/CSP blocking');
+            var detail = e.message || String(e);
+            if (location.protocol === 'file:') {
+              detail = 'file:// protocol — browser security prevents module loading. Use "npm run dev" to start via Vite.';
+            }
+            window.__bootError('Module fetch FAILED: ' + detail + ' — network/CSP/protocol blocking');
           });
       }
     }, 8000);
