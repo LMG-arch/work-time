@@ -216,6 +216,17 @@ onMounted(async () => {
       </div>
     </div>
 
+    <div class="busy-legend" aria-label="忙闲色阶说明">
+      <span class="busy-legend-label">忙闲</span>
+      <span class="busy-legend-scale" aria-hidden="true">
+        <i class="busy-legend-cell" data-busy="1"></i>
+        <i class="busy-legend-cell" data-busy="2"></i>
+        <i class="busy-legend-cell" data-busy="3"></i>
+        <i class="busy-legend-cell" data-busy="4"></i>
+      </span>
+      <span class="busy-legend-text">色越深越忙</span>
+    </div>
+
     <div style="flex:1;overflow-y:auto;overflow-x:hidden;">
       <DetailPanel :selectedDate="selectedDate" />
     </div>

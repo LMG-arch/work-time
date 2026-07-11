@@ -1,14 +1,16 @@
 {
-  "version": "3.16.0",
-  "versionCode": 34,
+  "version": "3.16.1",
+  "versionCode": 35,
   "releaseDate": "2026-06-29",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.16.0/work-calendar-v3.16.0.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.16.1/work-calendar-v3.16.1.apk",
   "changelog": [
     "忙闲热力月历：月历日格内叠加忙闲色阶（暖色=忙，基于待办/备注/标签/打卡密度），闲置日保持清爽",
     "统计环形月览：SVG 环形图按状态占比着色，中心显示已记录天数，图例同步",
     "每周面积图：当月每日忙闲密度的平滑面积曲线，按周划分网格，主题色渐变填充",
     "连续打卡成长苗：SVG 植物随连续打卡天数生长（种子→嫩芽→小苗→灌木→树→满树繁花），里程碑换形态",
-    "三项可视化均主题感知、尊重 prefers-reduced-motion；作为数据展示常驻，不依赖 premium 开关"
+    "三项可视化均主题感知、尊重 prefers-reduced-motion；作为数据展示常驻，不依赖 premium 开关",
+    "成长苗里程碑庆祝：连续打卡跨过 7/30/100 天时触发 Phase 4 花瓣庆祝，并附卡片脉冲反馈（双反馈闭环）",
+    "忙闲图例 + 面积图 hover：日历底部新增「色越深越忙」色阶图例；面积图新增悬停提示（X日·忙闲N）与标记点"
   ],
   "forceUpdate": false
 }

@@ -2553,6 +2553,31 @@ body[data-theme] [data-tilt] {
     color-mix(in srgb, var(--trip) 60%, #fff));
 }
 
+/* #12 忙闲热力图例：与日格色阶同款 color-mix，说明「色越深越忙」 */
+.busy-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 2px 2px;
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: .04em;
+}
+.busy-legend-label { letter-spacing: .08em; }
+.busy-legend-scale { display: inline-flex; gap: 3px; }
+.busy-legend-cell {
+  width: 22px;
+  height: 11px;
+  border-radius: 3px;
+  display: inline-block;
+  border: 1px solid color-mix(in srgb, var(--text3) 12%, transparent);
+}
+.busy-legend-cell[data-busy="1"] { background: color-mix(in srgb, var(--trip) 60%, #fff); opacity: .55; }
+.busy-legend-cell[data-busy="2"] { background: color-mix(in srgb, var(--trip) 72%, #fff); opacity: .65; }
+.busy-legend-cell[data-busy="3"] { background: color-mix(in srgb, var(--trip) 82%, #fff); opacity: .78; }
+.busy-legend-cell[data-busy="4"] { background: color-mix(in srgb, var(--trip) 90%, #ffd54f); opacity: .92; }
+
 /* #10 本月概览：环形 + 面积图布局 */
 .overview-section { margin: 16px 0 4px; }
 .overview-grid {
@@ -2593,6 +2618,18 @@ body[data-theme] [data-tilt] {
   background: var(--card);
   border: 1px solid color-mix(in srgb, var(--text3) 12%, transparent);
   backdrop-filter: blur(12px);
+}
+/* 里程碑达成时的轻量脉冲（非 premium 也可见，与花瓣庆祝形成双反馈） */
+.growth-card.milestone-flash {
+  animation: milestone-pulse 1.4s ease;
+}
+@keyframes milestone-pulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  60%  { box-shadow: 0 0 0 16px color-mix(in srgb, var(--accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .growth-card.milestone-flash { animation: none; }
 }
 
 /* 窄屏：概览改为上下堆叠 */
