@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import SettingsSection from '../components/SettingsSection.vue'
+import { isCapacitorPlatform, sanitizeUrl } from '../utils.js'
 
 // ===== 全局依赖（通过 window 访问现有模块函数）=====
 const getSupabaseConfig = window.getSupabaseConfig
@@ -24,13 +25,10 @@ const getTrashStats = window.getTrashStats
 const getTrashSizes = window.getTrashSizes
 const restoreSelected = window.restoreSelected
 const emptySelected = window.emptySelected
-const isCapacitorPlatform = window.isCapacitorPlatform
 const showToast = window.showToast
-const escapeHtml = window.escapeHtml
-const sanitizeUrl = window.sanitizeUrl
 
 const safeAvatarUrl = computed(() => {
-  return avatarUrl.value ? sanitizeUrl?.(avatarUrl.value) || avatarUrl.value : ''
+  return avatarUrl.value ? sanitizeUrl(avatarUrl.value) || avatarUrl.value : ''
 })
 
 // ===== 主题 =====
@@ -57,7 +55,7 @@ function setTheme(themeId) {
   const apply = () => {
     currentTheme.value = themeId
     document.body.dataset.theme = themeId
-    localStorage.setItem('calendar-theme', themeId)
+    window.__storage.setRaw('calendar-theme', themeId)
   }
   if (document.startViewTransition) {
     document.startViewTransition(apply)
@@ -430,11 +428,11 @@ const allNavItems = [
 const navEnabled = ref(getNavItems())
 
 function getNavItems() {
-  try { const raw = localStorage.getItem(NAV_ITEMS_KEY); if (raw) return JSON.parse(raw) } catch (e) { console.warn('[Settings] Failed to parse nav items:', e.message) }
+  try { const val = window.__storage.get(NAV_ITEMS_KEY); if (val) return val } catch (e) { console.warn('[Settings] Failed to parse nav items:', e.message) }
   return allNavItems.map(n => n.id)
 }
 function saveNavItems(items) {
-  localStorage.setItem(NAV_ITEMS_KEY, JSON.stringify(items))
+  window.__storage.set(NAV_ITEMS_KEY, items)
   navEnabled.value = items
   allNavItems.forEach(item => {
     const btn = document.getElementById(item.id + '-btn')

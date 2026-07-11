@@ -1,7 +1,7 @@
 // stats.js — Monthly statistics view
 
 // 导出统计为图片
-async function exportStatsAsImage(stats) {
+export async function exportStatsAsImage(stats) {
   const { workDays, restDays, tripDays, leaveDays, annualDays, sickDays, personalDays, noStatus, sortedTags, dayRecords, holidayCount, workdayCount } = stats;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');

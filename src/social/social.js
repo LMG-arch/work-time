@@ -5,7 +5,7 @@ let feedOffset = 0;
 let friendsList = [];
 let friendRequests = [];
 
-async function renderSocialView() {
+export async function renderSocialView() {
   updateMonthLabel();
   const container = document.getElementById('social-content');
 
@@ -74,7 +74,7 @@ async function renderSocialView() {
   renderSocialTabContent();
 }
 
-async function renderSocialTabContent() {
+export async function renderSocialTabContent() {
   const container = document.getElementById('social-tab-content');
   if (!container) return;
 
@@ -94,7 +94,7 @@ const FEED_CACHE_KEY = 'social-feed-cache';
 const FEED_CACHE_TIME_KEY = 'social-feed-cache-time';
 const FEED_CACHE_TTL = 60000; // 60 seconds
 
-function getCachedFeed() {
+export function getCachedFeed() {
   try {
     const raw = localStorage.getItem(FEED_CACHE_KEY);
     if (raw) return JSON.parse(raw);
@@ -102,7 +102,7 @@ function getCachedFeed() {
   return null;
 }
 
-function isFeedCacheFresh() {
+export function isFeedCacheFresh() {
   try {
     const t = parseInt(localStorage.getItem(FEED_CACHE_TIME_KEY) || '0');
     return Date.now() - t < FEED_CACHE_TTL;
@@ -110,14 +110,14 @@ function isFeedCacheFresh() {
   return false;
 }
 
-function setCachedFeed(posts) {
+export function setCachedFeed(posts) {
   try {
     localStorage.setItem(FEED_CACHE_KEY, JSON.stringify(posts));
     localStorage.setItem(FEED_CACHE_TIME_KEY, String(Date.now()));
   } catch (e) { console.warn('[Social] Failed to cache feed:', e.message); }
 }
 
-function renderFeedPosts(container, posts) {
+export function renderFeedPosts(container, posts) {
   let html = '';
   if (posts.length === 0) {
     html = '<div class="social-empty">暂无动态<br><span class="social-empty-sub">发布一条动态或添加好友吧</span></div>';
@@ -140,7 +140,7 @@ function renderFeedPosts(container, posts) {
   if (fab) fab.addEventListener('click', openPostModal);
 }
 
-async function renderFeed(container) {
+export async function renderFeed(container) {
   // 1. Show cached data instantly
   const cached = getCachedFeed();
   if (cached && cached.length > 0) {
@@ -174,7 +174,7 @@ async function renderFeed(container) {
 }
 
 // 下拉刷新 + 无限滚动
-function setupFeedPullToRefresh(container) {
+export function setupFeedPullToRefresh(container) {
   let startY = 0, pulling = false, pullDist = 0;
   const refreshThreshold = 60;
   let refreshIndicator = null;
@@ -243,7 +243,7 @@ function setupFeedPullToRefresh(container) {
 }
 
 let _loadingMore = false;
-async function loadMoreFeedPosts(container) {
+export async function loadMoreFeedPosts(container) {
   if (_loadingMore) return;
   const feedList = container.querySelector('.feed-list');
   if (!feedList) return;
@@ -283,7 +283,7 @@ async function loadMoreFeedPosts(container) {
   _loadingMore = false;
 }
 
-function renderPostCard(post) {
+export function renderPostCard(post) {
   const time = formatTime(post.created_at);
   const safeAvatar = sanitizeUrl(post.profile.avatar);
   const avatar = safeAvatar
@@ -316,11 +316,11 @@ function renderPostCard(post) {
   </div>`;
 }
 
-function bindPostEvents(container) {
+export function bindPostEvents(container) {
   bindPostEventsForElements(container, [container]);
 }
 
-function bindPostEventsForElements(container, elements) {
+export function bindPostEventsForElements(container, elements) {
   elements.forEach(el => {
     el.querySelectorAll('.like-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -363,7 +363,7 @@ function bindPostEventsForElements(container, elements) {
   });
 }
 
-async function renderCommentsPanel(postId, panel) {
+export async function renderCommentsPanel(postId, panel) {
   const comments = await getComments(postId);
   let html = '<div class="comment-list">';
   for (const c of comments) {
@@ -396,7 +396,7 @@ async function renderCommentsPanel(postId, panel) {
 
 let _postImageFile = null;
 
-function openPostModal() {
+export function openPostModal() {
   document.getElementById('post-text-input').value = '';
   _postImageFile = null;
   document.getElementById('post-image-preview').style.display = 'none';
@@ -404,12 +404,12 @@ function openPostModal() {
   document.getElementById('post-modal').style.display = 'flex';
 }
 
-function closePostModal() {
+export function closePostModal() {
   document.getElementById('post-modal').style.display = 'none';
   _postImageFile = null;
 }
 
-function setupPostImagePicker() {
+export function setupPostImagePicker() {
   const input = document.getElementById('post-image-input');
   const preview = document.getElementById('post-image-preview');
   const previewImg = document.getElementById('post-image-preview-img');
@@ -435,7 +435,7 @@ function setupPostImagePicker() {
   });
 }
 
-async function submitPost() {
+export async function submitPost() {
   const text = document.getElementById('post-text-input').value.trim();
   if (!text && !_postImageFile) { showToast('请输入内容或选择图片'); return; }
   const btn = document.getElementById('post-modal-submit');
@@ -468,7 +468,7 @@ async function submitPost() {
 
 // ===== Friends =====
 
-async function renderFriends(container) {
+export async function renderFriends(container) {
   container.innerHTML = '<div class="social-loading">加载中...</div>';
   friendsList = await getFriends();
   friendRequests = await getFriendRequests();
@@ -580,7 +580,7 @@ async function renderFriends(container) {
 
 // ===== Profile =====
 
-async function renderProfile(container) {
+export async function renderProfile(container) {
   container.innerHTML = '<div class="social-loading">加载中...</div>';
   const profile = await getMyProfile();
   if (!profile) {
@@ -630,11 +630,11 @@ async function renderProfile(container) {
 
 // ===== Helpers =====
 
-function getCurrentUserId() {
+export function getCurrentUserId() {
   return window._currentUserId || null;
 }
 
-function formatTime(isoStr) {
+export function formatTime(isoStr) {
   if (!isoStr) return '';
   const d = new Date(isoStr);
   const now = new Date();
@@ -648,7 +648,7 @@ function formatTime(isoStr) {
 
 // ===== Setup Check =====
 
-async function checkDatabaseSetup() {
+export async function checkDatabaseSetup() {
   if (!sb) return false;
   try {
     const { error } = await sb.from('profiles').select('id').limit(1);
@@ -661,7 +661,7 @@ async function checkDatabaseSetup() {
 
 // ===== Init =====
 
-async function initSocial() {
+export async function initSocial() {
   const config = getSupabaseConfig();
   if (!config.url || !config.key) return; // Not configured yet
 
@@ -680,7 +680,7 @@ async function initSocial() {
   }
 
   if (user) {
-    _currentUserId = user.id;
+    window._currentUserId = user.id;
     console.log('[Social] User session:', user.id.slice(0, 8));
   } else {
     console.warn('[Social] Failed to establish session');

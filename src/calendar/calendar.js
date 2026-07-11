@@ -1,6 +1,6 @@
 // calendar.js — Calendar grid, day details, navigation
 // Uses globals from utils.js: escapeHtml, escapeAttr, dateToStr, getDaysInMonth, getFirstDayOfWeek, formatDateCN, getTodayStr, showToast, WEEKDAYS_CN, STATUS_LABELS, STATUS_CHARS
-// Uses globals from renderer.js: currentYear, currentMonth, selectedDate, allData, allTodos, holidayData, currentView, renderStats, renderClockinView, getTodosForDate, isTodoDone, getClockinStatusForDate, renderTodoList
+// Uses globals from renderer.js / window.*: currentYear, currentMonth, selectedDate, allData, allTodos, holidayData, currentView, renderClockinView, getTodosForDate, isTodoDone, getClockinStatusForDate, renderTodoList
 
 function updateMonthLabel() {
   const lunar = Lunar.getMonthLunarInfo(currentYear, currentMonth);
@@ -237,8 +237,24 @@ async function changeMonth(delta) {
     renderCalendar();
     window.__refreshCalendarGrid?.();
   }
-  else if (currentView === 'stats') renderStats();
   else if (currentView === 'clockin') renderClockinView();
   // social/settings: only update label, don't re-render
   updateMonthLabel();
 }
+
+// ===== ESM 导出：供 shims.js 挂回 window.* =====
+export {
+  updateMonthLabel,
+  getDayData,
+  getHolidayInfo,
+  renderCalendar,
+  createDayCell,
+  onDayClick,
+  openDetailPanel,
+  closeDetailPanel,
+  loadAllData,
+  loadHolidays,
+  saveDay,
+  saveCurrentDay,
+  changeMonth
+};

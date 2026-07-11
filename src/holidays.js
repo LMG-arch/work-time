@@ -1,6 +1,8 @@
 // 中国法定节假日数据 2025-2027
 // type: "holiday" = 放假, "workday" = 调休上班
-const HOLIDAYS = {
+// 已迁移为 ES 模块；经典脚本经 src/shims.js 的 window.HOLIDAYS / window.FIXED_HOLIDAYS 垫片访问。
+
+export const HOLIDAYS = {
   // ===== 2025 =====
   // 元旦
   "2025-01-01": { name: "元旦", type: "holiday" },
@@ -131,7 +133,7 @@ const HOLIDAYS = {
 };
 
 // 固定节日（每年相同日期）
-const FIXED_HOLIDAYS = {
+export const FIXED_HOLIDAYS = {
   "01-01": "元旦",
   "03-08": "妇女节",
   "03-12": "植树节",
@@ -147,5 +149,3 @@ const FIXED_HOLIDAYS = {
   "12-24": "平安夜",
   "12-25": "圣诞节",
 };
-
-if (typeof module !== 'undefined') module.exports = { HOLIDAYS, FIXED_HOLIDAYS };

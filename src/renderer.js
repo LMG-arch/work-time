@@ -1,59 +1,17 @@
-// renderer.js — Main entry, global state, event listeners, init
-// Depends on: utils.js, holidays.js, lunar.js, web-api.js, supabase.js, social.js
-//             calendar.js, todos.js, reminders.js, stats.js, settings.js
+// renderer.js — 主入口：全局状态初始化、事件监听、应用启动
+//
+// 全局状态与常量已统一迁移至 src/shared.js（以 window.* 暴露，供各 ES 模块按裸名访问）。
+// 各业务模块（calendar/todos/stats/social/reminders/settings/updater）均已迁移为 ES 模块，
+// 由 src/shims.js 统一导入并挂回 window.*，本文件按裸名 / window.* 调用它们。
+//
+// 本文件本身也已是 ES 模块（经 vue-main.js → shims.js 导入），不再作为经典 <script> 加载。
 
-// ===== Global State =====
-// 通过 window 暴露全局状态，供 Vue 组件桥接访问
-
-let currentYear, currentMonth;
-let selectedDate = null;
-let allData = {};
-let allTodos = [];
-let currentView = 'calendar';
-let todoFilter = 'all';
-let holidayData = null;
-let allReminders = [];
-let allReminderRecords = {};
-let reminderNotifTimer = null;
-
-// 同步桥接：每次修改 currentYear/currentMonth/selectedDate 后调用
-function syncToWindow() {
-  window.currentYear = currentYear;
-  window.currentMonth = currentMonth;
-  window.selectedDate = selectedDate;
-  // 同步给 Vue 日历组件
+// 同步桥接：通知 Vue 日历组件当前年月与选中日期
+export function syncToWindow() {
   if (window.__calendarSyncDate) {
-    window.__calendarSyncDate(currentYear, currentMonth, selectedDate);
+    window.__calendarSyncDate(window.currentYear, window.currentMonth, window.selectedDate);
   }
 }
-// 暴露全局引用（对象类型自动同步，基本类型需手动调用 syncToWindow）
-window.allData = allData;
-window.allTodos = allTodos;
-window.allReminders = allReminders;
-window.allReminderRecords = allReminderRecords;
-window.holidayData = holidayData;
-
-const WEEKDAYS_CN = ['日', '一', '二', '三', '四', '五', '六'];
-const STATUS_LABELS = { work: '上班', rest: '休息', trip: '出差', leave: '请假', annual: '年假', sick: '病假', personal: '事假' };
-const STATUS_CHARS = { work: '班', rest: '休', trip: '差', leave: '假', annual: '年', sick: '病', personal: '事' };
-
-const THEMES = [
-  { id: 'default', name: '经典', color: '#333' },
-  { id: 'dark',    name: '暗黑', color: '#1a1a2e' },
-  { id: 'green',   name: '清新', color: '#43A047' },
-  { id: 'pink',    name: '粉色', color: '#e91e63' },
-  { id: 'purple',  name: '紫色', color: '#7e57c2' },
-  { id: 'navy',    name: '商务', color: '#1565c0' },
-  { id: 'ocean',   name: '海洋', color: '#00838f' },
-  { id: 'sunset',  name: '日落', color: '#e65100' },
-  { id: 'rose',    name: '玫瑰金', color: '#b76e79' },
-  { id: 'forest',  name: '森林', color: '#2e7d32' },
-  { id: 'coffee',  name: '咖啡', color: '#5d4037' },
-  { id: 'lavender',name: '薰衣草', color: '#9575cd' },
-  { id: 'mint',    name: '薄荷', color: '#26a69a' },
-  { id: 'slate',   name: '石板', color: '#546e7a' },
-  { id: 'cosmic',  name: '星海绽放', color: '#9d8cff' },
-];
 
 // ===== View Router =====
 
@@ -69,7 +27,7 @@ function moveToolbarIndicator() {
   indicator.style.transform = `translateX(${active.offsetLeft + (active.offsetWidth - w) / 2}px)`;
 }
 
-function switchView(view) {
+export function switchView(view) {
   currentView = view;
   syncToWindow();
 
@@ -105,7 +63,7 @@ function switchView(view) {
 }
 
 // Refresh all data from storage and re-render current view
-async function refreshAllData() {
+export async function refreshAllData() {
   try {
     allData = await window.calendarAPI.getAllData();
     window.allData = allData;
@@ -135,7 +93,7 @@ async function refreshAllData() {
 
 // ===== Account UI =====
 
-async function updateAccountUI() {
+export async function updateAccountUI() {
   const loggedOut = document.getElementById('account-logged-out');
   const loggedIn = document.getElementById('account-logged-in');
   const savedUsername = getSavedUsername();
@@ -495,10 +453,10 @@ function setupEventListeners() {
     ];
 
     function getNavItems() {
-      try { const raw = localStorage.getItem(NAV_ITEMS_KEY); if (raw) return JSON.parse(raw); } catch (e) { console.warn('[Settings] Failed to parse nav items:', e.message); }
+      try { const val = window.__storage.get(NAV_ITEMS_KEY); if (val) return val; } catch (e) { console.warn('[Settings] Failed to parse nav items:', e.message); }
       return allNavItems.map(n => n.id);
     }
-    function saveNavItems(items) { localStorage.setItem(NAV_ITEMS_KEY, JSON.stringify(items)); }
+    function saveNavItems(items) { window.__storage.set(NAV_ITEMS_KEY, items); }
     function applyNavItems() {
       const enabled = getNavItems();
       allNavItems.forEach(item => {

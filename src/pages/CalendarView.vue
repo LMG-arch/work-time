@@ -6,6 +6,7 @@ import { useReminderStore } from '../stores/reminderStore.js'
 import { useAppStore } from '../stores/appStore.js'
 import DetailPanel from '../components/DetailPanel.vue'
 import { dailyLine } from '../data/poetry'
+import { Lunar } from '../lunar.js'
 
 const calendarStore = useCalendarStore()
 const todoStore = useTodoStore()
@@ -39,8 +40,8 @@ const todayStr = computed(() => {
 })
 
 const lunarInfo = computed(() => {
-  if (!window.Lunar) return { ganZhi: '', animal: '', monthName: '' }
-  return window.Lunar.getMonthLunarInfo(currentYear.value, currentMonth.value)
+  if (!Lunar) return { ganZhi: '', animal: '', monthName: '' }
+  return Lunar.getMonthLunarInfo(currentYear.value, currentMonth.value)
 })
 
 const daysInMonth = computed(() => new Date(currentYear.value, currentMonth.value + 1, 0).getDate())
@@ -86,8 +87,8 @@ function holidayInfo(dateStr) {
   return null
 }
 function lunar(yr, mo, dy) {
-  if (!window.Lunar) return { text: '', isFirstDay: false }
-  return window.Lunar.solar2lunar(yr, mo - 1, dy)
+  if (!Lunar) return { text: '', isFirstDay: false }
+  return Lunar.solar2lunar(yr, mo - 1, dy)
 }
 function todosForDate(dateStr) {
   if (!todoStore.todos) return []

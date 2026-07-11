@@ -3,18 +3,18 @@ import { ref, watch } from 'vue'
 
 function loadJson(key, fallback) {
   try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
+    const val = window.__storage.get(key)
+    return val == null ? fallback : val
   } catch { return fallback }
 }
 
 export const useAppStore = defineStore('app', () => {
   const activePage = ref(null)
-  const theme = ref(localStorage.getItem('theme') || 'light')
-  const navSettings = ref(loadJson('navSettings', {}))
-  const syncEnabled = ref(localStorage.getItem('syncEnabled') === 'true')
+  const theme = ref(window.__storage.getRaw('theme') || 'light')
+  const navSettings = ref(window.__storage.get('navSettings') || {})
+  const syncEnabled = ref(window.__storage.getRaw('syncEnabled') === 'true')
   // 高级视觉效果的开关与强度档位（星海绽放等氛围/招牌瞬间效果的全局总闸）
-  const premium = ref(loadJson('premiumEffects', { enabled: true, intensity: 'auto' }))
+  const premium = ref(window.__storage.get('premiumEffects') || { enabled: true, intensity: 'auto' })
   const currentYear = ref(window.currentYear || new Date().getFullYear())
   const currentMonth = ref(window.currentMonth || new Date().getMonth())
   const selectedDate = ref(window.selectedDate || null)
@@ -32,22 +32,22 @@ export const useAppStore = defineStore('app', () => {
 
   function setTheme(t) {
     theme.value = t
-    localStorage.setItem('theme', t)
+    window.__storage.setRaw('theme', t)
   }
 
   function setSyncEnabled(v) {
     syncEnabled.value = v
-    localStorage.setItem('syncEnabled', String(v))
+    window.__storage.setRaw('syncEnabled', String(v))
   }
 
   function setPremium(patch) {
     premium.value = { ...premium.value, ...patch }
-    localStorage.setItem('premiumEffects', JSON.stringify(premium.value))
+    window.__storage.set('premiumEffects', premium.value)
   }
 
   function setNavSettings(s) {
     navSettings.value = s
-    localStorage.setItem('navSettings', JSON.stringify(s))
+    window.__storage.set('navSettings', s)
   }
 
   function refreshFromWindow() {

@@ -219,20 +219,9 @@
   </div>
 
   <script src="lib/supabase.min.js"></script>
-  <script src="utils.js"></script>
-  <script src="holidays.js"></script>
-  <script src="lunar.js"></script>
-  <script src="web-api.js"></script>
-  <script src="supabase-core.js"></script>
-  <script src="supabase-social.js"></script>
-  <script src="supabase-sync.js"></script>
-  <script src="social.js"></script>
-  <script src="calendar.js"></script>
-  <script src="todos.js"></script>
-  <script src="reminders.js"></script>
-  <script src="stats.js"></script>
-  <script src="settings.js"></script>
-  <script src="updater.js"></script>
-  <script src="renderer.js"></script>
+  <!-- storage.js / utils.js / holidays.js / lunar.js 已迁移为 ES 模块，由 vue-main.js 经 shared.js + shims.js 导入 -->
+  <!-- web-api.js 已迁移为 ES 模块（src/electron/api.js），由 vue-main.js 经 shims.js 导入并设置 window.calendarAPI -->
+  <!-- supabase-core.js / supabase-social.js / supabase-sync.js 已迁移为 ES 模块（src/supabase/*），由 vue-main.js 经 shims.js 导入并挂回 window.* -->
+  <!-- calendar/todos/stats/social/reminders/settings/updater/renderer 已迁移为 ES 模块，由 vue-main.js 经 shared.js + shims.js 导入并挂回 window.* -->
 </body>
 </html>

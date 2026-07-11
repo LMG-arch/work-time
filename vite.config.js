@@ -5,12 +5,10 @@ import fs from 'fs'
 
 // 复制遗留非模块脚本到构建输出 — Vite 不处理非 type="module" 的 script 标签
 function copyLegacyAssets() {
-  const FILES = [
-    'utils.js', 'holidays.js', 'lunar.js', 'web-api.js',
-    'social.js', 'calendar.js', 'todos.js',
-    'reminders.js', 'stats.js', 'settings.js', 'updater.js',
-    'renderer.js', 'styles.css', 'social.css',
-  ]
+  // 所有业务 JS 已迁移为 ES 模块（经 vue-main.js → shared.js + shims.js 导入），
+  // 不再有经典 <script> 需要复制；styles.css / social.css 已改由 Vite 经 index.html 的 <link> 打包。
+  // 仅 lib/ 第三方库（supabase.min.js）由下方循环复制，供经典 <script src="lib/supabase.min.js"> 使用。
+  const FILES = []
   return {
     name: 'copy-legacy-assets',
     closeBundle() {

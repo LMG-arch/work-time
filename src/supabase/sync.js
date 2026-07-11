@@ -1,13 +1,16 @@
-// supabase-sync.js — 日历数据同步
+// supabase/sync.js — 日历数据同步（ESM 模块）
+// 逻辑与经典脚本逐字节一致；跨脚本依赖改为 import：
+//   getEffectiveUserId ← social.js；window.__storage / window.calendarAPI / window.sb 继续走全局（shim 提供）。
+import { getEffectiveUserId } from './social.js';
 
 const SYNC_ENABLED_KEY = 'calendar-sync-enabled';
 
 function isSyncEnabled() {
-  return localStorage.getItem(SYNC_ENABLED_KEY) === 'true';
+  return window.__storage.getRaw(SYNC_ENABLED_KEY) === 'true';
 }
 
 function setSyncEnabled(enabled) {
-  localStorage.setItem(SYNC_ENABLED_KEY, enabled ? 'true' : 'false');
+  window.__storage.setRaw(SYNC_ENABLED_KEY, enabled ? 'true' : 'false');
 }
 
 // Collect all calendar data from storage
@@ -27,13 +30,13 @@ async function collectCalendarData() {
     } catch (e) { console.error('[Sync] syncRead failed:', e.message); }
   } else {
     try {
-      const store = JSON.parse(localStorage.getItem('work-calendar-data'));
+      const store = window.__storage.get('work-calendar-data');
       if (store) data.workData = { days: store.days || {}, todos: store.todos || [] };
     } catch (e) { console.warn('[Sync] Failed to parse work-calendar-data:', e.message); }
-    try { data.reminders = JSON.parse(localStorage.getItem('calendar-reminders')); } catch (e) { console.warn('[Sync] Failed to parse reminders:', e.message); }
-    try { data.reminderRecords = JSON.parse(localStorage.getItem('calendar-reminder-records')); } catch (e) { console.warn('[Sync] Failed to parse reminderRecords:', e.message); }
+    try { data.reminders = window.__storage.get('calendar-reminders'); } catch (e) { console.warn('[Sync] Failed to parse reminders:', e.message); }
+    try { data.reminderRecords = window.__storage.get('calendar-reminder-records'); } catch (e) { console.warn('[Sync] Failed to parse reminderRecords:', e.message); }
   }
-  try { data.theme = localStorage.getItem('calendar-theme'); } catch (e) { console.warn('[Sync] Failed to read theme:', e.message); }
+  try { data.theme = window.__storage.getRaw('calendar-theme'); } catch (e) { console.warn('[Sync] Failed to read theme:', e.message); }
 
   // Ensure all days have updatedAt for proper sync comparison
   if (data.workData?.days) {
@@ -75,7 +78,7 @@ async function applyCalendarData(data) {
     } catch (e) { console.error('[Sync] syncWrite failed:', e.message); }
   } else {
     try {
-      const store = JSON.parse(localStorage.getItem('work-calendar-data')) || { days: {}, todos: [] };
+      const store = window.__storage.get('work-calendar-data') || { days: {}, todos: [] };
       if (data.workData) {
         if (data.workData.days) store.days = { ...store.days, ...data.workData.days };
         if (data.workData.todos) {
@@ -85,12 +88,12 @@ async function applyCalendarData(data) {
           store.todos = Object.values(todoMap);
         }
       }
-      localStorage.setItem('work-calendar-data', JSON.stringify(store));
+      window.__storage.set('work-calendar-data', store);
     } catch (e) { console.warn('[Sync] Failed to save work-calendar-data:', e.message); }
-    if (data.reminders) localStorage.setItem('calendar-reminders', JSON.stringify(data.reminders));
-    if (data.reminderRecords) localStorage.setItem('calendar-reminder-records', JSON.stringify(data.reminderRecords));
+    if (data.reminders) window.__storage.set('calendar-reminders', data.reminders);
+    if (data.reminderRecords) window.__storage.set('calendar-reminder-records', data.reminderRecords);
   }
-  if (data.theme) localStorage.setItem('calendar-theme', data.theme);
+  if (data.theme) window.__storage.setRaw('calendar-theme', data.theme);
 }
 
 // Push local data to cloud
@@ -336,3 +339,16 @@ function autoSyncPush() {
     }, 3000);
   });
 }
+
+export {
+  isSyncEnabled,
+  setSyncEnabled,
+  collectCalendarData,
+  applyCalendarData,
+  pushCalendarData,
+  pullCalendarData,
+  syncCalendarData,
+  pushToCloud,
+  pullFromCloud,
+  autoSyncPush
+};

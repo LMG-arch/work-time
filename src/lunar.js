@@ -1,7 +1,8 @@
 // 农历转换库 (1900-2100)
 // 基于寿星万年历算法
+// 已迁移为 ES 模块；经典脚本经 src/shims.js 的 window.Lunar 垫片访问。
 
-const Lunar = (function() {
+export const Lunar = (function () {
   // 农历数据表 1900-2100
   // 每个元素的二进制位含义:
   // bit 0-3: 闰月月份 (0=无闰月)

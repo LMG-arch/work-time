@@ -1,8 +1,9 @@
-// supabase-social.js — 用户资料、动态、点赞、评论、好友、管理员、回收站
+// supabase/social.js — 用户资料、动态、点赞、评论、好友、管理员、回收站（ESM 模块）
+// 业务逻辑与经典脚本逐字节一致；仅把跨脚本依赖（ensureSession / getSavedUsername / _globalUserId）
+// 改为从 client.js 显式 import。继续通过 window.sb / window.__storage 访问全局客户端与存储。
+import { ensureSession, getSavedUsername, getGlobalUserId, setGlobalUserId } from './client.js';
 
 // ===== Profile =====
-
-let _globalUserId = null;
 
 // Get the effective user ID, following linked_id chain (for RLS compatibility)
 // Does NOT filter deleted_at — if user's profile was soft-deleted and recreated,
@@ -13,10 +14,10 @@ async function getEffectiveUserId() {
   if (!user) return null;
   const { data: profile } = await window.sb.from('profiles').select('linked_id').eq('id', user.id).maybeSingle();
   if (profile && profile.linked_id && profile.linked_id !== user.id) {
-    _globalUserId = profile.linked_id;
+    setGlobalUserId(profile.linked_id);
     return profile.linked_id;
   }
-  _globalUserId = user.id;
+  setGlobalUserId(user.id);
   return user.id;
 }
 
@@ -33,7 +34,7 @@ async function getMyProfile() {
   const { data: profile } = await window.sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
   if (!profile) {
     // Create default profile
-    const nickname = localStorage.getItem('social-nickname') || '用户' + user.id.slice(0, 4);
+    const nickname = window.__storage.getRaw('social-nickname') || '用户' + user.id.slice(0, 4);
     const { data, error } = await window.sb.from('profiles').insert({ id: user.id, nickname }).select().single();
     if (error) { console.error('[Supabase] getMyProfile insert error:', error); return null; }
     return data;
@@ -50,7 +51,7 @@ async function updateProfile(updates) {
   if (!window.sb) return null;
   const user = await ensureSession();
   if (!user) return null;
-  if (updates.nickname) localStorage.setItem('social-nickname', updates.nickname);
+  if (updates.nickname) window.__storage.setRaw('social-nickname', updates.nickname);
   const { data, error } = await window.sb.from('profiles').update(updates).eq('id', user.id).select().single();
   if (error) { console.error('[Supabase] updateProfile error:', error); return null; }
   return data;
@@ -463,3 +464,38 @@ async function getTrashSizes() {
   if (error) return null;
   return data;
 }
+
+export {
+  getEffectiveUserId,
+  getProfile,
+  getMyProfile,
+  updateProfile,
+  uploadAvatar,
+  compressImage,
+  uploadPostImage,
+  createPost,
+  getFeedPosts,
+  deletePost,
+  toggleLike,
+  getComments,
+  addComment,
+  getFriendIds,
+  getFriends,
+  getFriendRequests,
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  removeFriend,
+  getProfileByUserId,
+  getProfileByDisplayId,
+  isAdmin,
+  clearAllSocialData,
+  deleteAllStorageFiles,
+  getTrashStats,
+  restoreAllData,
+  emptyTrash,
+  resetSelected,
+  restoreSelected,
+  emptySelected,
+  getTrashSizes
+};

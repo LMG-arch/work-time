@@ -1,10 +1,10 @@
-// updater.js — 应用内版本检查与更新提示
+// updater.js — 应用内版本检查与更新提示 (ESM 模块)
 
 const UPDATE_CHECK_URL = 'https://raw.githubusercontent.com/LMG-arch/work-time/main/version.json';
 const UPDATE_CHECK_INTERVAL = 12 * 60 * 60 * 1000; // 12小时检查一次
 
 // 获取本地版本号
-async function getLocalVersion() {
+export async function getLocalVersion() {
   // Android Capacitor 环境
   if (window.Capacitor && window.Capacitor.Plugins) {
     try {
@@ -34,7 +34,7 @@ async function getLocalVersion() {
 }
 
 // 版本比较：返回 1 (a>b), 0 (a=b), -1 (a<b)
-function compareVersions(a, b) {
+export function compareVersions(a, b) {
   const pa = a.split('.').map(Number);
   const pb = b.split('.').map(Number);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
@@ -47,7 +47,7 @@ function compareVersions(a, b) {
 }
 
 // 检查更新
-async function checkForUpdate(silent) {
+export async function checkForUpdate(silent) {
   try {
     const local = await getLocalVersion();
 
@@ -75,7 +75,7 @@ async function checkForUpdate(silent) {
 }
 
 // 显示更新弹窗
-function showUpdateDialog(remote) {
+export function showUpdateDialog(remote) {
   // 移除已有的更新弹窗
   const existing = document.getElementById('update-modal');
   if (existing) existing.remove();
@@ -114,7 +114,10 @@ function showUpdateDialog(remote) {
 }
 
 // 下载 APK（显示进度）
-function startDownload(url) {
+export function startDownload(url) {
+  const safeUrl = sanitizeUrl(url);
+  if (!safeUrl) { showToast('更新地址无效，已取消下载'); return; }
+  url = safeUrl;
   const isAndroid = isCapacitorPlatform();
 
   if (isAndroid) {
@@ -139,7 +142,7 @@ function startDownload(url) {
 }
 
 // 启动时自动检查更新（静默模式）
-async function autoCheckUpdate() {
+export async function autoCheckUpdate() {
   // 延迟 5 秒后检查，避免影响启动速度
   setTimeout(async () => {
     const remote = await checkForUpdate(true);
@@ -150,7 +153,7 @@ async function autoCheckUpdate() {
 }
 
 // 手动检查更新（从设置页触发）
-async function manualCheckUpdate() {
+export async function manualCheckUpdate() {
   showToast('正在检查更新...');
   const remote = await checkForUpdate(false);
   if (remote) {

@@ -60,11 +60,8 @@ export const useReminderStore = defineStore('reminder', () => {
 
   function getWaterCount(dateStr) {
     try {
-      const raw = localStorage.getItem('water-records')
-      if (raw) {
-        const records = JSON.parse(raw)
-        return records[dateStr] || 0
-      }
+      const records = window.__storage.get('water-records')
+      if (records) return records[dateStr] || 0
     } catch { /* ignore */ }
     return 0
   }
@@ -72,13 +69,13 @@ export const useReminderStore = defineStore('reminder', () => {
   function setWaterCount(dateStr, count) {
     let records = {}
     try {
-      const raw = localStorage.getItem('water-records')
-      if (raw) records = JSON.parse(raw)
+      const existing = window.__storage.get('water-records')
+      if (existing) records = existing
     } catch { /* ignore */ }
     records[dateStr] = Math.max(0, count)
     const keys = Object.keys(records).sort()
     while (keys.length > 30) { delete records[keys.shift()] }
-    localStorage.setItem('water-records', JSON.stringify(records))
+    window.__storage.set('water-records', records)
     waterCount.value = count
   }
 

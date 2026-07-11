@@ -1,25 +1,34 @@
-// supabase-core.js — Supabase 客户端配置、认证、账号系统
+// supabase/client.js — Supabase 客户端配置、认证、账号系统（ESM 模块）
+// 客户端构造继续保持使用全局 window.supabase（UMD，来自 lib/supabase.min.js），不替换为 npm import。
+// 复用 window.__storage（由 shims.js 注入）做本地持久化；不动任何服务器 SQL / RPC。
 
+// 共享跨模块状态：此前 _globalUserId 是 social.js 声明、core.js 写入的词法全局；
+// 转 ESM 后词法全局消失，这里集中为模块级变量并暴露访问器。
+let _globalUserId = null;
+export function getGlobalUserId() { return _globalUserId; }
+export function setGlobalUserId(id) { _globalUserId = id; }
+
+// 初始化为 null，与经典脚本行为一致
 window.sb = null;
 
 function getSupabaseConfig() {
   try {
-    const raw = localStorage.getItem('supabase-config');
-    if (raw) return JSON.parse(raw);
+    const obj = window.__storage.get('supabase-config');
+    if (obj) return obj;
   } catch (e) { console.warn('[Config] Failed to parse supabase config:', e.message); }
   return { url: '', key: '' };
 }
 
 function saveSupabaseConfig(url, key) {
-  localStorage.setItem('supabase-config', JSON.stringify({ url, key }));
+  window.__storage.set('supabase-config', { url, key });
 }
 
 // Store bound user UUID locally so we survive session expiry
 function getBoundUserId() {
-  return localStorage.getItem('social-bound-user-id') || '';
+  return window.__storage.getRaw('social-bound-user-id') || '';
 }
 function setBoundUserId(id) {
-  if (id) localStorage.setItem('social-bound-user-id', id);
+  if (id) window.__storage.setRaw('social-bound-user-id', id);
 }
 
 function initSupabase() {
@@ -109,7 +118,7 @@ async function ensureSession() {
 async function restoreExpiredSession() {
   if (!window.sb) return null;
   const savedUsername = getSavedUsername();
-  const savedHash = localStorage.getItem(ACCOUNT_HASH_KEY);
+  const savedHash = window.__storage.getRaw(ACCOUNT_HASH_KEY);
   const savedSalt = getSavedSalt();
   if (!savedUsername || !savedHash || !savedSalt) return null;
 
@@ -130,7 +139,7 @@ async function restoreExpiredSession() {
     }
 
     console.log('[Auth] Session restored for', savedUsername);
-    _globalUserId = loginData.user_id;
+    setGlobalUserId(loginData.user_id);
     setBoundUserId(loginData.user_id);
     return data.user;
   } catch (e) {
@@ -166,14 +175,13 @@ async function hashPassword(password, salt) {
 
 // 获取已保存的盐值（用于登录/恢复）
 function getSavedSalt() {
-  return localStorage.getItem(ACCOUNT_SALT_KEY) || '';
+  return window.__storage.getRaw(ACCOUNT_SALT_KEY) || '';
 }
 
 async function registerAccount(username, password) {
   if (!window.sb) return { error: '未配置服务' };
   if (!username || username.length < 2) return { error: '用户名至少2个字符' };
   if (!password || password.length < 4) return { error: '密码至少4个字符' };
-
   // Use existing session if available, otherwise create one
   let user = await getCurrentUser();
   if (!user) {
@@ -193,17 +201,16 @@ async function registerAccount(username, password) {
   if (error) return { error: error.message };
   if (data && data.error) return { error: data.error };
 
-  localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
-  localStorage.setItem(ACCOUNT_HASH_KEY, pwHash);
-  localStorage.setItem(ACCOUNT_SALT_KEY, salt);
-  _globalUserId = user.id;
+  window.__storage.setRaw(ACCOUNT_USERNAME_KEY, username);
+  window.__storage.setRaw(ACCOUNT_HASH_KEY, pwHash);
+  window.__storage.setRaw(ACCOUNT_SALT_KEY, salt);
+  setGlobalUserId(user.id);
   return { user: { id: user.id } };
 }
 
 async function loginAccount(username, password) {
   if (!window.sb) return { error: '未配置服务' };
   if (!username || !password) return { error: '请输入用户名和密码' };
-
   // Use existing session if available, otherwise create one
   let currentUser = await getCurrentUser();
   if (!currentUser) {
@@ -225,18 +232,18 @@ async function loginAccount(username, password) {
   if (data && data.error) return { error: data.error };
 
   const userId = data.user_id;
-  localStorage.setItem(ACCOUNT_USERNAME_KEY, username);
-  localStorage.setItem(ACCOUNT_HASH_KEY, pwHash);
+  window.__storage.setRaw(ACCOUNT_USERNAME_KEY, username);
+  window.__storage.setRaw(ACCOUNT_HASH_KEY, pwHash);
   // 保持盐值不变（已在上方通过 getSavedSalt 获取）
   setBoundUserId(userId);
-  _globalUserId = userId;
+  setGlobalUserId(userId);
   return { user: { id: userId } };
 }
 
 // Auto-restore login on app start (uses saved credentials)
 async function restoreAccount() {
   const username = getSavedUsername();
-  const pwHash = localStorage.getItem(ACCOUNT_HASH_KEY);
+  const pwHash = window.__storage.getRaw(ACCOUNT_HASH_KEY);
   const salt = getSavedSalt();
   if (!username || !pwHash || !salt || !window.sb) return false;
 
@@ -246,7 +253,7 @@ async function restoreAccount() {
     const profile = await getProfile(currentUser.id);
     if (profile && profile.username === username) {
       // Already logged in as the right user
-      _globalUserId = currentUser.id;
+      setGlobalUserId(currentUser.id);
       return true;
     }
   }
@@ -271,7 +278,7 @@ async function restoreAccount() {
 
     const userId = data.user_id;
     setBoundUserId(userId);
-    _globalUserId = userId;
+    setGlobalUserId(userId);
     return true;
   } catch { return false; }
 }
@@ -280,13 +287,35 @@ async function logoutAccount() {
   if (window.sb) {
     try { await window.sb.auth.signOut(); } catch (e) { console.warn('[Auth] signOut failed:', e.message); }
   }
-  localStorage.removeItem(ACCOUNT_USERNAME_KEY);
-  localStorage.removeItem(ACCOUNT_HASH_KEY);
-  localStorage.removeItem(ACCOUNT_SALT_KEY);
-  localStorage.removeItem('social-bound-user-id');
-  _globalUserId = null;
+  window.__storage.remove(ACCOUNT_USERNAME_KEY);
+  window.__storage.remove(ACCOUNT_HASH_KEY);
+  window.__storage.remove(ACCOUNT_SALT_KEY);
+  window.__storage.remove('social-bound-user-id');
+  setGlobalUserId(null);
 }
 
 function getSavedUsername() {
-  return localStorage.getItem(ACCOUNT_USERNAME_KEY) || '';
+  return window.__storage.getRaw(ACCOUNT_USERNAME_KEY) || '';
 }
+
+export {
+  getSupabaseConfig,
+  saveSupabaseConfig,
+  getBoundUserId,
+  setBoundUserId,
+  initSupabase,
+  getCurrentUser,
+  ensureSession,
+  restoreExpiredSession,
+  generateSalt,
+  hashPassword,
+  getSavedSalt,
+  registerAccount,
+  loginAccount,
+  restoreAccount,
+  logoutAccount,
+  getSavedUsername,
+  ACCOUNT_USERNAME_KEY,
+  ACCOUNT_HASH_KEY,
+  ACCOUNT_SALT_KEY
+};

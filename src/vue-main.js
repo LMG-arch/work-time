@@ -1,3 +1,5 @@
+import './shared.js'
+import './shims.js'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './components/App.vue'

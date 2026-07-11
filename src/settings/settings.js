@@ -1,6 +1,6 @@
 // settings.js — Settings view, theme, auto-launch
 
-function renderSettingsView() {
+export function renderSettingsView() {
   // Theme grid
   const grid = document.getElementById('settings-theme-grid');
   const currentTheme = document.body.dataset.theme || 'default';
@@ -35,17 +35,17 @@ function renderSettingsView() {
   checkAndroidPermissions();
 }
 
-function setTheme(themeId) {
+export function setTheme(themeId) {
   document.body.dataset.theme = themeId;
-  localStorage.setItem('calendar-theme', themeId);
+  window.__storage.setRaw('calendar-theme', themeId);
 }
 
-function loadTheme() {
-  const saved = localStorage.getItem('calendar-theme') || 'cosmic';
+export function loadTheme() {
+  const saved = window.__storage.getRaw('calendar-theme') || 'cosmic';
   document.body.dataset.theme = saved;
 }
 
-async function updateAutoLaunchBtn() {
+export async function updateAutoLaunchBtn() {
   const enabled = await window.calendarAPI.getAutoLaunch();
   const btn = document.getElementById('auto-launch-btn');
   if (!btn) return;
@@ -54,7 +54,7 @@ async function updateAutoLaunchBtn() {
 }
 
 // Android permissions check
-async function checkAndroidPermissions() {
+export async function checkAndroidPermissions() {
   const group = document.getElementById('android-perms-group');
   if (!group || !isCapacitorPlatform()) return;
 
@@ -179,7 +179,7 @@ async function checkAndroidPermissions() {
   }
 }
 
-function updatePermStatus(key, granted) {
+export function updatePermStatus(key, granted) {
   const el = document.querySelector(`.perm-status[data-key="${key}"]`);
   if (!el) return;
   if (granted === null) {

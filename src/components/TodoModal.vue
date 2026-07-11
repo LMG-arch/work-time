@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from 'reka-ui'
 import { useTodoStore } from '../stores/todoStore.js'
 import { useCalendarStore } from '../stores/calendarStore.js'
+import { Lunar } from '../lunar.js'
 
 const todoStore = useTodoStore()
 const calendarStore = useCalendarStore()
@@ -53,21 +54,21 @@ window.__openTodoModal = (todo) => {
 window.__closeTodoModal = () => { visible.value = false }
 
 const lunarMonths = computed(() => {
-  return window.Lunar ? window.Lunar.MonthCN.map((name, i) => ({ value: i + 1, label: name + '月' })) : []
+  return Lunar ? Lunar.MonthCN.map((name, i) => ({ value: i + 1, label: name + '月' })) : []
 })
 const lunarDays = computed(() => {
   const days = []
   for (let d = 1; d <= 30; d++) {
-    const label = window.Lunar ? window.Lunar.dayCN(d) : String(d)
+    const label = Lunar ? Lunar.dayCN(d) : String(d)
     days.push({ value: d, label })
   }
   return days
 })
 
 const lunarHint = computed(() => {
-  if (!dateVal.value || !window.Lunar) return ''
+  if (!dateVal.value || !Lunar) return ''
   const parts = dateVal.value.split('-')
-  const lunar = window.Lunar.solar2lunar(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+  const lunar = Lunar.solar2lunar(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
   return lunar ? lunar.full : ''
 })
 
@@ -80,7 +81,7 @@ function lunarToSolar(lunarM, lunarD) {
     for (let m = 0; m < 12; m++) {
       const dim = new Date(y, m + 1, 0).getDate()
       for (let d = 1; d <= dim; d++) {
-        const lunar = window.Lunar.solar2lunar(y, m, d)
+        const lunar = Lunar.solar2lunar(y, m, d)
         if (lunar.lunarMonth === lunarM && lunar.lunarDay === lunarD && !lunar.isLeap) {
           return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
         }

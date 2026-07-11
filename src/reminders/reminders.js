@@ -1,13 +1,13 @@
 // reminders.js — Clock-in, reminders, notifications
 
-async function loadReminders() {
+export async function loadReminders() {
   allReminders = await window.calendarAPI.getReminders();
   window.allReminders = allReminders;
 }
 
 // 生成不重复的通知 ID（Java int 范围：-2147483648 ~ 2147483647）
 let _notifIdCounter = 0;
-function generateNotifId() {
+export function generateNotifId() {
   _notifIdCounter = (_notifIdCounter + 1) % 1000000;
   const rand = crypto.getRandomValues(new Uint32Array(1))[0] % 1000;
   const raw = Math.floor(Date.now() / 1000) % 1000000 * 1000 + _notifIdCounter + rand;
@@ -15,16 +15,16 @@ function generateNotifId() {
   return id > 0 ? id : id + 2147483647;
 }
 
-async function loadReminderRecords() {
+export async function loadReminderRecords() {
   allReminderRecords = await window.calendarAPI.getAllReminderRecords();
   window.allReminderRecords = allReminderRecords;
 }
 
-function getReminderRecordsForDate(dateStr) {
+export function getReminderRecordsForDate(dateStr) {
   return allReminderRecords[dateStr] || {};
 }
 
-function isReminderConfirmed(reminderId, dateStr) {
+export function isReminderConfirmed(reminderId, dateStr) {
   const records = allReminderRecords[dateStr];
   return records && records[reminderId] && records[reminderId].confirmed;
 }
@@ -33,7 +33,7 @@ function isReminderConfirmed(reminderId, dateStr) {
 
 // 合并后：仅处理非 Vue 部分（today-label, water-tracker），
 // 其余由 Vue 组件 ReminderList / ReminderHistory 接管
-function renderClockinView() {
+export function renderClockinView() {
   updateMonthLabel();
   const todayStr = getTodayStr();
   const label = document.getElementById('clockin-today-label');
@@ -57,28 +57,28 @@ if (!window._notifRescheduleRegistered) {
 }
 
 // 喝水记录
-function getWaterCount(dateStr) {
+export function getWaterCount(dateStr) {
   try {
-    const raw = localStorage.getItem('water-records');
-    if (raw) { const records = JSON.parse(raw); return records[dateStr] || 0; }
+    const records = window.__storage.get('water-records');
+    if (records) return records[dateStr] || 0;
   } catch (e) { console.warn('[Water] Failed to parse records:', e.message); }
   return 0;
 }
 
-function setWaterCount(dateStr, count) {
+export function setWaterCount(dateStr, count) {
   let records = {};
   try {
-    const raw = localStorage.getItem('water-records');
-    if (raw) records = JSON.parse(raw);
+    const existing = window.__storage.get('water-records');
+    if (existing) records = existing;
   } catch (e) { console.warn('[Water] Failed to parse records:', e.message); }
   records[dateStr] = Math.max(0, count);
   // 只保留最近30天的记录
   const keys = Object.keys(records).sort();
   while (keys.length > 30) { delete records[keys.shift()]; }
-  localStorage.setItem('water-records', JSON.stringify(records));
+  window.__storage.set('water-records', records);
 }
 
-function renderWaterTracker() {
+export function renderWaterTracker() {
   const container = document.getElementById('water-tracker');
   if (!container) return;
   const todayStr = getTodayStr();
@@ -129,7 +129,7 @@ function renderWaterTracker() {
   });
 }
 
-async function sendTestNotification() {
+export async function sendTestNotification() {
   const isCapacitor = isCapacitorPlatform();
 
   if (isCapacitor) {
@@ -213,7 +213,7 @@ async function sendTestNotification() {
 }
 
 // 诊断通知状态
-async function diagnoseNotifications() {
+export async function diagnoseNotifications() {
   const isCapacitor = isCapacitorPlatform();
   const results = [];
 
@@ -289,7 +289,7 @@ async function diagnoseNotifications() {
   alert('通知诊断结果:\n\n' + results.join('\n'));
 }
 
-function getClockinStatusForDate(dateStr) {
+export function getClockinStatusForDate(dateStr) {
   const enabled = allReminders.filter(r => r.enabled);
   if (enabled.length === 0) return null;
   const records = allReminderRecords[dateStr] || {};
@@ -301,7 +301,7 @@ function getClockinStatusForDate(dateStr) {
 // 防止重复注册监听器
 let _notifListenersRegistered = false;
 
-async function scheduleReminderNotifications() {
+export async function scheduleReminderNotifications() {
   if (reminderNotifTimer) clearInterval(reminderNotifTimer);
 
   const enabled = allReminders.filter(r => r.enabled);
@@ -564,7 +564,7 @@ async function scheduleReminderNotifications() {
 
 let todoRemindTimer = null;
 
-function scheduleTodoReminders() {
+export function scheduleTodoReminders() {
   if (todoRemindTimer) clearInterval(todoRemindTimer);
 
   const isCapacitor = isCapacitorPlatform();
@@ -689,7 +689,7 @@ function scheduleTodoReminders() {
           });
           notif.onclick = () => { window.focus(); switchView('clockin'); };
         } catch (e) {
-          console.warn('[TodoRemind] Web notification error:', e);
+          console.warn('[TodoRemind] Web notification error:', e.message);
         }
       }
     }

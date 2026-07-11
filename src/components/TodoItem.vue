@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useTodoStore } from '../stores/todoStore.js'
+import { Lunar } from '../lunar.js'
 
 const todoStore = useTodoStore()
 
@@ -28,7 +29,7 @@ const remindLabel = computed(() => {
 const dateDisplay = computed(() => {
   if (!props.todo.date) return ''
   const d = new Date(props.todo.date + 'T00:00:00')
-  const lunar = window.Lunar?.solar2lunar(d.getFullYear(), d.getMonth(), d.getDate())
+  const lunar = Lunar?.solar2lunar(d.getFullYear(), d.getMonth(), d.getDate())
   return lunar ? `${props.todo.date} ${lunar.full}` : props.todo.date
 })
 

@@ -1,18 +1,19 @@
-// utils.js — Shared utilities
+// utils.js — Shared utilities (ESM)
+// 已迁移为 ES 模块；经典 <script> 通过 src/shims.js 的 window.* 垫片继续调用。
 
-function escapeHtml(str) {
+export function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function sanitizeUrl(url) {
+export function sanitizeUrl(url) {
   if (!url) return '';
   const s = String(url);
   if (s.startsWith('https://') || s.startsWith('http://')) return s;
   return '';
 }
 
-function showToast(msg) {
+export function showToast(msg) {
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
   const toast = document.createElement('div');
@@ -23,24 +24,24 @@ function showToast(msg) {
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 1800);
 }
 
-function getTodayStr() {
+export function getTodayStr() {
   const today = new Date();
   return dateToStr(today.getFullYear(), today.getMonth(), today.getDate());
 }
 
-function dateToStr(year, month, day) {
+export function dateToStr(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function getDaysInMonth(year, month) {
+export function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
 }
 
-function getFirstDayOfWeek(year, month) {
+export function getFirstDayOfWeek(year, month) {
   return (new Date(year, month, 1).getDay() + 6) % 7;
 }
 
-function formatDateCN(dateStr) {
+export function formatDateCN(dateStr) {
   const WEEKDAYS_CN = ['日', '一', '二', '三', '四', '五', '六'];
   const d = new Date(dateStr + 'T00:00:00');
   const weekDay = WEEKDAYS_CN[d.getDay()];
@@ -48,18 +49,18 @@ function formatDateCN(dateStr) {
   return `${parts[0]}年${parseInt(parts[1])}月${parseInt(parts[2])}日 星期${weekDay}`;
 }
 
-function isCapacitorPlatform() {
+export function isCapacitorPlatform() {
   return typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
 }
 
 // Escape for use inside HTML attribute values
-function escapeAttr(str) {
+export function escapeAttr(str) {
   if (!str) return '';
   return String(str).replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // Show diagnostic result popup (used by Supabase connection test)
-function showDiag(message) {
+export function showDiag(message) {
   const existing = document.getElementById('diag-panel');
   if (existing) existing.remove();
   const panel = document.createElement('div');
@@ -75,7 +76,7 @@ function showDiag(message) {
 // 带 LRU 缓存，key 为 `${year}-${lunarMonth}-${lunarDay}`
 const _lunarToSolarCache = new Map();
 const _lunarToSolarCacheMax = 500;
-function lunarToSolar(year, lunarMonth, lunarDay) {
+export function lunarToSolar(year, lunarMonth, lunarDay) {
   if (!window.Lunar) return null;
   const key = `${year}-${lunarMonth}-${lunarDay}`;
   const cached = _lunarToSolarCache.get(key);
@@ -100,4 +101,3 @@ function lunarToSolar(year, lunarMonth, lunarDay) {
   _lunarToSolarCache.set(key, null);
   return null;
 }
-window.lunarToSolar = lunarToSolar;
