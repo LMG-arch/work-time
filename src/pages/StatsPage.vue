@@ -123,7 +123,7 @@ function exportImage() {
     <div v-if="stats.sortedTags.length > 0" class="ratio-section">
       <div class="theme-title">标签统计</div>
       <div class="tag-stats-list">
-        <div v-for="[tag, count] in stats.sortedTags" :key="tag" class="tag-stat-item">
+        <div v-for="([tag, count], i) in stats.sortedTags" :key="tag" class="tag-stat-item" :style="{ '--i': i }">
           <span class="tag-chip static">{{ tag }}</span>
           <span class="tag-stat-count">{{ count }}次</span>
         </div>
@@ -133,7 +133,7 @@ function exportImage() {
     <div v-if="stats.dayRecords.length > 0">
       <div class="records-title">本月记录 ({{ stats.dayRecords.length }}天)</div>
       <div class="records-list">
-        <div v-for="r in stats.dayRecords" :key="r.day" class="record-item">
+        <div v-for="(r, i) in stats.dayRecords" :key="r.day" class="record-item" :style="{ '--i': i }">
           <div class="record-head">
             <span class="record-date">{{ r.day }}日 周{{ WEEKDAYS[new Date(r.dateStr + 'T00:00:00').getDay()] }} <span v-if="r.holiday" :class="'record-holiday ' + r.holiday.type">{{ r.holiday.name }}</span></span>
             <span :class="'record-status ' + (r.status || 'none')">{{ STATUS_LABELS[r.status] || '未标记' }}</span>

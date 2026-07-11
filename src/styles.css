@@ -2244,7 +2244,6 @@ body[data-theme] .day-cell { transition: background .2s ease, box-shadow .2s eas
 @media (prefers-reduced-motion: no-preference) {
   body:not([data-theme="cosmic"]) .stat-card,
   body:not([data-theme="cosmic"]) .post-card,
-  body:not([data-theme="cosmic"]) .record-item,
   body:not([data-theme="cosmic"]) .settings-group,
   body:not([data-theme="cosmic"]) .modal-content,
   body:not([data-theme="cosmic"]) .post-modal-content {
@@ -2255,3 +2254,93 @@ body[data-theme] .day-cell { transition: background .2s ease, box-shadow .2s eas
 /* 5) 切换主题淡入淡出（View Transitions API，不支持则自动降级为即时切换） */
 ::view-transition-old(root),
 ::view-transition-new(root) { animation-duration: .35s; }
+
+/* ============================================================
+   2026-06-29 · Phase 1 质感与排版
+   - 玻璃面极淡颗粒（feTurbulence 噪声，opacity<0.04，不抢戏）
+   - 按钮墨水波纹 .ripple（指数缓动，跟随 currentColor）
+   - 标题性格中文字体（衬线编辑感）+ 数字等宽对齐（tnum）
+   - 列表错落入场（revealUp，尊重 reduced-motion）
+   ============================================================ */
+
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", "STSong", "Source Han Serif SC", "SimSun", serif;
+}
+
+/* 1) 玻璃面极淡颗粒：作为 ::before 噪声层叠加，仅作质感，不影响可读性与对比 */
+body[data-theme] .stat-card,
+body[data-theme] .post-card,
+body[data-theme] .record-item,
+body[data-theme] .settings-group,
+body[data-theme] .modal-content,
+body[data-theme] .post-modal-content { position: relative; }
+
+body[data-theme] .stat-card::before,
+body[data-theme] .post-card::before,
+body[data-theme] .record-item::before,
+body[data-theme] .settings-group::before,
+body[data-theme] .modal-content::before,
+body[data-theme] .post-modal-content::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+/* 2) 按钮墨水波纹（由 effects/ripple.js 注入 <span class="ripple">） */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+  transform: scale(0);
+  opacity: 0.55;
+  pointer-events: none;
+  animation: ripple-expand .6s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+@keyframes ripple-expand { to { transform: scale(2.6); opacity: 0; } }
+
+/* 3) 标题性格中文字体：衬线编辑感，用于诗意条与区块标题 */
+.daily-poetic {
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: 12.5px;
+  letter-spacing: 1.5px;
+  color: var(--text3);
+  opacity: 0.92;
+  margin: 2px 0 6px;
+  padding: 0 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.theme-title, .records-title {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* 4) 数字等宽对齐（tnum）：统计数字、月份、日期、标签次数 */
+.stat-num, .month-label, .record-date, .tag-stat-count {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 5) 列表错落入场（revealUp）：仅非 cosmic，使用独立 translate 属性避免与 hover transform 冲突 */
+@keyframes revealUp {
+  from { opacity: 0; translate: 0 16px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  body:not([data-theme="cosmic"]) .record-item,
+  body:not([data-theme="cosmic"]) .tag-stat-item {
+    animation: revealUp .5s cubic-bezier(.16, 1, .3, 1) both;
+    animation-delay: calc(var(--i, 0) * 55ms);
+  }
+  .daily-poetic { animation: cardIn .8s ease both; }
+}

@@ -1,14 +1,14 @@
 {
-  "version": "3.13.1",
-  "versionCode": 28,
-  "releaseDate": "2026-07-07",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.13.1/work-calendar-v3.13.1.apk",
+  "version": "3.15.0",
+  "versionCode": 30,
+  "releaseDate": "2026-06-29",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.15.0/work-calendar-v3.15.0.apk",
   "changelog": [
-    "修复 Electron 页面切换不显示（Vue SFC 编译问题）",
-    "修复 Electron 启动失败（isDev 重复声明）",
-    "修复喝水记录 emoji 显示为问号",
-    "修复页面布局不自适应窗口宽度（移除 420px 硬编码）",
-    "新增一键构建启动脚本"
+    "标题衬线中文字体 + 数字等宽对齐（tnum）",
+    "玻璃卡片极淡颗粒质感（feTurbulence 噪声）",
+    "日历顶栏每日诗意 / 节气文案",
+    "按钮墨水波纹（主题色，受开关与 reduced-motion 守卫）",
+    "列表错落入场动画（stagger）"
   ],
   "forceUpdate": false
 }

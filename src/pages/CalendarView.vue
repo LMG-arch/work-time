@@ -5,11 +5,14 @@ import { useTodoStore } from '../stores/todoStore.js'
 import { useReminderStore } from '../stores/reminderStore.js'
 import { useAppStore } from '../stores/appStore.js'
 import DetailPanel from '../components/DetailPanel.vue'
+import { dailyLine } from '../data/poetry'
 
 const calendarStore = useCalendarStore()
 const todoStore = useTodoStore()
 const reminderStore = useReminderStore()
 const appStore = useAppStore()
+
+const dailyPoetic = ref(dailyLine())
 
 const refreshCount = ref(0)
 const currentYear = ref(new Date().getFullYear())
@@ -171,6 +174,8 @@ onMounted(async () => {
       <button class="nav-btn" @click="nextMonth">&gt;</button>
       <button class="today-btn" @click="goToday">今天</button>
     </div>
+
+    <div class="daily-poetic">{{ dailyPoetic }}</div>
 
     <div class="weekday-row">
       <span v-for="d in DAYS_CN" :key="d">{{ d }}</span>

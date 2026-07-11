@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import SettingsPage from '../pages/SettingsPage.vue'
 import StatsPage from '../pages/StatsPage.vue'
 import CalendarView from '../pages/CalendarView.vue'
@@ -7,6 +7,8 @@ import SocialPage from '../pages/SocialPage.vue'
 import ClockinPage from '../pages/ClockinPage.vue'
 import TodoModal from './TodoModal.vue'
 import ReminderSettings from './ReminderSettings.vue'
+import EffectLayer from '../effects/EffectLayer.vue'
+import { installRipple } from '../effects/ripple'
 
 const PAGES = {
   calendar: CalendarView,
@@ -36,6 +38,11 @@ window.__vueActivate = activate
 window.__vueDeactivate = () => { activePage.value = null }
 
 const currentComponent = computed(() => (activePage.value ? PAGES[activePage.value] : null))
+
+onMounted(() => {
+  // 全局按钮墨水波纹：受 premium 总开关与 prefers-reduced-motion 守卫
+  installRipple()
+})
 </script>
 
 <template>
@@ -49,4 +56,7 @@ const currentComponent = computed(() => (activePage.value ? PAGES[activePage.val
   <!-- 全局对话框：在任何页面都可用 -->
   <TodoModal />
   <ReminderSettings />
+
+  <!-- 全局视觉特效层（花瓣/拖尾/粒子都画在这里，不挡交互） -->
+  <EffectLayer />
 </template>

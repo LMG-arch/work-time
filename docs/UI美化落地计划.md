@@ -116,3 +116,10 @@ Phase 5  数据信息  ──► v3.16.0  信息密度升级
 1. 确认本计划分阶段顺序与版本号节奏（是否有要调整优先级的功能）。
 2. 锁定 Phase 0 架构（效果调度器 + 配置 + 守卫）先合入。
 3. 从 Phase 1 起逐阶段实现，每阶段独立提交。
+
+---
+
+## 七、进度追踪
+
+- **2026-06-29**：✅ Phase 0 架构地基已完成并通过 `vite build`。新增 `src/effects/`（EffectLoop 单一 RAF 调度器 / registry 效果注册表 / useReducedMotion 守卫 / themeColor 主题色读取 / EffectLayer.vue 全局画布层），`appStore.premium` 配置接入，`App.vue` 挂载全局效果层。
+- **2026-06-29**：✅ Phase 1 质感与排版已完成并 `npm run build` 通过。交付 5 项：① 标题衬线字体（系统栈 `--font-serif`）+ 数字等宽 `tnum`；② 玻璃面 feTurbulence 极淡颗粒（6 类卡片 `::before`）；③ 每日诗意/节气文案挂日历顶栏 `.daily-poetic`；④ 按钮墨水波纹 `effects/ripple.js`（全局委托，premium/reduced-motion 守卫）；⑤ 列表错落入场 `revealUp` + `--i` stagger（独立 `translate` 属性，避免与 hover 冲突）。下一步进入 Phase 2（微交互：磁吸倾斜 / 空状态插画）。
