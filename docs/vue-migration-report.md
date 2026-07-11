@@ -214,3 +214,30 @@ const scriptSrc = isDev ? "'self' 'unsafe-inline'" : "'self'";
 1. **Electron CSP 调试必须用响应头注入验证** —— `evaluateOnNewDocument` 不能模拟 CSP 效果
 2. **开发模式 CSP 应与生产不同** —— Vite HMR / ESM dev transform 都依赖 `'unsafe-inline'`
 3. **诊断面板是最有效的调试工具** —— 一步到位定位到「JS 完全没执行」这个精确层级，避免了之前数轮的方向性误判
+
+## 13. 入口改动态 import().catch() + 启动器精准清理残留 Electron（2026-07-11 晚）
+
+### 背景
+上一轮（§12）已确认：CSP 加 `'unsafe-inline'` 后，**内联脚本能执行**（诊断条从静态默认文字变成 `DOM ready, loading modules...`），但真机仍卡在这一步、模块脚本 `./vue-main.js` 永不执行。沙箱用同款 CSP 却完全跑通 —— 矛盾持续。
+
+### 根因（精确定位）
+`index.html` 原用 `<script type="module" src="./vue-main.js">`（**静态模块脚本**）。ESM 静态脚本的任意 `import` 一旦失败（404 / CSP / 网络 / 求值异常），**整个模块图会静默整体失败**：不抛错、不触发 `window.onerror`、不输出任何 `__bootLog` —— 恰好表现为「卡在 DOM ready、后续全无」。这种失败**和具体环境强相关**，所以沙箱能跑、真机不能，且无法直接看到原因。
+
+### 修复（`0030c0b`）
+1. **入口改为动态 `import('./vue-main.js').catch()`**（经典内联脚本触发，已被 `'unsafe-inline'` 放行）。失败时 `.catch` 会把**确切错误**（含 stack）写进诊断面板变红显示；成功则追加 `bootstrap OK` 步骤。这一改要么直接修好、要么把真实错误暴露出来 —— 不再静默。
+2. **启动 CSP 加 `'unsafe-eval'`**：Vite dev 的 HMR / ESM dev transform 部分路径依赖，作为保险。
+3. **启动器精准清理本项目残留 Electron**（`kill-dev.cjs` 升级）：
+   - `main.js` 在 `whenReady` 写 `electron.pid`（本进程 PID），`before-quit` 删除；
+   - `kill-dev.cjs` 先按 PID 文件杀（含进程树），再 WMIC 杀「命令行含项目目录名 `上班日历`」的 `electron.exe`；
+   - **精准匹配，绝不误杀 VS Code / Discord 等其他 Electron 应用**；
+   - 最后才清 5173 端口残留 vite。
+   - 动机：Electron 关闭只最小化到托盘、进程不退出，上一轮残留窗口一直显示旧代码，用户重跑 `.bat` 后可能看的是**旧窗口** → 永久白屏。
+
+### 验证
+- `vite build` 绿；`node --check main.js` / `kill-dev.cjs` 语法绿。
+- 沙箱忠实复现（Vite dev + 代理注入开发 CSP `script-src 'self' 'unsafe-inline' 'unsafe-eval'`）：完整链路跑通，`[BOOT] bootstrap OK — vue-main.js evaluated`，`#app` 显示 `flex`、日历已渲染、无报错浮层。
+- 真机：若仍失败，诊断面板（暗色半透明条）会**变红并显示确切错误文字** —— 把那段红字发回即可精准定位。
+
+### 经验
+- **静态 ESM 模块的「静默整体失败」是 Electron + Vite dev 路上的经典坑**：排查白屏时，优先把入口改成 `import().catch()` 让错误可见，而不是反复猜 CSP。
+- **Electron 最小化到托盘 ≠ 退出**：任何「重跑还是旧样」的现象，第一反应应是「残留进程窗口」，用 PID 文件 / 进程名+路径精准清理，切忌 `taskkill /IM electron.exe` 一刀切（会杀掉 VS Code 等）。
