@@ -1,20 +1,18 @@
 @echo off
-chcp 65001 >nul
 cd /d "%~dp0"
 
-echo ============================================
-echo   上班日历 · 一键启动（生产模式）
-echo ============================================
-
-REM 检查 node 是否在 PATH 中
 where node >nul 2>nul
 if errorlevel 1 (
-    echo [错误] 未检测到 Node.js，请先安装 Node.js 并将其加入 PATH。
+    echo [ERROR] Node.js not found. Please install Node.js and add it to PATH.
     pause
     exit /b 1
 )
 
-REM 判断是否需要重新构建：比较 src 下最新文件与 dist/index.html 的修改时间
+echo ============================================
+echo   Work Calendar - PRODUCTION MODE
+echo ============================================
+
+REM Check if rebuild is needed: compare newest src file mtime vs dist/index.html
 set NEED_BUILD=0
 if not exist "dist\index.html" (
     set NEED_BUILD=1
@@ -24,19 +22,19 @@ if not exist "dist\index.html" (
 )
 
 if %NEED_BUILD%==1 (
-    echo [1/2] 检测到源码有更新，正在重新构建（约 10 秒）...
+    echo [1/2] Source updated, rebuilding (about 10s)...
     call npm run build
     if errorlevel 1 (
-        echo [错误] 构建失败，请检查源码或运行 npm run build 查看详细错误。
+        echo [ERROR] Build failed. Check source or run "npm run build" for details.
         pause
         exit /b 1
     )
 ) else (
-    echo [1/2] dist 已是最新，跳过构建。
+    echo [1/2] dist is up to date, skipping build.
 )
 
-echo [2/2] 启动 Electron 应用...
+echo [2/2] Launching Electron app...
 start "" npm start
 
-echo 完成！应用已在系统托盘启动，点击托盘图标或双击打开。
+echo Done. The app started in the system tray; click the tray icon or double-click to open.
 timeout /t 3 >nul

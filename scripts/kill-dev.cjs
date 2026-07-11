@@ -11,11 +11,8 @@ function pidsOn5173() {
     const out = cp.execSync('netstat -ano', { encoding: 'utf8' })
     const set = new Set()
     out.split('\n').forEach((l) => {
-      if (l.includes(':5173') && l.includes('LISTENING')) {
-        const parts = l.trim().split(/\s+/)
-        const pid = parts[parts.length - 1]
-        if (/^\d+$/.test(pid)) set.add(pid)
-      }
+      const m = l.match(/:5173\b.*LISTENING\s+(\d+)$/i)
+      if (m) set.add(m[1])
     })
     return [...set]
   } catch {
@@ -27,7 +24,7 @@ const pids = pidsOn5173()
 const killed = []
 pids.forEach((pid) => {
   try {
-    cp.execSync('taskkill /PID ' + pid + ' /F', { windowsHide: true })
+    cp.execSync('taskkill /PID ' + pid + ' /F /T', { windowsHide: true })
     killed.push(pid)
   } catch {
     /* 已退出 */
