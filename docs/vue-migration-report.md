@@ -160,3 +160,57 @@
   3. `src/renderer.js` 重构 `DOMContentLoaded` 顺序：**「接线导航栏 + `switchView('calendar')` 揭开 #app」提前到 `await Promise.all(数据加载)` 之前**；数据加载即使卡住也绝不阻塞 UI。删掉末尾重复的 `switchView` 调用与后置的 `setupEventListeners`（避免事件重复绑定 / 二次激活）。
 - 实证（忠实复现真机）：headless Chrome 注入「`calendarAPI` 数据方法返回永不 resolve 的 Promise」模拟 IPC 卡死 —— 结果 `appDisplay:"flex"`、`appChildCount:1`、`appInnerLen:10943`、`calendarGridInApp:true`、`fatalExists:false` → **PASS：#app 可见且日历已渲染（修复生效）**。即无论 IPC 是否卡死，日历都照常显示。
 - 残留观察（与「白屏」无关，非阻塞）：诊断日志有一条 `Failed to load resource: 404`（疑似 favicon 或缺字体外链），不影响渲染；若 `calendarAPI` IPC 真在真机卡死，提醒/待办等数据标记要等 IPC 通了才填充——届时若数据不出现，那是**独立的 IPC 通道问题**，与本修复无关，可另行排查 `src/electron/api.js` 的 preload 桥。
+
+## §12 终极根因：CSP `script-src 'self'` 在开发模式下一刀切死所有 JS（2026-07-11 17:55 确认）
+
+### 现象
+用户真机 Electron 启动后：顶部黄色诊断条停在 `[BOOT] HTML parsed OK, waiting for JS...`（这是 HTML 静态默认文字），后续**所有诊断步骤均未执行**。说明 **JavaScript 完全没有运行**——不是某个步骤失败，而是 JS 引擎根本没执行任何代码。
+
+### 根因
+`main.js` 第 554 行 CSP 规则：
+
+```
+script-src 'self'    ← 没有 'unsafe-inline'
+```
+
+这条规则：
+1. ❌ **阻断内联 `<script>`**（`index.html` 里 `window.__bootLog` 定义和调用、以及 Vite HMR 注入的脚本全部被拦）
+2. ❌ **导致 ESM 模块 `<script type="module">` 无法完成加载链**（Vite 开发模式的模块依赖一些内联机制）
+3. 结果：页面只渲染了纯 HTML/CSS（导航栏 + 诊断条默认文字），**所有 JS 被 CSP 封杀 → 永久白屏**
+
+### 为何之前 headless 测试「正常」
+之前的 CSP 忠实复现测试用的是 `evaluateOnNewDocument`（注入到页面 JS 执行环境）而非**响应头注入**，所以 CSP 从未真正生效。测试结果一直是「绿」，掩盖了真机的真实故障。
+
+### 修复（提交 `7090aca`）
+**开发/生产分离的 CSP 策略**：
+
+```javascript
+const isDev = !app.isPackaged;
+const scriptSrc = isDev ? "'self' 'unsafe-inline'" : "'self'";
+// CSP 中使用: script-src ${scriptSrc}
+```
+
+- **开发模式**：`script-src 'self' 'unsafe-inline'` —— 允许内联脚本（Vite HMR、诊断面板、legacy 兼容代码都需要）
+- **生产模式**：`script-src 'self'` —— 保持严格（`dist` 打包产物无内联脚本）
+
+同时补全了 `connect-src` 缺失的裸域 `https://supabase.co`。
+
+### 实证（headless Chrome + 响应头级 CSP 注入）
+用新 CSP（带 `'unsafe-inline'`）跑完整启动链路：
+
+```
+[BOOT] DOM ready, loading modules...
+[BOOT] shared.js loaded → shims.js loaded → Vue+App imported
+[BOOT] stores initialized → Vue mounted #app, children=1
+[BOOT] DOMContentLoaded → theme loaded → event listeners wired
+[BOOT] switchView(calendar) done, #app display=flex
+[BOOT] loading data via IPC (calendarAPI exists=true)...
+[BOOT] all data loaded OK          ← 全链路 13 步通过 ✅
+```
+
+截图确认：完整 2026 年 7 月日历 + 农历 + 星海暗色主题 + 底部 5 导航按钮。
+
+### 经验教训
+1. **Electron CSP 调试必须用响应头注入验证** —— `evaluateOnNewDocument` 不能模拟 CSP 效果
+2. **开发模式 CSP 应与生产不同** —— Vite HMR / ESM dev transform 都依赖 `'unsafe-inline'`
+3. **诊断面板是最有效的调试工具** —— 一步到位定位到「JS 完全没执行」这个精确层级，避免了之前数轮的方向性误判
