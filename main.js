@@ -547,7 +547,7 @@ function createWindow() {
   // Production mode: strict (dist bundle has no inline scripts)
   const isDev = !app.isPackaged;
   const devConnectSrc = isDev ? ' ws://localhost:* http://localhost:*' : '';
-  const scriptSrc = isDev ? "'self' 'unsafe-inline'" : "'self'";
+  const scriptSrc = isDev ? "'self' 'unsafe-inline' 'unsafe-eval'" : "'self'";
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -744,6 +744,11 @@ function scheduleTodoReminders() {
 // --- App lifecycle ---
 
 app.whenReady().then(() => {
+  // 写入本进程 PID，供「启动-开发模式.bat」精准清理上一轮残留的 Electron
+  // （关闭时只最小化到托盘，进程不退出，残留窗口会一直显示旧代码）。
+  try {
+    fs.writeFileSync(path.join(__dirname, 'electron.pid'), String(process.pid), 'utf8');
+  } catch (_) { /* 忽略 */ }
   initStore();
   registerIPC();
   createWindow();
@@ -762,4 +767,5 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  try { fs.unlinkSync(path.join(__dirname, 'electron.pid')); } catch (_) { /* 忽略 */ }
 });

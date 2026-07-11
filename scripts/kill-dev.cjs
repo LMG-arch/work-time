@@ -1,11 +1,43 @@
-// kill-dev.cjs — 清理占用 5173 端口（Vite 开发服务器）的残留进程。
-// 背景：Electron 关闭时最小化到托盘（main.js 的 win.on('close') 阻止退出），
-// 不会杀死 vite；下一轮「启动-开发模式.bat」再起 vite 时旧实例仍占着 5173，
-// 新的 vite 被迫切到 5174 而无人连接，Electron 连到的还是旧实例（旧代码）→ 永久白屏。
-// 在 npm run dev 之前先跑本脚本，保证 5173 一定归新 vite 所有。
-
+// kill-dev.cjs — 启动前清理本项目的残留进程（端口 5173 上的旧 vite + 上一轮未退出的 Electron）。
+// 关键：只杀「本项目相关」的 Electron，绝不误杀 VS Code / Discord 等其他 Electron 应用。
 const cp = require('child_process')
+const fs = require('fs')
+const path = require('path')
 
+// 1) 读取本应用上一轮写入的 PID，精准杀掉它（含进程树）
+function killOwnElectron() {
+  const pidFile = path.join(__dirname, '..', 'electron.pid')
+  if (!fs.existsSync(pidFile)) return []
+  let pid = ''
+  try { pid = fs.readFileSync(pidFile, 'utf8').trim() } catch { return [] }
+  if (!/^\d+$/.test(pid)) return []
+  try {
+    cp.execSync('taskkill /PID ' + pid + ' /F /T', { windowsHide: true })
+    return [pid]
+  } catch { return [] }
+}
+
+// 2) 兜底：用 WMIC 杀命令行含本项目目录名的 electron.exe（精准匹配，不误杀其他 Electron）
+function killElectronByPath() {
+  const set = new Set()
+  try {
+    const out = cp.execSync(
+      "wmic process where \"name='electron.exe' and commandline like '%上班日历%'\" get processid /format:csv",
+      { encoding: 'utf8', windowsHide: true }
+    )
+    out.split('\n').forEach((l) => {
+      const m = l.match(/(\d+)/)
+      if (m) set.add(m[1])
+    })
+  } catch { /* 忽略 */ }
+  const killed = []
+  set.forEach((pid) => {
+    try { cp.execSync('taskkill /PID ' + pid + ' /F /T', { windowsHide: true }); killed.push(pid) } catch { /* 已退出 */ }
+  })
+  return killed
+}
+
+// 3) 清理占用 5173 端口（vite 开发服务器）的残留进程
 function pidsOn5173() {
   try {
     const out = cp.execSync('netstat -ano', { encoding: 'utf8' })
@@ -15,24 +47,18 @@ function pidsOn5173() {
       if (m) set.add(m[1])
     })
     return [...set]
-  } catch {
-    return []
-  }
+  } catch { return [] }
 }
 
-const pids = pidsOn5173()
 const killed = []
-pids.forEach((pid) => {
-  try {
-    cp.execSync('taskkill /PID ' + pid + ' /F /T', { windowsHide: true })
-    killed.push(pid)
-  } catch {
-    /* 已退出 */
-  }
+killed.push(...killOwnElectron())
+killed.push(...killElectronByPath())
+pidsOn5173().forEach((pid) => {
+  try { cp.execSync('taskkill /PID ' + pid + ' /F /T', { windowsHide: true }); killed.push(pid) } catch { /* 已退出 */ }
 })
 
 if (killed.length) {
-  console.log('[kill-dev] 已清理残留开发服务器进程 (PID: ' + killed.join(', ') + ')')
+  console.log('[kill-dev] 已清理残留进程 (PID: ' + [...new Set(killed)].join(', ') + ')')
 } else {
-  console.log('[kill-dev] 5173 端口干净，无残留进程')
+  console.log('[kill-dev] 无残留进程，环境干净')
 }

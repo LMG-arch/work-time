@@ -6,8 +6,19 @@
   <title>上班日历</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="social.css">
-  <!-- ESM 模块入口（deferred by default, executes after HTML parsed） -->
-  <script type="module" src="./vue-main.js"></script>
+  <!-- 入口：用经典脚本动态 import 模块，并捕获加载/求值错误显示到诊断面板。
+       关键：静态 <script type=module src> 一旦其任意静态 import 失败会「静默整体失败」（无任何报错），
+       改用动态 import().catch() 后，失败时会在屏幕上显示确切错误，便于定位。 -->
+  <script>
+    (window.__bootLog || console.log)('bootstrap: dynamic import ./vue-main.js');
+    import('./vue-main.js')
+      .then(function () { (window.__bootLog || console.log)('bootstrap OK — vue-main.js evaluated'); })
+      .catch(function (e) {
+        var m = (e && (e.stack || e.message)) ? (e.stack || e.message) : String(e);
+        if (window.__bootError) window.__bootError('Module load/eval FAILED: ' + m);
+        else console.error('Module load/eval FAILED:', m);
+      });
+  </script>
 </head>
 <body>
   <!-- 🔍 启动诊断面板：纯内联，不依赖任何外部 JS/CSS -->
