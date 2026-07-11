@@ -686,6 +686,14 @@ MIT
 
 ## 更新日志
 
+### v3.15.3 (2026-06-29) — Phase 4 招牌瞬间（记忆点成型）
+- **主题切换绽放**：切换主题时在屏幕中心绽放一圈主题色辉光环（`color-mix` 主题感知、additive 混色、缓出扩散），由 `body[data-theme]` 变更驱动，复用 Phase 0 单一 RAF
+- **启动闪屏**：App 启动 / 从托盘唤醒时全屏 LOGO（SVG `stroke-dashoffset` 描边绘制）+ 星海汇聚动画，≤1.2s 自动隐藏、点击/Esc 可跳过
+- **成功涟漪**：打卡成功 / 保存成功 / 任务完成时从点击点扩散成功色涟漪（主题感知绿色）；通过拦截全局 `showToast` 一处接入，覆盖所有成功提示，亦支持 `calendar:success` 事件
+- **花瓣庆祝**：连续打卡里程碑（7/30/100 天）从顶部飘落花瓣，密度随里程碑递增；`ReminderList` 打卡成功派发 `calendar:celebrate` 事件，引擎挂在 `EffectLayer` 全局画布
+- **架构**：Phase 4 效果全部并入 Phase 0 `effectRegistry` + `EffectLoop` 单一 RAF，受 `premium` 总开关与 `prefers-reduced-motion` 守卫（premium 关闭 / reduced-motion 时闪屏降级极简、canvas 类效果停绘）
+- **版本**：3.15.2 → 3.15.3（versionCode 32 → 33）
+
 ### v3.15.2 (2026-06-29) — Phase 3 氛围与生命感（宇宙感拉满）
 - **背景呼吸**：全局辉光层（`body[data-theme]::after`）缓慢明暗呼吸，纯 `opacity` 关键帧、合成层零重排，cosmic 星云采用更缓更克制的节奏
 - **鼠标视差**：指针位置写入 CSS 变量 `--px`/`--py`，背景辉光随光标轻微位移（系数 ~14px，< 0.05 视口），与呼吸分别作用于 `transform`/`opacity` 互不打架

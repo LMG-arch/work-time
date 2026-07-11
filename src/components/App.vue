@@ -11,6 +11,8 @@ import EffectLayer from '../effects/EffectLayer.vue'
 import { installRipple } from '../effects/ripple'
 import { installTilt } from '../effects/tilt'
 import { installAmbient } from '../effects/ambient'
+import { installSignature } from '../effects/signature'
+import SplashScreen from './SplashScreen.vue'
 import { useAppStore } from '../stores/appStore'
 
 const PAGES = {
@@ -44,6 +46,8 @@ const currentComponent = computed(() => (activePage.value ? PAGES[activePage.val
 
 const appStore = useAppStore()
 let uninstallAmbient = null
+let uninstallSignature = null
+const showSplash = ref(true)
 
 onMounted(() => {
   // 全局按钮墨水波纹：受 premium 总开关与 prefers-reduced-motion 守卫
@@ -52,9 +56,13 @@ onMounted(() => {
   installTilt()
   // Phase 3 氛围与生命感：背景呼吸/视差驱动 + 光标拖尾 + 节气粒子（单一 RAF）
   uninstallAmbient = installAmbient()
+  // Phase 4 招牌瞬间：主题绽放 + 花瓣庆祝（单一 RAF，复用 EffectLayer 全局画布）
+  uninstallSignature = installSignature()
   // 同步 premium 总开关到 <html> 类，供纯 CSS 的氛围效果（呼吸/视差）优雅降级
   applyPremiumClass()
   appStore.$subscribe(applyPremiumClass)
+  // 从托盘唤醒时重播启动闪屏
+  document.addEventListener('visibilitychange', onVisibility)
 })
 
 function applyPremiumClass() {
@@ -62,8 +70,14 @@ function applyPremiumClass() {
   document.documentElement.classList.toggle('fx-off', off)
 }
 
+function onVisibility() {
+  if (!document.hidden) showSplash.value = true
+}
+
 onBeforeUnmount(() => {
   if (uninstallAmbient) uninstallAmbient()
+  if (uninstallSignature) uninstallSignature()
+  document.removeEventListener('visibilitychange', onVisibility)
 })
 </script>
 
@@ -81,4 +95,7 @@ onBeforeUnmount(() => {
 
   <!-- 全局视觉特效层（花瓣/拖尾/粒子都画在这里，不挡交互） -->
   <EffectLayer />
+
+  <!-- 启动闪屏（招牌瞬间 #3）：App 启动 / 从托盘唤醒时播放，可跳过 -->
+  <SplashScreen :visible="showSplash" @done="showSplash = false" />
 </template>

@@ -39,6 +39,8 @@ async function confirmReminder(r) {
   window.renderCalendar?.()
   window.__refreshCalendarGrid?.()
   window.showToast?.('打卡成功 ✓')
+  // 招牌瞬间 #1：打卡成功派发花瓣庆祝（days 可按连续天数递增，这里默认轻量）
+  window.dispatchEvent(new CustomEvent('calendar:celebrate', { detail: { days: 1 } }))
 }
 
 // backward compat

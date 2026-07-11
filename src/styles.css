@@ -2389,3 +2389,126 @@ body[data-theme] [data-tilt] {
 .social-state.empty .empty-illustration {
   margin: 6px auto 2px;
 }
+
+/* ============================================================
+   2026-07-11 · Phase 4 招牌瞬间（事件驱动的记忆点）
+   - 成功涟漪 .ripple.success（主题感知绿色，挂 body 不被裁剪）
+   - 启动闪屏 .splash（SVG LOGO 描边绘制 + 星海汇聚，可跳过）
+   - 主题绽放 / 花瓣庆祝为 canvas 绘制（见 effects/signature.js），此处仅补 DOM 态
+   ============================================================ */
+
+/* 2) 成功涟漪：从点击点扩散的成功色涟漪（复用墨水波纹升级版） */
+.ripple.success {
+  position: fixed;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 20%, #2ecc71) 0%, transparent 68%);
+  border: 2px solid color-mix(in srgb, var(--accent) 25%, #2ecc71);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 30%, #2ecc71);
+  z-index: 10000;
+  opacity: 0.9;
+  animation: ripple-success .82s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+@keyframes ripple-success {
+  0%   { transform: scale(0);   opacity: .9; }
+  100% { transform: scale(3.2); opacity: 0;  }
+}
+
+/* 3) 启动闪屏 */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 44%, color-mix(in srgb, var(--accent) 16%, #0b1020) 0%, #06080f 72%);
+  cursor: pointer;
+  outline: none;
+}
+.splash-stage {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.splash-logo {
+  width: 120px;
+  height: 120px;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 55%, transparent));
+}
+.splash-logo .logo-ring,
+.splash-logo .logo-star {
+  stroke-dasharray: 420;
+  stroke-dashoffset: 420;
+}
+.splash.animated .logo-ring { animation: splash-draw 1s ease forwards .12s; }
+.splash.animated .logo-star { animation: splash-draw 1s ease forwards .4s; }
+.splash:not(.animated) .logo-ring,
+.splash:not(.animated) .logo-star { stroke-dashoffset: 0; opacity: 1; }
+@keyframes splash-draw { to { stroke-dashoffset: 0; } }
+
+.splash-title {
+  margin-top: 14px;
+  font-family: var(--font-serif, serif);
+  font-size: 22px;
+  letter-spacing: 4px;
+  color: #f3f6ff;
+  opacity: 0;
+  animation: splash-fade-in .6s ease forwards .5s;
+}
+.splash-sub {
+  margin-top: 4px;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: color-mix(in srgb, var(--accent) 60%, #c8d2ff);
+  opacity: 0;
+  animation: splash-fade-in .6s ease forwards .7s;
+}
+.splash:not(.animated) .splash-title,
+.splash:not(.animated) .splash-sub { opacity: 1; animation: none; }
+@keyframes splash-fade-in { to { opacity: 1; } }
+
+/* 星海汇聚：从外围收束到中心 */
+.splash-star {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -1px 0 0 -1px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, color-mix(in srgb, var(--accent) 70%, #fff) 100%);
+  opacity: 0;
+  animation: splash-converge var(--sdu, 1s) cubic-bezier(.2, .7, .2, 1) var(--sd, 0s) forwards;
+}
+@keyframes splash-converge {
+  0%   { transform: translate(var(--sx, 0), var(--sy, 0)) scale(1);  opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translate(0, 0) scale(.15);                       opacity: 0; }
+}
+
+.splash-hint {
+  position: absolute;
+  bottom: 26px;
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.45);
+  animation: splash-fade-in .5s ease forwards .9s;
+}
+
+/* 闪屏淡入淡出 */
+.splash-fade-enter-active,
+.splash-fade-leave-active { transition: opacity .4s ease; }
+.splash-fade-enter-from,
+.splash-fade-leave-to { opacity: 0; }
+
+/* reduced-motion：闪屏极简，不播放汇聚 / 绘制动画 */
+@media (prefers-reduced-motion: reduce) {
+  .ripple.success { animation-duration: .4s; }
+  .splash-star { display: none; }
+  .splash-logo .logo-ring,
+  .splash-logo .logo-star { stroke-dashoffset: 0; }
+  .splash-title, .splash-sub, .splash-hint { opacity: 1; animation: none; }
+}

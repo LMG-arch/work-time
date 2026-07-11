@@ -1,14 +1,14 @@
 {
-  "version": "3.15.2",
-  "versionCode": 32,
+  "version": "3.15.3",
+  "versionCode": 33,
   "releaseDate": "2026-06-29",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.15.2/work-calendar-v3.15.2.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.15.3/work-calendar-v3.15.3.apk",
   "changelog": [
-    "背景呼吸：全局辉光层缓慢明暗（纯 opacity 关键帧，合成层零重排），cosmic 星云更缓更克制",
-    "鼠标视差：指针位置驱动 --px/--py，背景辉光随光标轻微位移（系数 ~14px，< 0.05 视口）",
-    "光标辉光拖尾：跟随指针的渐隐光点（上限 18 点，additive 混色），主题色感知",
-    "节气粒子：依月份切换 雪/星尘/花瓣/落叶，数量随屏宽自适应、DPR≤2、随主题换色",
-    "复用 Phase 0 单一 RAF 调度与 reduced-motion 守卫；premium 关闭时纯 CSS 氛围效果归位静止"
+    "主题切换绽放：切换主题时在屏幕中心绽放一圈主题色辉光环（复用 Phase 0 单一 RAF + reduced-motion 守卫）",
+    "启动闪屏：App 启动 / 从托盘唤醒时全屏 LOGO 描边绘制 + 星海汇聚，≤1.2s 可跳过，尊重 reduced-motion",
+    "成功涟漪：打卡成功 / 保存成功 / 任务完成时从点击点扩散成功色涟漪（拦截 showToast 一处接入、全局生效）",
+    "花瓣庆祝：连续打卡里程碑（7/30/100 天）从顶部飘落花瓣，密度随里程碑递增（EffectLayer 全局画布）",
+    "复用 Phase 0 效果引擎与 premium 总开关；premium 关闭 / reduced-motion 时全部优雅降级"
   ],
   "forceUpdate": false
 }
