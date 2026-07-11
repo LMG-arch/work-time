@@ -534,10 +534,13 @@ function setupEventListeners() {
 // ===== Init =====
 
 document.addEventListener('DOMContentLoaded', async () => {
+  window.__bootLog && window.__bootLog('DOMContentLoaded fired');
   try {
     loadTheme();
+    window.__bootLog && window.__bootLog('theme loaded');
   } catch (e) {
     console.error('[Init] loadTheme failed:', e.message);
+    window.__bootLog && window.__bootLog('loadTheme ERROR: ' + e.message);
   }
 
   const today = new Date();
@@ -551,12 +554,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 即使 IPC 卡住，UI 也照常显示。
   try {
     setupEventListeners();
+    window.__bootLog && window.__bootLog('event listeners wired');
   } catch (e) {
     console.error('[Init] setupEventListeners failed:', e.message);
+    window.__bootLog && window.__bootLog('setupEventListeners ERROR: ' + e.message);
   }
   try {
     if (typeof window.__vueActivate === 'function') {
       switchView('calendar');
+      window.__bootLog && window.__bootLog('switchView(calendar) done, #app display=' + (document.getElementById('app') ? getComputedStyle(document.getElementById('app')).display : 'N/A'));
     } else {
       console.warn('[Init] Vue 层尚未就绪，回退到传统渲染');
       renderCalendar();
@@ -566,10 +572,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderCalendar();
   }
 
+  window.__bootLog && window.__bootLog('loading data via IPC (calendarAPI exists=' + !!window.calendarAPI + ')...');
   try {
     await Promise.all([loadAllData(), loadHolidays(), loadTodos(), loadReminders(), loadReminderRecords()]);
+    window.__bootLog && window.__bootLog('all data loaded OK');
   } catch (e) {
     console.error('[Init] Data loading failed:', e.message);
+    window.__bootLog && window.__bootLog('data loading ERROR: ' + e.message);
   }
 
   try {

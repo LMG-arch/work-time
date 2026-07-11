@@ -9,8 +9,25 @@
   <script type="module" src="./vue-main.js"></script>
 </head>
 <body>
+  <!-- 🔍 启动诊断面板：纯内联，不依赖任何 JS/CSS，用于定位白屏根因 -->
+  <div id="boot-diag"
+    style="position:fixed;top:0;left:0;right:0;z-index:999999;background:#ffeb3b;color:black;
+           font:bold 14px/1.8 system-ui,sans-serif;padding:8px 12px;box-sizing:border-box;
+           border-bottom:3px solid red;font-family:monospace;pointer-events:none;">
+    [BOOT] HTML parsed OK, waiting for JS...
+  </div>
+  <script>
+    // 诊断面板更新函数（在任何模块执行前就可用）
+    window.__bootLog = function(msg) {
+      var el = document.getElementById('boot-diag');
+      if (el) { el.textContent = '[BOOT] ' + msg + ' | ' + new Date().toLocaleTimeString(); }
+      console.log('[BOOT]', msg);
+    };
+    window.__bootLog('DOM ready, loading modules...');
+  </script>
+
   <!-- Vue SPA 根：默认即可见（由启动闪屏覆盖加载过程），不再依赖 renderer.js 异步初始化来揭开 -->
-  <div id="app"></div>
+  <div id="app" style="min-height:calc(100vh - 70px);background:var(--bg,#fff);"></div>
   <!-- 遗留传统界面：默认隐藏，仅当 Vue 层不可用时由 renderer.js 回退显示 -->
   <div class="app" style="display:none">
     <!-- Header -->

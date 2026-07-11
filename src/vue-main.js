@@ -1,8 +1,11 @@
 import './shared.js'
+window.__bootLog && window.__bootLog('shared.js loaded')
 import './shims.js'
+window.__bootLog && window.__bootLog('shims.js loaded')
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './components/App.vue'
+window.__bootLog && window.__bootLog('Vue + App imported')
 
 // ===== 全局错误可见化 =====
 // 目的：运行时（Electron 桌面端 / 安卓 WebView）一旦出现未捕获异常，
@@ -48,9 +51,12 @@ import { useCalendarStore } from './stores/calendarStore.js'
 import { useReminderStore } from './stores/reminderStore.js'
 import { useTodoStore } from './stores/todoStore.js'
 import { useAppStore } from './stores/appStore.js'
+window.__bootLog && window.__bootLog('store imports done')
 useCalendarStore()
 useReminderStore()
 useTodoStore()
 useAppStore()
+window.__bootLog && window.__bootLog('stores initialized')
 
 app.mount('#app')
+window.__bootLog && window.__bootLog('Vue mounted #app, children=' + document.getElementById('app').childElementCount)
