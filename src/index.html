@@ -6,23 +6,85 @@
   <title>上班日历</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="social.css">
+  <!-- ESM 模块入口（deferred by default, executes after HTML parsed） -->
   <script type="module" src="./vue-main.js"></script>
 </head>
 <body>
-  <!-- 🔍 启动诊断面板：纯内联，不依赖任何 JS/CSS，用于定位白屏根因 -->
+  <!-- 🔍 启动诊断面板：纯内联，不依赖任何外部 JS/CSS -->
   <div id="boot-diag"
-    style="position:fixed;top:0;left:0;right:0;z-index:999999;background:#ffeb3b;color:black;
-           font:bold 14px/1.8 system-ui,sans-serif;padding:8px 12px;box-sizing:border-box;
-           border-bottom:3px solid red;font-family:monospace;pointer-events:none;">
-    [BOOT] HTML parsed OK, waiting for JS...
+    style="position:fixed;top:0;left:0;right:0;z-index:999999;
+           background:rgba(0,0,0,0.75);color:#7ee787;
+           font:12px/1.6 -apple-system,'SF Pro Text',system-ui,sans-serif;
+           padding:6px 14px;box-sizing:border-box;
+           border-bottom:1px solid rgba(125,207,255,0.3);
+           backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+           pointer-events:none;transition:opacity 0.8s ease;
+           display:flex;align-items:center;gap:8px;">
+    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7ee787;flex-shrink:0;" id="boot-dot"></span>
+    <span id="boot-text">Initializing...</span>
   </div>
   <script>
-    // 诊断面板更新函数（在任何模块执行前就可用）
+    // ===== 启动诊断核心（在任何模块执行前就绪）=====
+    var _bootSteps = [];
+    var _bootErr = null;
     window.__bootLog = function(msg) {
-      var el = document.getElementById('boot-diag');
-      if (el) { el.textContent = '[BOOT] ' + msg + ' | ' + new Date().toLocaleTimeString(); }
+      _bootSteps.push(msg);
+      var el = document.getElementById('boot-text');
+      var dot = document.getElementById('boot-dot');
+      if (el) el.textContent = msg + ' | ' + new Date().toLocaleTimeString();
       console.log('[BOOT]', msg);
+      // 成功完成时自动淡化（3秒后）
+      if (msg.indexOf('all data loaded') >= 0 || msg.indexOf('OK') >= 0) {
+        var diag = document.getElementById('boot-diag');
+        if (dot) dot.style.background = '#3fb950';
+        setTimeout(function() { if (diag) diag.style.opacity = '0'; }, 3000);
+        setTimeout(function() { if (diag) diag.style.display = 'none'; }, 4000);
+      }
     };
+    window.__bootError = function(msg) {
+      _bootErr = msg;
+      var el = document.getElementById('boot-text');
+      var dot = document.getElementById('boot-dot');
+      var diag = document.getElementById('boot-diag');
+      if (el) { el.textContent = '[ERROR] ' + msg; el.style.color='#f85149'; }
+      if (dot) dot.style.background = '#f85149';
+      if (diag) {
+        diag.style.borderBottomColor = 'rgba(248,81,73,0.6)';
+        diag.style.background = 'rgba(248,81,73,0.12)';
+      }
+      console.error('[BOOT ERROR]', msg);
+    };
+
+    // 捕获全局 JS 错误（模块加载失败、语法错误等都会触发）
+    window.addEventListener('error', function(e) {
+      var msg = (e.message || '') + '';
+      if (msg.indexOf('Failed to fetch dynamically imported module') >= 0 ||
+          msg.indexOf('Failed to load module script') >= 0 ||
+          msg.indexOf('Loading module script') >= 0 ||
+          msg.indexOf('Loading CSS') >= 0) {
+        window.__bootError('Module load failed: ' + msg);
+      }
+    });
+    // 捕获 unhandled promise rejection
+    window.addEventListener('unhandledrejection', function(e) {
+      window.__bootError('Promise rejected: ' + (e.reason ? e.reason.message || e.reason : 'unknown'));
+    });
+
+    // 模块脚本超时检测：如果 8 秒内 vue-main.js 没有输出任何日志，说明模块没加载
+    setTimeout(function() {
+      if (_bootSteps.length <= 1) { // 只有初始的 "DOM ready" 一条
+        window.__bootError('Module script did not execute within 8s — checking...');
+        // 主动探测：尝试 fetch 模块文件本身
+        fetch('./vue-main.js', { method: 'HEAD', cache: 'no-store' })
+          .then(function(r) {
+            window.__bootError('Module fetchable (status=' + r.status + ', type=' + (r.headers.get('content-type')||'?') + ') but did not EXECUTE — likely blocked by CSP/script-src for modules');
+          })
+          .catch(function(e) {
+            window.__bootError('Module fetch FAILED: ' + e.message + ' — network/CSP blocking');
+          });
+      }
+    }, 8000);
+
     window.__bootLog('DOM ready, loading modules...');
   </script>
 
