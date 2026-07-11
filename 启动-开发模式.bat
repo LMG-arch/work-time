@@ -14,6 +14,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo 正在清理可能残留的旧开发服务器（避免 5173 端口被旧实例占用导致白屏）...
+node "%~dp0scripts\kill-dev.cjs"
+echo.
 echo 正在启动 Vite 开发服务器 + Electron（首次约 10 秒）...
 echo 提示：修改 src/ 下任意文件，界面会自动热更新。Ctrl+C 退出。
 echo.

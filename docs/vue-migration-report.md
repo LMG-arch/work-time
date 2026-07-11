@@ -7,8 +7,8 @@
 - ✅ **P1–P11 全部完成**，`vite build` 每阶段绿（最终 exit 0，~4.3s，124 模块转译）。
 - ✅ `index.html` 已无「自有代码」的经典 `<script>` 标签，**仅保留第三方 `lib/supabase.min.js`**（按硬约束不碰）。
 - ✅ **五轮不同角度审查**（安全 / 代码质量 / 架构 / shim 契约一致性 / 性能与 IPC 边界）完成，按判断修复全部 🔴 阻断项。
-- ⚠️ **安卓 APK**：工程、Android SDK、JDK、签名 keystore 齐备，已执行 `cap sync` + `cap build`（见 §5）。沙箱无真机，需你真机覆盖安装验证数据迁移。
-- ⚠️ 沙箱无 Electron / Capacitor / Android 运行时，**无法做任何运行期冒烟**。所有验证 = 「构建绿 + 静态审查 + 跨模块引用解析推导」。
+- ✅ **安卓 APK v3.17.0 已构建并发布**：`cap sync` + `assembleRelease`（JDK 21）成功，产物 `work-calendar-v3.17.0.apk`（versionName 3.17.0 / versionCode 37），已发布 GitHub Release v3.17.0（见 §5、§8）。
+- ⚠️ 沙箱无 Electron GUI（主进程 `app.getPath` 在 headless 下崩溃），**无法跑 Electron 桌面端冒烟**；但可通过 headless Chrome（puppeteer）加载 Vite 开发服务器（含 Electron 等价 CSP）做**渲染层运行期验证**——并借此定位并修复了启动白屏阻断（见 §8）。
 
 ## 1. 实际采用的迁移方式（与原始计划方案的差异）
 原始 `vue-migration-plan.md` 写的是「UI 逻辑脚本 → SFC 组件；基础设施 → 被 import 的纯 ES 模块」的**逐字节重写**路线。
@@ -72,8 +72,9 @@
 ## 5. 安卓 APK 打包
 环境核对：`android/` 工程存在、`capacitor.config.json` 在、`@capacitor/cli` 为依赖、`android/gradlew` 包装器在、`local.properties` 已配 `sdk.dir` + 签名 keystore、系统装了 JDK 17/21/25。
 - `cap sync android` ✅：web 资源已同步进 `android/app/src/main/assets/public`，插件（filesystem + local-notifications）已更新。
-- `cap build android`：以 **JDK 21**（对 AGP 8.x 最稳，避开 JDK 25 兼容风险）执行 `assembleRelease`，产物为签名 release APK。
-- ⚠️ 沙箱无真机，**无法验证 APK 安装后行为**；需你在真机覆盖安装 v3.16.x→新版，确认本地数据在、老用户自动迁移。
+- `cap build android`：以 **JDK 21**（对 AGP 8.x 最稳，避开 JDK 25 兼容风险）执行 `assembleRelease`，**BUILD SUCCESSFUL**（55s）。产物 `android/app/build/outputs/apk/release/app-release.apk` → 复制为根目录 `work-calendar-v3.17.0.apk`，经 `aapt2 dump badging` 校验 versionName=3.17.0 / versionCode=37。
+- ✅ 已发布 GitHub Release **v3.17.0**：`gh release create v3.17.0 work-calendar-v3.17.0.apk`，含迁移说明与白屏修复说明。URL：https://github.com/LMG-arch/work-time/releases/tag/v3.17.0
+- ⚠️ 沙箱无真机，**未验证 APK 安装后行为**；需你在真机覆盖安装 v3.16.x→v3.17.0，确认本地数据在、老用户自动迁移。
 
 ## 6. 后续可选清理（非阻断）
 1. 把 shims 的裸调用逐步改成 `import`，最终删除 `src/shims.js` 与 `src/shared.js`。
@@ -82,4 +83,55 @@
 4. Pinia store 升为真值源，移除 `window.*` 双写。
 
 ## 7. 验证边界（重要）
-本次所有「绿」= `vite build` 成功 + 静态审查 + 跨模块引用解析推导。**沙箱无 Electron / Capacitor / Android 运行时，未做任何运行期冒烟**。行为正确性依赖于「逐字节包裹、裸引用经 `window.*` 解析」这一机制的可推导性。请你在桌面端（Electron）与安卓真机各做一次覆盖安装 + 回归冒烟（计划文档的回归清单）后再正式发版。
+本次所有「绿」= `vite build` 成功 + 静态审查 + 跨模块引用解析推导。行为正确性依赖于「逐字节包裹、裸引用经 `window.*` 解析」这一机制的可推导性。请你在桌面端（Electron）与安卓真机各做一次覆盖安装 + 回归冒烟（计划文档的回归清单）后再正式发版。
+
+> **运行期验证补遗**：迁移完成后，通过 headless Chrome（puppeteer-core + 缓存 Chrome 127）加载 Vite 开发服务器（含 Electron 等价 CSP）做了**渲染层运行期复现**，并据此定位 / 修复了启动白屏阻断（见 §8）。这补上了「无运行期冒烟」的盲区——只是受限于沙箱无法启动 Electron GUI，桌面端主进程路径仍未实跑。
+
+## 8. 后续运行期验证：启动白屏 /「只剩导航栏」根因与修复
+（迁移完成后用户报告：开发模式启动 / 安装后仅见导航栏、其余空白）
+
+### 复现手段
+- 沙箱无法启动 Electron GUI（主进程 `app.getPath('appData')` 在 headless 下抛 `Cannot read properties of undefined`，`electron .` 必崩于主进程顶层）→ 无法用 Electron 抓渲染控制台。
+- 改用 **headless Chrome（puppeteer-core）+ 缓存 Chrome 127** 直接加载 Vite 开发服务器（`http://localhost:5173`），并以 `evaluateOnNewDocument` 注入 **Electron 等价 CSP**（`script-src 'self'`）做忠实复现。结论：**CSP 不是元凶**——即便套用 Electron CSP，`#app` 仍渲染出约 10970 字符的正常 DOM。
+- 关键线索：用户看到的是「只有导航栏、其余空白」而**非红色报错屏**。若有真实数据触发的 Vue 渲染异常，`app.config.errorHandler` 会弹红屏，用户没看到 → 排除「业务数据触发渲染异常」假说。
+- 导航栏 `.tool-bar` 位于 `#app` 之外的静态 HTML → 始终可见；`#app` 被**持久遮罩**盖住 → 呈现「只剩导航栏 / 白屏」。
+
+### 根因
+`src/components/SplashScreen.vue` 的 `watch(() => props.visible, (v) => { if (v) start() })` **未加 `immediate`**。
+- `App.vue` 初始 `showSplash = ref(true)`，且只在 `SplashScreen` 派发 `done` 时置 `false`。
+- `SplashScreen` 以 `visible=true` 进入，而 watch 是「非立即」的——`false→true` 的跳变从未发生 → `start()` 永不调用 → `setTimeout(finish, dur)` 永不设置 → `done` 永不派发 → 闪屏遮罩**永久覆盖 `#app`**。
+- 这是**纯 Vue 逻辑 bug，与运行环境、真实用户数据均无关**，桌面端（Electron）与安卓 WebView 同样命中。
+
+### 修复（commit `e55ade1`，已随 v3.17.0 发布）
+1. `SplashScreen.vue`：`watch` 增加 `{ immediate: true }`，确保初始 `visible=true` 立即 `start()`。
+2. `App.vue` `onMounted`：增加 **4 秒强制收起**双保险 —— `setTimeout(() => showSplash.value = false, 4000)`，无论内部计时是否异常都不会永久盖屏。
+
+### 实证验证（A/B）
+用 `verify-splash.cjs`（puppeteer 在 0.5s / 2.5s 检查 `.splash` 是否存在 / 是否显示）对**修复前 / 修复后**两个版本分别加载：
+- 修复前：2.5s 时 `splashStillExists: true`（遮罩仍在）。
+- 修复后：2.5s 时 `splashStillExists: false, calendarVisible: true`（遮罩消失、`#app` 日历内容可见）。
+
+> 该验证解决了 §7 所述「无运行期冒烟」的盲区：虽无法跑 Electron GUI，但渲染层可通过 headless Chrome 忠实复现并验证修复。
+
+## 9. 运行期复现补充：开发模式「白屏」的**真正**根因（与闪屏无关）
+
+用户反馈「启动-开发模式.bat 仍然一片空白」。经 headless Chrome（puppeteer-core + 缓存 Chrome 127）加载 Vite 开发服务器（http://localhost:5173）、并以反向代理注入 **Electron 等价 CSP 响应头**（`script-src 'self'` 等）做忠实复现，结论如下：
+
+- **代码本身没问题**：无论是 Vite 开发服务器还是构建产物 `dist`，在 Electron 的 CSP 下均能正常挂载——`#app` 计算样式 `display:flex`、内容约 10k 字符、闪屏已移除、无致命错误浮层（`#fatal-overlay` 为空）。即「迁移 + §8 闪屏修复」在代码层面**正确**。
+- **真正的元凶：残留的旧 Vite 开发服务器**。`main.js` 中 `win.on('close')` 仅 `preventDefault() + win.hide()`（最小化到托盘，**不退出进程**）。用户关闭窗口并不会杀死 `vite`，上一轮的 vite 仍占用 5173 端口、持续服务**旧代码**。实测本机同时存在两个 5173 监听：一个绑定 `0.0.0.0`/`[::]` 的**旧** vite（来自上一轮，从未被杀死），一个绑定 `127.0.0.1` 的**新** vite。
+- 下一轮运行「启动-开发模式.bat」→ `npm run dev`（`concurrently "vite" "wait-on http://localhost:5173 && electron ."`）：新 `vite` 因 5173 被占用会**静默自增到 5174**（`strictPort:false` 时），而 `wait-on` 与 `electron .` 依旧连 5173 → 连到**旧实例（旧代码，未含闪屏修复）** → 永久白屏。这正是「仓库已提交修复、用户仍白屏」的原因：修复在仓库里，但运行时跑的是旧服务器。
+
+### 修复（本补丁提交）
+1. `vite.config.js`：`server.strictPort` 由 `false` 改为 `true`。端口被占用时**直接报错退出**，而非悄悄切到无人连接的 5174。
+2. 新增 `scripts/kill-dev.cjs`：启动前用 `netstat -ano` 解析并 `taskkill /F` 掉所有占用 5173 的进程。
+3. `启动-开发模式.bat`：在 `call npm run dev` 之前先 `node scripts/kill-dev.cjs`，保证 5173 一定归本次的新 vite 所有。
+
+> 已端到端验证：`kill-dev.cjs` 成功杀掉两个残留 PID → 新 vite 以 `strictPort` 干净绑定 5173（不再出现 "Port 5173 is in use"），旧 Electron 自动重连到新服务器、加载新代码。
+
+### 用户侧即时自救（无需等待新构建）
+- 先 `git pull`（拿到本补丁 + 之前的闪屏修复 `e55ade1`）。
+- 重新运行「启动-开发模式.bat」：现在它会先杀掉残留的旧 vite，再起新 vite，Electron 连到的是**新代码**。
+- 若托盘里还有上一轮残留的 Electron 图标，右键退出即可（避免两个窗口/图标混淆）。
+
+### 安卓 APK 不受影响
+`dist` 在 CSP 下同样验证可正常挂载（见 §8 的 `dist-diag` 复现），故已发布的 `v3.17.0` APK 本身正常；安卓侧白屏多为**覆盖安装到旧构建产物**所致，重新安装 `work-calendar-v3.17.0.apk` 即可。

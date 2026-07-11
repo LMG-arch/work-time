@@ -76,6 +76,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    strictPort: false,
+    // 严格占用端口：若 5173 已被旧实例（上一轮 Electron 最小化到托盘未退出，
+    // 其 vite 仍在运行）占用，直接报错退出，而不是悄悄切到 5174 让 Electron 连到旧代码导致白屏。
+    strictPort: true,
   },
 })
