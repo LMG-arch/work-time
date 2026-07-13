@@ -35,7 +35,11 @@ function getStore() {
 // 保留 Electron preload 注入的真实 IPC 桥（若有），供 getAppVersion 调用，避免自递归
 const PRELOAD_API = (typeof window !== 'undefined' && window.calendarAPI) ? window.calendarAPI : null;
 
-window.calendarAPI = {
+// 尝试挂载存储层实现；若失败（preload 已通过 contextBridge 注入只读属性）则保留 IPC 版本。
+// Electron 环境：用 preload 的 IPC 桥（与 main 进程通信）；Web/Capacitor 环境：用本文件的存储层实现。
+try {
+  Object.defineProperty(window, 'calendarAPI', {
+    value: {
   // --- Day data ---
   async getAllData() {
     const days = getStore().days;
@@ -311,4 +315,12 @@ window.calendarAPI = {
     // Web 降级
     return { versionName: '3.13.0', versionCode: 0 };
   }
-};
+  },
+  writable: true,
+  configurable: true,
+  enumerable: true
+  });
+} catch (e) {
+  // preload 已注入只读 calendarAPI（contextBridge）——保留 IPC 版本，不覆盖
+  console.info('[api.js] Using preload-injected calendarAPI (IPC mode), skipping storage-layer override:', e.message);
+}
