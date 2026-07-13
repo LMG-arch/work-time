@@ -275,6 +275,8 @@ export function setupEventListeners() {
 
   // ===== Account Registration / Login =====
   (async () => {
+    await window.__storage.init(); // 关键修复：先等 FS 耐用存储把 supabase-config 等灌入缓存，
+                                  // 否则启动竞态下会读到被清空的 WebView localStorage，误判「未配置服务」
     const loggedOut = document.getElementById('account-logged-out');
     const loggedIn = document.getElementById('account-logged-in');
     const regUsername = document.getElementById('reg-username');
@@ -358,6 +360,7 @@ export function setupEventListeners() {
 
   // ===== Data Sync Settings =====
   (async () => {
+    await window.__storage.init(); // 同上：确保启动读取配置前 FS 备份已灌入缓存
     const syncToggleBtn = document.getElementById('sync-toggle-btn');
     const syncNowBtn = document.getElementById('sync-now-btn');
 

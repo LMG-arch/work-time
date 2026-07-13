@@ -336,3 +336,41 @@ Vite dev server + headless Chrome 强制无缓存加载：
 ### 经验
 - **ESM 模块的裸标识符解析是静态的**，绝不查 `window.*`。从经典 script 迁移到 ESM 时，所有跨模块全局调用必须显式写 `window.XXX()`。
 - **import 链中的副作用时序**：如果模块 A 被 B import，A 的顶层代码先于 B 的剩余代码执行。任何依赖 B 设置的全局状态的初始化必须延迟（queueMicrotask / 自定义事件）。
+
+## §17 v3.17.3 三处 UI 修复（commit `aa4829c`，已随 v3.17.3 发布）
+
+### 现象（安卓真机）
+- 日历显示有「2 个待办」，点开详情却看不到待办列表（本地待办数据未带入）。
+- 「添加标签」按钮点击无反应。
+- 标签 / 备注处的输入框样式丑、触控区小。
+
+### 根因与修复
+1. **待办列表空**：`DetailPanel` 未把当前选中日期 `selectedDate` 透传给 `TodoListApp`；补 `defineProps({ selectedDate })` + `watch(immediate)` 后列表按日期刷新。
+2. **标签按钮死**：`TagEditor` 的输入/按钮缺稳定 `id` 与移动端 `touchend` 兜底；补 `id="tag-input"` 并对快捷标签加 `@touchend.prevent`，`NoteEditor` 补 `id="note-input"`。
+3. **输入框丑**：`styles.css` 增强 `#tag-input`、`.tag-add-btn`、`#note-input`、`.save-btn` 的移动端大触控区与全宽保存按钮。
+
+## §18 好友圈（Supabase）配置更新后丢失（v3.17.4）
+
+### 现象（安卓真机）
+安装更新（覆盖安装 APK）后，之前在设置页填写的**好友圈服务地址与 Key 全部清空**，好友圈提示「需先配置服务」，需重新输入。
+
+### 根因（两个 bug 叠加）
+1. **启动竞态读取**：`renderer.js` 的 `setupEventListeners` 内两个 async IIFE，以及 `social.js` 的 `initSocial`，在启动早期**同步**调用 `window.getSupabaseConfig()`。但 `storage.js` 的 `initStorage()` 是把 FS（Capacitor Filesystem `DATA` 目录）耐用备份**异步**灌入内存缓存的。两者竞态下，配置读取发生在 FS 加载完成**之前**，`rawGet` 回退到 WebView 的 `localStorage`。
+   而安卓在应用更新 / 系统 WebView 升级时，**WebView 的 localStorage 经常被清空**——这正是当初引入 FS 备份要解决的问题。于是启动那一刻读到的是已清空的 localStorage → 误判「未配置」。
+2. **播种只进不落盘**：`initStorage` 在 FS 文件缺失时，仅把 `localStorage` 的旧值「播种」进内存缓存，**却从不写回 FS**。所以那些只曾存在于 localStorage 的配置（如更新前录入的 `supabase-config`）从未被耐用备份覆盖；一旦 WebView 被清，配置永久丢失且无法从云端恢复。
+
+### 修复
+- **`storage.js`**：`initStorage` 播种完成后 `await flushAll()`，把从 localStorage 迁移进缓存的值**一次性回写 FS**，使旧配置真正获得耐用备份。
+- **`renderer.js`**：两个启动 IIFE 在读取配置前 `await window.__storage.init()`，确保 FS 备份已灌入缓存再读。
+- **`social.js`**：`initSocial` 同样在读取配置前 `await window.__storage.init()`。
+
+### 验证
+- `npm run build` 通过（exit 0）。
+- `cap sync android` + JDK21 `assembleRelease` → `BUILD SUCCESSFUL`，产物 `app-release.apk`（3.46MB）。
+- `apksigner verify`：**v2 scheme: true**（安卓所需有效签名），`v3: false`（构建未启用 v3，不影响安装）。
+- 发布 GitHub Release **v3.17.4**，资产 `work-calendar-v3.17.4.apk`。
+
+### 经验
+- 安卓「耐用存储」必须是**异步加载且须被启动逻辑 await**：任何启动期依赖该存储的读取点，都要等 `init()` 完成，否则会读到易失的 WebView localStorage。
+- 「从旧存储播种到新存储」的迁移逻辑**必须双向**：读进缓存后还要写回新存储，否则迁移永远不落地，旧数据依旧易失。
+- 用户**已丢失的当前配置无法用代码找回**；本修复保证重输一次后，后续更新不再丢失。

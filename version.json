@@ -1,13 +1,13 @@
 {
-  "version": "3.17.0",
-  "versionCode": 37,
-  "releaseDate": "2026-07-11",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.0/work-calendar-v3.17.0.apk",
+  "version": "3.17.4",
+  "versionCode": 41,
+  "releaseDate": "2026-07-13",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.4/work-calendar-v3.17.4.apk",
   "changelog": [
-    "全量迁移：遗留经典 JS 脚本逐字节包裹为 Vue 3 ES 模块，运行时已无自有经典 <script>（仅保留第三方 Supabase 客户端，零更改）",
-    "过渡垫片（shims.js / shared.js）完成全局状态与函数桥接，行为保持等价",
-    "五轮代码审查（安全 / 质量 / 架构 / shim 契约一致性 / 性能与 IPC 边界）并修复跨模块裸调用、死分支、裸赋值等阻断问题",
-    "清理孤儿根文件（supabase-core / -social / -sync.js、web-api.js），Electron 主进程入口保留"
+    "修复：好友圈（Supabase）配置地址与 Key 在应用更新后丢失的问题",
+    "根因① 启动竞态——初始化读取配置早于耐用存储（FS）加载完成，误读到被清空的 WebView localStorage",
+    "根因② 存储播种逻辑只读不写，旧配置从未被耐用备份，WebView 清空即永久丢失",
+    "修复：启动读取前 await 存储初始化；播种后回写 FS 完成一次性迁移，后续更新不再丢配置"
   ],
   "forceUpdate": false
 }

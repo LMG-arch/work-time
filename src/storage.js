@@ -103,6 +103,11 @@ async function initStorage() {
           try { _cache[k] = localStorage.getItem(k); } catch { _cache[k] = null; }
         }
       }
+      // 关键修复：把「从 localStorage 播种进缓存」的值落盘到 FS。
+      // 否则仅存于 localStorage 的旧配置（如更新前录入的 supabase-config）
+      // 永远不会被耐用备份覆盖；一旦 WebView 在更新时被系统清空，
+      // 配置将永久丢失、且无法从云端恢复。这里统一回写，完成一次性迁移。
+      try { await flushAll(); } catch (e) { console.warn('[Storage] seed flush failed:', e.message); }
     }
     _loaded = true;
   })();

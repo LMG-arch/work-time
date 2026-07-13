@@ -662,6 +662,7 @@ export async function checkDatabaseSetup() {
 // ===== Init =====
 
 export async function initSocial() {
+  await window.__storage.init(); // 确保 FS 耐用存储已灌入缓存，避免读到被清空的 localStorage
   const config = getSupabaseConfig();
   if (!config.url || !config.key) return; // Not configured yet
 
