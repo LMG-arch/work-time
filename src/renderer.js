@@ -533,7 +533,7 @@ function setupEventListeners() {
 
 // ===== Init =====
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initApp() {
   window.__bootLog && window.__bootLog('DOMContentLoaded fired');
   try {
     loadTheme();
@@ -673,4 +673,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (e) {
     console.error('[Init] 导航指示块初始化失败:', e.message);
   }
-});
+}
+
+// ===== 健壮触发：修复「点击导航栏无反应」的根因 =====
+// 原代码依赖 document.addEventListener('DOMContentLoaded', init) 触发初始化。
+// 但本应用经 Vite 以 ESM 模块（vue-main.js → renderer.js）异步加载，DOMContentLoaded
+// 往往在这些模块执行前就已触发；模块内注册的监听错过时机，导致 setupEventListeners()
+// 永不执行、工具栏点击无绑定、导航栏点了没反应（日历因 App.vue 默认 activePage 仍可见）。
+// 改用 readyState 检查：DOM 已就绪则立即执行，否则再等 DOMContentLoaded。
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}

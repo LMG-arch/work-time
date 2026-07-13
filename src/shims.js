@@ -208,4 +208,5 @@ if (typeof window !== 'undefined') {
   window.syncToWindow = renderer.syncToWindow
   window.switchView = renderer.switchView
   window.updateAccountUI = renderer.updateAccountUI
+  window.setupEventListeners = renderer.setupEventListeners
 }

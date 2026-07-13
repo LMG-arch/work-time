@@ -13,20 +13,33 @@ window.__bootLog && window.__bootLog('Vue + App imported')
 // 同时保留到 console，便于开发者定位。
 function showFatal(msg, stack) {
   try {
-    let el = document.getElementById('fatal-overlay')
+    let el = document.getElementById('fatal-overlay');
     if (!el) {
-      el = document.createElement('div')
-      el.id = 'fatal-overlay'
+      el = document.createElement('div');
+      el.id = 'fatal-overlay';
       el.style.cssText =
-        'position:fixed;inset:0;z-index:2147483647;background:rgba(28,0,0,.96);' +
+        'position:fixed;inset:0;z-index:2147483647;background:rgba(28,0,0,.92);' +
         'color:#ffd2d2;font:13px/1.7 ui-monospace,Menlo,Consolas,monospace;' +
-        'padding:22px;overflow:auto;white-space:pre-wrap;box-sizing:border-box;'
-      if (document.body) document.body.appendChild(el)
+        'padding:22px;overflow:auto;white-space:pre-wrap;box-sizing:border-box;' +
+        'pointer-events:none;'; /* 关键：错误面板绝不拦截页面交互（导航栏/按钮仍可点） */
+      const close = document.createElement('div');
+      close.textContent = '× 关闭';
+      close.style.cssText =
+        'position:fixed;top:12px;right:14px;cursor:pointer;pointer-events:auto;' +
+        'padding:6px 12px;border:1px solid rgba(255,210,210,.45);border-radius:8px;' +
+        'font-size:12px;color:#ffd2d2;background:rgba(0,0,0,.25);';
+      close.addEventListener('click', () => el.remove());
+      el.appendChild(close);
+      if (document.body) document.body.appendChild(el);
     }
-    const stamp = new Date().toLocaleString()
-    el.textContent =
+    // 多次错误时追加，不重复创建关闭按钮（容器 pointer-events:none，关闭按钮单独 auto）
+    const stamp = new Date().toLocaleString();
+    const pre = document.createElement('div');
+    pre.className = 'fatal-msg';
+    pre.textContent =
       '⚠ 运行错误（请把这段截图发给开发者）\n[' + stamp + ']\n\n' +
-      String(msg) + (stack ? '\n\n' + String(stack) : '')
+      String(msg) + (stack ? '\n\n' + String(stack) : '');
+    el.appendChild(pre);
   } catch (_) { /* 极致兜底：连 DOM 都写不了就放弃 */ }
 }
 
