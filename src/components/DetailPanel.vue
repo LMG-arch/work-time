@@ -58,7 +58,7 @@ watch(selectedDate, updateData)
       <div class="todo-header-row">
         <span class="todo-title">待办</span>
       </div>
-      <TodoListApp />
+      <TodoListApp :selectedDate="selectedDate" />
     </div>
   </div>
 </template>

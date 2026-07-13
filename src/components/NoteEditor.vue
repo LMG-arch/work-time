@@ -20,7 +20,7 @@ async function saveNote() {
 
 <template>
   <div class="note-section">
-    <textarea v-model="noteText" placeholder="备注今天做了什么..." rows="3"></textarea>
+    <textarea id="note-input" v-model="noteText" placeholder="备注今天做了什么..." rows="3"></textarea>
     <button class="save-btn" @click="saveNote">保存</button>
   </div>
 </template>

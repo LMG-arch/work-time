@@ -32,11 +32,11 @@ async function saveTags(newTags) {
       <span v-for="t in tags" :key="t" class="tag-item">{{ t }}<span class="tag-remove" @click="removeTag(t)">&times;</span></span>
     </div>
     <div class="tag-input-row">
-      <input v-model="tagInput" type="text" placeholder="添加标签，回车确认" maxlength="10" @keydown.enter="addTag()">
-      <button class="tag-add-btn" @click="addTag()">+</button>
+      <input id="tag-input" v-model="tagInput" type="text" placeholder="添加标签，回车确认" maxlength="10" @keydown.enter="addTag()">
+      <button class="tag-add-btn" @click="addTag()" @touchend.prevent="addTag()">+</button>
     </div>
     <div class="tag-quick">
-      <span v-for="qt in QUICK_TAGS" :key="qt" class="quick-tag" @click="addTag(qt)">{{ qt }}</span>
+      <span v-for="qt in QUICK_TAGS" :key="qt" class="quick-tag" @click="addTag(qt)" @touchend.prevent="addTag(qt)">{{ qt }}</span>
     </div>
   </div>
 </template>

@@ -1,21 +1,20 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useTodoStore } from '../stores/todoStore.js'
 import TodoItem from './TodoItem.vue'
 
 const todoStore = useTodoStore()
 
-const selectedDate = ref(null)
+const props = defineProps({ selectedDate: { type: String, default: null } })
 const todos = ref([])
 
 window.__refreshTodoList = (dateStr) => {
-  selectedDate.value = dateStr
-  updateList()
+  updateList(dateStr)
 }
 
-function updateList() {
-  if (!selectedDate.value) { todos.value = []; return }
-  const ds = selectedDate.value
+function updateList(dateStr) {
+  const ds = dateStr || props.selectedDate
+  if (!ds) { todos.value = []; return }
   const d = new Date(ds + 'T00:00:00')
   const weekday = d.getDay()
   todos.value = todoStore.todos.filter(t => {
@@ -24,6 +23,11 @@ function updateList() {
     return false
   })
 }
+
+// Watch prop changes (Vue CalendarView → DetailPanel → TodoListApp chain)
+watch(() => props.selectedDate, (ds) => {
+  updateList(ds)
+}, { immediate: true })
 
 function onRefresh() {
   todoStore.refreshFromWindow()
