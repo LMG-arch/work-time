@@ -74,7 +74,7 @@ export async function refreshAllData() {
     allReminderRecords = await window.calendarAPI.getAllReminderRecords();
     window.allReminderRecords = allReminderRecords;
     // 仅在非 Vue 日历视图时调用传统 DOM 渲染
-    if (currentView !== 'calendar' && currentView !== 'stats' && currentView !== 'settings' && currentView !== 'social') renderCalendar();
+    if (currentView !== 'calendar' && currentView !== 'stats' && currentView !== 'settings' && currentView !== 'social') window.renderCalendar();
     // 通知 Vue 组件刷新
     if (currentView === 'calendar') {
       window.__refreshCalendarGrid?.();
@@ -156,14 +156,14 @@ function setupEventListeners() {
     if (currentView === 'calendar') {
       window.__calendarGoToday?.();
       closeDetailPanel();
-      await loadAllData();
+      await window.loadAllData();
       return;
     }
     const today = new Date();
     currentYear = today.getFullYear();
     currentMonth = today.getMonth();
     closeDetailPanel();
-    await loadAllData();
+    await window.loadAllData();
     if (currentView === 'stats') window.__refreshStats?.();
     else renderClockinView();
     updateMonthLabel();
@@ -184,8 +184,8 @@ function setupEventListeners() {
   document.getElementById('import-btn').addEventListener('click', async () => {
     const result = await window.calendarAPI.importData();
     if (result.success) {
-      await loadAllData(); await loadTodos(); await loadReminders(); await loadReminderRecords();
-      renderCalendar();
+      await window.loadAllData(); await window.loadTodos(); await window.loadReminders(); await window.loadReminderRecords();
+      window.renderCalendar();
       showToast('数据已导入');
     } else if (result.error) {
       showToast('导入失败: ' + result.error);
@@ -197,8 +197,8 @@ function setupEventListeners() {
     const url = document.getElementById('supabase-url-input').value.trim();
     const key = document.getElementById('supabase-key-input').value.trim();
     if (!url || !key) { showToast('请填写完整配置'); return; }
-    saveSupabaseConfig(url, key);
-    sb = initSupabase();
+    window.saveSupabaseConfig(url, key);
+    sb = window.initSupabase();
     showToast('配置已保存');
   });
 
@@ -211,7 +211,7 @@ function setupEventListeners() {
     function log(ok, msg) { results.push((ok ? '✓ ' : '✗ ') + msg); }
 
     log(true, '配置格式检查通过');
-    try { saveSupabaseConfig(url, key); sb = initSupabase(); log(true, '客户端初始化成功'); }
+    try { window.saveSupabaseConfig(url, key); sb = window.initSupabase(); log(true, '客户端初始化成功'); }
     catch (e) { log(false, '客户端初始化失败: ' + e.message); showDiag(results.join('\n')); return; }
 
     try {
@@ -284,9 +284,9 @@ function setupEventListeners() {
     const logoutBtn = document.getElementById('logout-btn');
     const authStatus = document.getElementById('auth-status');
 
-    const config = getSupabaseConfig();
+    const config = window.getSupabaseConfig();
     if (!config.url || !config.key) return;
-    if (!sb) sb = initSupabase();
+    if (!sb) sb = window.initSupabase();
 
     updateAccountUI();
 
@@ -296,7 +296,7 @@ function setupEventListeners() {
       regBtn.disabled = true;
       authStatus.textContent = '注册中...';
       try {
-        const result = await registerAccount(username, password);
+        const result = await window.registerAccount(username, password);
         if (result.error) { authStatus.textContent = result.error; authStatus.style.color = '#e53935'; }
         else { await getMyProfile(); authStatus.textContent = '注册成功！'; authStatus.style.color = ''; regUsername.value = ''; regPassword.value = ''; updateAccountUI(); }
       } finally { regBtn.disabled = false; }
@@ -308,7 +308,7 @@ function setupEventListeners() {
       loginBtn.disabled = true;
       authStatus.textContent = '登录中...';
       try {
-        const result = await loginAccount(username, password);
+        const result = await window.loginAccount(username, password);
         if (result.error) { authStatus.textContent = result.error; authStatus.style.color = '#e53935'; }
         else {
           authStatus.textContent = '登录成功！'; authStatus.style.color = '';
@@ -325,7 +325,7 @@ function setupEventListeners() {
     logoutBtn.addEventListener('click', async () => {
       if (!confirm('确定退出登录？')) return;
       logoutBtn.disabled = true;
-      await logoutAccount();
+      await window.logoutAccount();
       updateAccountUI();
       // Force re-enable inputs and buttons (Electron may lose focus after signOut)
       regBtn.disabled = false;
@@ -361,12 +361,12 @@ function setupEventListeners() {
     const syncToggleBtn = document.getElementById('sync-toggle-btn');
     const syncNowBtn = document.getElementById('sync-now-btn');
 
-    const config = getSupabaseConfig();
+    const config = window.getSupabaseConfig();
     if (!config.url || !config.key) { syncToggleBtn.disabled = true; syncNowBtn.disabled = true; syncToggleBtn.textContent = '需先配置服务'; return; }
-    if (!sb) sb = initSupabase();
+    if (!sb) sb = window.initSupabase();
 
     function updateSyncToggleBtn() {
-      const enabled = isSyncEnabled();
+      const enabled = window.isSyncEnabled();
       syncToggleBtn.textContent = enabled ? '自动同步：开启' : '自动同步：关闭';
       syncToggleBtn.style.borderColor = enabled ? 'var(--accent)' : '';
       syncToggleBtn.style.color = enabled ? 'var(--accent)' : '';
@@ -374,7 +374,7 @@ function setupEventListeners() {
     updateSyncToggleBtn();
 
     syncToggleBtn.addEventListener('click', async () => {
-      const next = !isSyncEnabled();
+      const next = !window.isSyncEnabled();
       setSyncEnabled(next);
       updateSyncToggleBtn();
       showToast(next ? '已开启自动同步' : '已关闭自动同步');
@@ -536,7 +536,7 @@ function setupEventListeners() {
 async function initApp() {
   window.__bootLog && window.__bootLog('DOMContentLoaded fired');
   try {
-    loadTheme();
+    window.loadTheme();
     window.__bootLog && window.__bootLog('theme loaded');
   } catch (e) {
     console.error('[Init] loadTheme failed:', e.message);
@@ -565,16 +565,16 @@ async function initApp() {
       window.__bootLog && window.__bootLog('switchView(calendar) done, #app display=' + (document.getElementById('app') ? getComputedStyle(document.getElementById('app')).display : 'N/A'));
     } else {
       console.warn('[Init] Vue 层尚未就绪，回退到传统渲染');
-      renderCalendar();
+      window.renderCalendar();
     }
   } catch (e) {
     console.error('[Init] 激活 Vue 层失败，回退传统渲染:', e.message);
-    renderCalendar();
+    window.renderCalendar();
   }
 
   window.__bootLog && window.__bootLog('loading data via IPC (calendarAPI exists=' + !!window.calendarAPI + ')...');
   try {
-    await Promise.all([loadAllData(), loadHolidays(), loadTodos(), loadReminders(), loadReminderRecords()]);
+    await Promise.all([window.loadAllData(), window.loadHolidays(), window.loadTodos(), window.loadReminders(), window.loadReminderRecords()]);
     window.__bootLog && window.__bootLog('all data loaded OK');
   } catch (e) {
     console.error('[Init] Data loading failed:', e.message);
@@ -582,7 +582,7 @@ async function initApp() {
   }
 
   try {
-    renderCalendar();
+    window.renderCalendar();
   } catch (e) {
     console.error('[Init] renderCalendar failed:', e.message);
   }
@@ -623,7 +623,7 @@ async function initApp() {
           window.__refreshReminderList?.();
           window.__refreshReminderHistory?.();
         }
-        renderCalendar();
+        window.renderCalendar();
         window.__refreshCalendarGrid?.();
         showToast('打卡成功 ✓');
       });
@@ -675,14 +675,55 @@ async function initApp() {
   }
 }
 
-// ===== 健壮触发：修复「点击导航栏无反应」的根因 =====
-// 原代码依赖 document.addEventListener('DOMContentLoaded', init) 触发初始化。
-// 但本应用经 Vite 以 ESM 模块（vue-main.js → renderer.js）异步加载，DOMContentLoaded
-// 往往在这些模块执行前就已触发；模块内注册的监听错过时机，导致 setupEventListeners()
-// 永不执行、工具栏点击无绑定、导航栏点了没反应（日历因 App.vue 默认 activePage 仍可见）。
-// 改用 readyState 检查：DOM 已就绪则立即执行，否则再等 DOMContentLoaded。
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initApp);
-} else {
-  initApp();
+// ===== 健壮触发：修复 ESM 加载顺序 + DOMContentLoaded 时机问题 =====
+//
+// 三层防御：
+// 1. ESM 导入顺序：renderer.js 由 shims.js import，在 shims 填充 window.* 之前就
+//    被求值。用 queueMicrotask 延迟到同步导入链完成后再执行（此时 window.* 就绪）。
+// 2. DOMContentLoaded：ESM 异步加载时该事件可能已触发。用 readyState 检查守卫。
+// 3. 全局函数就绪门：即使微任务延迟后仍有极端时序问题，检查关键函数是否存在，
+//    不存在则轮询等待（最长 5s），避免 ReferenceError/TypeError 风暴触发 fatal-overlay。
+
+function scheduleInit() {
+  // 防御 1：等 DOM 就绪
+  function whenDOMReady() {
+    return new Promise(resolve => {
+      if (document.readyState !== 'loading') resolve();
+      else document.addEventListener('DOMContentLoaded', resolve, { once: true });
+    });
+  }
+
+  // 防御 3：等 window.* 全局函数填充完毕
+  function whenGlobalsReady() {
+    const required = ['loadTheme', 'getSupabaseConfig', 'renderCalendar', 'loadAllData'];
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      (function check() {
+        const missing = required.filter(fn => typeof window[fn] !== 'function');
+        if (missing.length === 0) { resolve(); return; }
+        if (Date.now() - start > 5000) {
+          console.warn('[Init] Globals still missing after 5s:', missing.join(', '));
+          resolve(); // 超时也继续执行（让 showFatal 报具体错）
+          return;
+        }
+        setTimeout(check, 50);
+      })();
+    });
+  }
+
+  // 微任务延迟：等 ESM 导入链同步完成（shims.js 填充 window.*）
+  queueMicrotask(async () => {
+    try {
+      await whenDOMReady();
+      await whenGlobalsReady();
+      window.__bootLog && window.__bootLog('[Init] all prerequisites ready, calling initApp');
+      initApp();
+    } catch (e) {
+      console.error('[Init] scheduleInit failed:', e.message);
+      // 最后兜底：直接调用，让 showFatal 接住错误
+      initApp();
+    }
+  });
 }
+
+scheduleInit();
