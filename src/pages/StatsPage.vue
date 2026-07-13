@@ -19,6 +19,30 @@ const currentMonth = ref(new Date().getMonth())
 const refreshCount = ref(0)
 window.__refreshStats = () => { refreshCount.value++ }
 
+// 月份切换：允许查看任意历史 / 未来月份
+const now = new Date()
+const isCurrentMonth = computed(() =>
+  currentYear.value === now.getFullYear() && currentMonth.value === now.getMonth()
+)
+const isFuture = computed(() =>
+  currentYear.value > now.getFullYear() ||
+  (currentYear.value === now.getFullYear() && currentMonth.value > now.getMonth())
+)
+function prevMonth() {
+  let m = currentMonth.value - 1, y = currentYear.value
+  if (m < 0) { m = 11; y-- }
+  currentMonth.value = m; currentYear.value = y
+}
+function nextMonth() {
+  let m = currentMonth.value + 1, y = currentYear.value
+  if (m > 11) { m = 0; y++ }
+  currentMonth.value = m; currentYear.value = y
+}
+function goCurrentMonth() {
+  currentYear.value = now.getFullYear()
+  currentMonth.value = now.getMonth()
+}
+
 onMounted(async () => {
   currentYear.value = window.currentYear || new Date().getFullYear()
   currentMonth.value = window.currentMonth || new Date().getMonth()
@@ -135,14 +159,23 @@ const ringTotal = computed(() => stats.value.totalRecorded)
 
 function exportImage() {
   if (typeof window.exportStatsAsImage === 'function') {
-    const s = stats.value
-    window.exportStatsAsImage(s)
+    window.exportStatsAsImage(stats.value, currentYear.value, currentMonth.value)
   }
 }
 </script>
 
 <template>
   <div class="stats-content">
+    <div class="stats-nav">
+      <button class="nav-btn" @click="prevMonth" aria-label="上个月">‹</button>
+      <div class="stats-nav-center">
+        <span class="month-label">{{ currentYear }}年{{ currentMonth + 1 }}月</span>
+        <span v-if="!isCurrentMonth" class="stats-nav-tag" :class="{ future: isFuture }">{{ isFuture ? '未来' : '历史' }}</span>
+      </div>
+      <button class="nav-btn" @click="nextMonth" aria-label="下个月">›</button>
+      <button v-if="!isCurrentMonth" class="today-btn" @click="goCurrentMonth">本月</button>
+    </div>
+
     <div class="stats-toolbar">
       <button class="settings-action-btn btn-xs" @click="exportImage">导出统计图片</button>
     </div>
@@ -159,7 +192,7 @@ function exportImage() {
     </div>
 
     <div v-if="ringTotal > 0" class="overview-section">
-      <div class="theme-title">本月概览</div>
+      <div class="theme-title">{{ currentYear }}年{{ currentMonth + 1 }}月 概览</div>
       <div class="overview-grid">
         <div class="overview-ring">
           <StatsRing :segments="ringSegments" :center-value="ringTotal" center-label="已记录天" />
@@ -216,7 +249,7 @@ function exportImage() {
     </div>
 
     <div v-if="stats.dayRecords.length > 0">
-      <div class="records-title">本月记录 ({{ stats.dayRecords.length }}天)</div>
+      <div class="records-title">{{ currentYear }}年{{ currentMonth + 1 }}月记录 ({{ stats.dayRecords.length }}天)</div>
       <div class="records-list">
         <div v-for="(r, i) in stats.dayRecords" :key="r.day" class="record-item" :style="{ '--i': i }">
           <div class="record-head">
@@ -230,6 +263,50 @@ function exportImage() {
         </div>
       </div>
     </div>
-    <div v-else class="empty-tip"><EmptyIllustration variant="star" label="本月暂无记录" :size="108" /></div>
+    <div v-else class="empty-tip"><EmptyIllustration variant="star" label="该月暂无记录" :size="108" /></div>
   </div>
 </template>
+
+<style scoped>
+.stats-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 4px 2px;
+}
+.stats-nav .nav-btn {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+.stats-nav-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+.stats-nav .month-label {
+  flex: none;
+}
+.stats-nav-tag {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--hover);
+  color: var(--text3);
+  font-weight: 600;
+}
+.stats-nav-tag.future {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+@media (max-width: 480px) {
+  .stats-nav { gap: 6px; }
+  .stats-nav-tag { display: none; }
+}
+</style>

@@ -374,3 +374,28 @@ Vite dev server + headless Chrome 强制无缓存加载：
 - 安卓「耐用存储」必须是**异步加载且须被启动逻辑 await**：任何启动期依赖该存储的读取点，都要等 `init()` 完成，否则会读到易失的 WebView localStorage。
 - 「从旧存储播种到新存储」的迁移逻辑**必须双向**：读进缓存后还要写回新存储，否则迁移永远不落地，旧数据依旧易失。
 - 用户**已丢失的当前配置无法用代码找回**；本修复保证重输一次后，后续更新不再丢失。
+
+## §19 统计页支持查看历史月份（v3.17.5）
+
+### 需求
+用户希望统计页能回溯历史月份的考勤统计，而非只能看日历当前浏览的当月。
+
+### 现状分析
+- `calendarStore.daysData`（`calendarAPI.getAllData()`）是按完整日期 `YYYY-MM-DD` 键的**全量 map**；`todoStore.todos` / `reminderStore.reminderRecords` 同样按日期全量存储。
+- 历史数据其实**全部已加载**，缺的只是「切换月份」的 UI：原 `StatsPage` 的 `currentYear/currentMonth` 是局部 ref，挂载时从 `window.currentYear/currentMonth`（日历当前月）读一次，之后无法变更。
+
+### 改动
+- **`src/pages/StatsPage.vue`**
+  - 新增 `prevMonth()` / `nextMonth()` / `goCurrentMonth()` 三个函数，对局部 `currentYear/currentMonth` ref 做加减与越界回绕（跨年自动 ±1）。
+  - 新增 `isCurrentMonth` / `isFuture` 计算属性，用于显示「历史 / 未来」标记与「本月」回跳按钮。
+  - 模板顶部新增月份切换器：复用全局 `.nav-btn` / `.month-label` / `.today-btn`（与日历页风格一致），新增 `.stats-nav` 包裹样式（scoped）。
+  - 概览标题、逐日记录标题、`EmptyIllustration` 文案改为随选中月份动态显示；非本月时显示「历史 / 未来」标签。
+  - `exportImage()` 改为 `window.exportStatsAsImage(stats.value, currentYear.value, currentMonth.value)`，把当前查看的月份传下去。
+- **`src/stats/stats.js`**
+  - `exportStatsAsImage(stats, viewYear, viewMonth)` 新增年月参数，优先用传入值（回退 `window.currentYear/currentMonth`），使导出图片标题/文件名跟随**统计页选中的月份**，而非日历当前月。
+
+### 验证
+- `npm run build` 通过（exit 0）。
+- `cap sync android` + JDK21 `assembleRelease` → `BUILD SUCCESSFUL`（1m14s）。
+- `apksigner verify`：v2 scheme **true**。
+- 发布 GitHub Release **v3.17.5**，资产 `work-calendar-v3.17.5.apk`。

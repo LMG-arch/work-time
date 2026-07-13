@@ -1,7 +1,9 @@
 // stats.js — Monthly statistics view
 
 // 导出统计为图片
-export async function exportStatsAsImage(stats) {
+export async function exportStatsAsImage(stats, viewYear, viewMonth) {
+  const year = (viewYear != null) ? viewYear : (window.currentYear || new Date().getFullYear())
+  const month = (viewMonth != null) ? viewMonth : (window.currentMonth || new Date().getMonth())
   const { workDays, restDays, tripDays, leaveDays, annualDays, sickDays, personalDays, noStatus, sortedTags, dayRecords, holidayCount, workdayCount } = stats;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -23,7 +25,7 @@ export async function exportStatsAsImage(stats) {
   let y = 40;
   ctx.fillStyle = '#333'; ctx.font = 'bold 18px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`${currentYear}年${currentMonth + 1}月 统计报告`, W / 2, y);
+  ctx.fillText(`${year}年${month + 1}月 统计报告`, W / 2, y);
 
   y += 30;
   ctx.textAlign = 'left'; ctx.font = '14px sans-serif';
@@ -104,7 +106,7 @@ export async function exportStatsAsImage(stats) {
   ctx.fillText('上班日历 · ' + new Date().toLocaleDateString('zh-CN'), W / 2, H - 15);
 
   // Export image
-  const fileName = `上班日历_${currentYear}年${currentMonth + 1}月统计.png`;
+  const fileName = `上班日历_${year}年${month + 1}月统计.png`;
 
   if (isCapacitorPlatform()) {
     // Android: share image (user can save to gallery)
@@ -119,7 +121,7 @@ export async function exportStatsAsImage(stats) {
       if (Share) {
         await Share.share({
           title: '上班日历统计',
-          text: `${currentYear}年${currentMonth + 1}月考勤统计`,
+          text: `${year}年${month + 1}月考勤统计`,
           files: [file]
         });
       } else if (Filesystem) {

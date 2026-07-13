@@ -1,13 +1,13 @@
 {
-  "version": "3.17.4",
-  "versionCode": 41,
+  "version": "3.17.5",
+  "versionCode": 42,
   "releaseDate": "2026-07-13",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.4/work-calendar-v3.17.4.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.5/work-calendar-v3.17.5.apk",
   "changelog": [
-    "修复：好友圈（Supabase）配置地址与 Key 在应用更新后丢失的问题",
-    "根因① 启动竞态——初始化读取配置早于耐用存储（FS）加载完成，误读到被清空的 WebView localStorage",
-    "根因② 存储播种逻辑只读不写，旧配置从未被耐用备份，WebView 清空即永久丢失",
-    "修复：启动读取前 await 存储初始化；播种后回写 FS 完成一次性迁移，后续更新不再丢配置"
+    "新增：统计页支持查看历史月份——顶部新增月份切换器（上月/下月/回到本月），可回溯任意月份的考勤统计",
+    "统计概览、逐日记录、标签统计、忙闲密度图均随选中月份联动",
+    "导出统计图片标题改为跟随当前查看的月份",
+    "非本月时显示「历史 / 未来」标记，未来月份无数据则提示暂无记录"
   ],
   "forceUpdate": false
 }
