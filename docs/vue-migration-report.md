@@ -268,3 +268,71 @@ const scriptSrc = isDev ? "'self' 'unsafe-inline'" : "'self'";
 
 ### 验证
 - `node --check main.js` 语法绿；逻辑路径覆盖：正常情况 attempt 1 即成功、Vite 延迟时中间某次重试成功、Vite 完全没启时最终 fallback + 标题标记。
+
+## 15. §15 导航栏点击无反应（双重根因）
+
+### 现象
+日历正常显示（App.vue 默认 `activePage='calendar'` 直接渲染），但点击底部导航栏（日历/打卡/好友/统计/设置）按钮**完全无反应**。
+
+### 根因（两层叠加）
+1. **事件绑定时机**：`renderer.js` 将 `setupEventListeners()`（含 toolbar 按钮 click 绑定）放在 `document.addEventListener('DOMContentLoaded', ...)` 内。整 app 经 Vite 以 ESM（`vue-main.js → renderer.js`）异步加载，`DOMContentLoaded` 往往在模块执行**之前**触发，监听错过时机 → `setupEventListeners()` 永不执行 → 导航栏从未绑 click。
+2. **全屏错误层拦截**：`vue-main.js` 的 `showFatal()` 创建 `#fatal-overlay`（`position:fixed; inset:0; z-index:2147483647` 全屏 + 默认 `pointer-events:auto`）。`initApp` 内某个**无 try-catch 的 async IIFE** 裸名调用（如 `getSupabaseConfig()`）一旦因全局未就绪抛 `ReferenceError` → 变 `unhandledrejection`/`error` → 触发 `showFatal` → 红层**永久吞掉所有点击**（含导航栏）。
+
+### 修复（da4bc94）
+1. `renderer.js`：把 `DOMContentLoaded` 回调提取为 `initApp()`，改 `readyState` 守卫——DOM 已就绪则立即执行，否则再等 `DOMContentLoaded`（事件绑定恢复）。
+2. `vue-main.js` `showFatal`：`#fatal-overlay` 容器改 `pointer-events:none`（错误面板**只展示、绝不拦截交互**），并加独立 `pointer-events:auto` 的「× 关闭」按钮（多次错误时追加 `.fatal-msg`，不重复创建按钮）。
+3. `shims.js`：补挂 `window.setupEventListeners`（与其它 renderer 裸名导出一致）。
+
+### 验证
+- Vite dev server + headless Chrome 真实复现：`elementFromPoint` 在 `#stats-btn` 中心返回其自身 svg（**无遮挡**）；真实坐标点击 `#stats-btn` 成功切到 stats 页（修复前被 overlay 拦截为 false）；`window.*` 业务函数全部 `function` 已挂载。
+- 防御性兜底：即便将来再出现未捕获错误，`#fatal-overlay` 也不再锁死整个 app。
+
+### 经验
+- **ESM 模块内裸名调用必须配 `readyState` 守卫**：不能只靠 `DOMContentLoaded`（module 异步使其常错过时机）。
+- **任何「全局错误浮层」都必须 `pointer-events:none`**：错误提示初衷是「可见化问题」，绝不能反过来锁死 app（含导航栏）。
+- 排查「点击无反应」：先用 `elementFromPoint` 查坐标处真实顶层元素，可秒级区分「事件没绑」vs「被遮挡」两类根因。
+
+## §16 ESM 裸名调用 ReferenceError + 初始化时序（2837ef8）
+
+### 现象
+Electron 启动后日历可见、导航栏可交互，但 `#fatal-overlay` 显示三条 ReferenceError：
+```
+ReferenceError: getSupabaseConfig is not defined  (renderer.js:287)
+ReferenceError: getSupabaseConfig is not defined  (renderer.js:364)
+ReferenceError: renderCalendar is not defined        (renderer.js:572)
+```
+
+### 根因（两层叠加）
+
+**层 1 — ESM 裸名不回退 window.\***
+renderer.js 是 ESM 模块（由 shims.js `import * as renderer from './renderer.js'` 加载）。
+ESM 模块内的**裸标识符引用不会回退到 `window.*` 属性**——它只解析模块级变量和 import。
+而 `getSupabaseConfig` / `renderCalendar` 等 16 个函数仅通过 shims.js 挂在 `window.*` 上，
+裸名调用全部抛 ReferenceError。
+
+**层 2 — initApp 在 shims 填充 window.* 之前就执行**
+即使加上 `window.` 前缀，renderer.js 底部的 `initApp()` 在**模块求值阶段**就被同步调用：
+```
+vue-main.js → import shared.js → import shims.js → import renderer.js → initApp()!
+                                                              ↑ 此时 shims 的 window.* 赋值还没执行！
+```
+结果：`window.getSupabaseConfig` 存在但值不是 function → TypeError。
+
+### 修复
+
+1. **16 个外部函数调用加 `window.` 前缀**：`getSupabaseConfig()` → `window.getSupabaseConfig()` 等。
+2. **`scheduleInit()` 替代同步调用**：三层防御——
+   - `queueMicrotask()` 延迟到 ESM 导入链同步完成后执行
+   - `whenDOMReady()` 守卫 DOMContentLoaded 时机
+   - `whenGlobalsReady()` 轮询关键函数是否已挂载（最长 5s，避免 TypeError 风暴）
+
+### 验证
+Vite dev server + headless Chrome 强制无缓存加载：
+- JS Errors: **0** | Fatal overlay: **不存在**
+- 日历完整渲染：2026年7月（含农历、节气、节日）
+- 导航按钮：[日历, 打卡, 好友, 统计, 设置] 全部就位
+- Boot 序列：`shared→shims→Vue→[prerequisites ready]→initApp→OK`
+
+### 经验
+- **ESM 模块的裸标识符解析是静态的**，绝不查 `window.*`。从经典 script 迁移到 ESM 时，所有跨模块全局调用必须显式写 `window.XXX()`。
+- **import 链中的副作用时序**：如果模块 A 被 B import，A 的顶层代码先于 B 的剩余代码执行。任何依赖 B 设置的全局状态的初始化必须延迟（queueMicrotask / 自定义事件）。
