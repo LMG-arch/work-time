@@ -6,23 +6,11 @@
   <title>上班日历</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="social.css">
-  <!-- 入口：用经典脚本动态 import 模块，并捕获加载/求值错误显示到诊断面板。
-       关键：静态 <script type=module src> 一旦其任意静态 import 失败会「静默整体失败」（无任何报错），
-       改用动态 import().catch() 后，失败时会在屏幕上显示确切错误，便于定位。 -->
-  <script>
-    (window.__bootLog || console.log)('bootstrap: dynamic import ./vue-main.js');
-    import('./vue-main.js')
-      .then(function () { (window.__bootLog || console.log)('bootstrap OK — vue-main.js evaluated'); })
-      .catch(function (e) {
-        var m = (e && (e.stack || e.message)) ? (e.stack || e.message) : String(e);
-        // 区分 file:// 协议限制 vs 其他原因
-        if (location.protocol === 'file:') {
-          m = 'file:// protocol blocks ESM import(). Use "npm run dev" or the launcher bat to start Vite dev server. Raw: ' + m;
-        }
-        if (window.__bootError) window.__bootError('Module load/eval FAILED: ' + m);
-        else console.error('Module load/eval FAILED:', m);
-      });
-  </script>
+  <!-- 入口：通过 Vite 正式 ESM module 加载（bootstrap.js）。
+       vue-main.js 及其整条依赖链（shared.js → shims.js → Vue/组件/stores）
+       会被 Vite 正确打包为 dist/assets/ 下的 chunk 文件。
+       错误捕获在 bootstrap.js 内用 import().catch() 处理，显示到诊断面板。 -->
+  <script type="module" src="./bootstrap.js"></script>
 </head>
 <body>
   <!-- 🔍 启动诊断面板：纯内联，不依赖任何外部 JS/CSS -->

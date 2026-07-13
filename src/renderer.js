@@ -126,7 +126,7 @@ export async function updateAccountUI() {
 
 // ===== Event Listeners =====
 
-function setupEventListeners() {
+export function setupEventListeners() {
   // Touch swipe for month navigation (calendar view)
   let touchStartX = 0, touchStartY = 0;
   document.addEventListener('touchstart', (e) => {
