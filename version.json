@@ -1,14 +1,1 @@
-{
-  "version": "3.17.6",
-  "versionCode": 43,
-  "releaseDate": "2026-07-14",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.6/work-calendar-v3.17.6.apk",
-  "changelog": [
-    "修复（安卓本地）：更新/重启后本地数据不再丢失——关键配置与日历数据即时落盘到耐用存储，并在页面隐藏/应用切后台时兜底同步",
-    "修复：更换主题后即时全局生效，无需重启",
-    "修复：打卡页齿轮按钮无响应——改用 Vue 直接打开提醒设置弹窗，可正常设置打卡时间",
-    "修复：设置页填入的 Supabase 地址/Key 重启后正常保留",
-    "修复：每次重启显示新用户——Supabase 认证会话改用耐用存储，匿名/登录身份跨重启与更新保持稳定"
-  ],
-  "forceUpdate": false
-}
+{"version": "3.17.7", "versionCode": 44, "releaseDate": "2026-07-14", "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.7/work-calendar-v3.17.7.apk", "changelog": ["优化（日历）：过去日期自动加边框淡化，与未来日期一眼区分", "优化（日历）：上班/休息/出差等状态角标着色 + 淡底色辅助，辨识度大幅提升", "新增（好友圈）：动态/好友/个人 三页签切换，全部 Vue 化实现，安卓端终于可用好友和个人页面"], "forceUpdate": false}

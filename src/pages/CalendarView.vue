@@ -137,6 +137,23 @@ function busyLevel(dateStr) {
 
 const STATUS_CHARS = { work: '班', rest: '休', trip: '差', leave: '假', annual: '年', sick: '病', personal: '事' }
 
+// 状态淡底色映射（用户未自定义 color 时，按状态给日格极淡背景辅助辨识）
+const STATUS_BG_MAP = {
+  work: 'rgba(76,175,80,0.10)',
+  rest: 'rgba(66,165,245,0.10)',
+  trip: 'rgba(255,152,0,0.10)',
+  leave: 'rgba(156,39,176,0.08)',
+  annual: 'rgba(0,188,212,0.08)',
+  sick: 'rgba(245,124,0,0.08)',
+  personal: 'rgba(141,110,99,0.08)',
+}
+
+function statusBg(dateStr) {
+  const d = dayData(dateStr)
+  if (!d.status) return {}
+  return { background: STATUS_BG_MAP[d.status] || '' }
+}
+
 function selectDate(dateStr, isOther) {
   if (isOther) {
     const p = dateStr.split('-')
@@ -204,9 +221,9 @@ onMounted(async () => {
 
     <div class="calendar-grid" style="flex-shrink:0;">
       <div v-for="(cd, idx) in calendarDays" :key="idx"
-        class="day-cell" data-tilt data-tilt-max="5" data-tilt-lift="0" :class="{ 'other-month': cd.isOther, today: cd.dateStr === todayStr, selected: cd.dateStr === selectedDate, 'has-note': dayData(cd.dateStr).note, 'has-tag': dayData(cd.dateStr).tags?.length > 0, 'has-todo': todosForDate(cd.dateStr).length > 0 }"
-        :style="dayData(cd.dateStr).color ? { background: dayData(cd.dateStr).color } : {}"
-        :data-date="cd.dateStr" :data-busy="cd.isOther ? 0 : busyLevel(cd.dateStr)" @click="selectDate(cd.dateStr, cd.isOther)">
+        class="day-cell" data-tilt data-tilt-max="5" data-tilt-lift="0" :class="{ 'other-month': cd.isOther, today: cd.dateStr === todayStr, selected: cd.dateStr === selectedDate, 'has-note': dayData(cd.dateStr).note, 'has-tag': dayData(cd.dateStr).tags?.length > 0, 'has-todo': todosForDate(cd.dateStr).length > 0, 'is-past': !cd.isOther && cd.dateStr < todayStr }"
+        :style="dayData(cd.dateStr).color ? { background: dayData(cd.dateStr).color } : statusBg(cd.dateStr)"
+        :data-date="cd.dateStr" :data-status="dayData(cd.dateStr).status" :data-busy="cd.isOther ? 0 : busyLevel(cd.dateStr)" @click="selectDate(cd.dateStr, cd.isOther)">
         <div class="busy-heat" aria-hidden="true"></div>
         <span class="day-num">{{ cd.day }}</span>
         <span class="lunar-label" :class="{ 'lunar-month': lunar(currentYear, currentMonth + 1, cd.day).isFirstDay }">{{ lunar(currentYear, currentMonth + 1, cd.day).text }}</span>

@@ -512,6 +512,13 @@ button:active::after {
 .day-cell:active { transform: scale(0.93); }
 .day-cell.other-month { color: var(--text3); opacity: 0.5; }
 
+/* 过去日期：淡淡边框 + 微透明（今天例外不淡化） */
+.day-cell.is-past {
+  border: 1px solid var(--border, rgba(0,0,0,0.08));
+  opacity: 0.78;
+}
+.day-cell.is-past.today { opacity: 1; }
+
 .day-cell.today .day-num {
   background: var(--accent); color: #fff;
   border-radius: 50%; width: 28px; height: 28px;
