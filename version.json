@@ -1,13 +1,14 @@
 {
-  "version": "3.17.5",
-  "versionCode": 42,
-  "releaseDate": "2026-07-13",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.5/work-calendar-v3.17.5.apk",
+  "version": "3.17.6",
+  "versionCode": 43,
+  "releaseDate": "2026-07-14",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.6/work-calendar-v3.17.6.apk",
   "changelog": [
-    "新增：统计页支持查看历史月份——顶部新增月份切换器（上月/下月/回到本月），可回溯任意月份的考勤统计",
-    "统计概览、逐日记录、标签统计、忙闲密度图均随选中月份联动",
-    "导出统计图片标题改为跟随当前查看的月份",
-    "非本月时显示「历史 / 未来」标记，未来月份无数据则提示暂无记录"
+    "修复（安卓本地）：更新/重启后本地数据不再丢失——关键配置与日历数据即时落盘到耐用存储，并在页面隐藏/应用切后台时兜底同步",
+    "修复：更换主题后即时全局生效，无需重启",
+    "修复：打卡页齿轮按钮无响应——改用 Vue 直接打开提醒设置弹窗，可正常设置打卡时间",
+    "修复：设置页填入的 Supabase 地址/Key 重启后正常保留",
+    "修复：每次重启显示新用户——Supabase 认证会话改用耐用存储，匿名/登录身份跨重启与更新保持稳定"
   ],
   "forceUpdate": false
 }

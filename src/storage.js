@@ -19,6 +19,19 @@
 
 const FS = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) || null;
 const PREFIX = 'wc-'; // Data 目录下文件名前缀，避免与其它文件冲突
+
+// 关键键：写入时立即落盘 FS（不走 300ms 防抖），避免应用被杀/更新时丢失
+// 最新配置与身份（修复「更新/重启后本地数据/配置不同步」「每次重启显示新用户」）。
+const CRITICAL_FLUSH_KEYS = {
+  'supabase-config': 1,
+  'supabase-auth-store': 1,
+  'social-account-username': 1,
+  'social-account-hash': 1,
+  'social-account-salt': 1,
+  'social-bound-user-id': 1,
+  'social-nickname': 1,
+};
+
 const _cache = {}; // key -> string，同步真值源
 let _loaded = false;
 let _loading = null;
@@ -35,6 +48,7 @@ const KNOWN_KEYS = {
   'social-account-hash': 1,
   'social-account-salt': 1,
   'social-bound-user-id': 1,
+  'supabase-auth-store': 1, // Supabase 认证会话（匿名/登录）耐用备份，跨 WebView 清理与更新保持身份
   'calendar-sync-enabled': 1,
   'calendar-theme': 1,
   // —— 以下为后续补全的耐用化 key（请求：所有本地数据都要保存/恢复）——
@@ -66,6 +80,11 @@ function rawRemove(key) {
 function _persist(key, val) {
   try { localStorage.setItem(key, val == null ? '' : val); } catch (e) { /* 配额或隐私模式，忽略 */ }
   if (!_hasFS) return;
+  if (CRITICAL_FLUSH_KEYS[key]) {
+    // 关键键：跳过防抖，立即全量落盘 FS（一次写入量很小，开销可忽略）
+    flushAll().catch(e => console.warn('[Storage] critical flush failed:', e.message));
+    return;
+  }
   if (_persistTimer) clearTimeout(_persistTimer);
   _persistTimer = setTimeout(() => { flushAll(); }, 300);
 }
@@ -83,6 +102,26 @@ async function flushAll() {
       }
     } catch (e) { console.warn('[Storage] FS persist failed:', e.message); }
   }
+}
+
+// 兜底落盘钩子：在页面/应用进入不可见状态时把内存缓存立即写 FS。
+// 这是 WebView 被系统回收前最后可靠的落盘窗口，覆盖 300ms 防抖未触发的情况。
+function installFlushHooks() {
+  if (typeof window === 'undefined') return;
+  const onHide = () => { flushAll().catch(() => {}); };
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') onHide();
+  });
+  window.addEventListener('pagehide', onHide);
+  // Capacitor Android：应用切后台/被杀前的最佳落盘窗口
+  try {
+    const App = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (App && typeof App.addListener === 'function') {
+      App.addListener('appStateChange', (state) => {
+        if (state && state.isActive === false) onHide();
+      }).catch(() => {});
+    }
+  } catch (e) { console.warn('[Storage] appStateChange hook failed:', e.message); }
 }
 
 // ---- 一次性异步初始化：FS -> 缓存，缺失则从 localStorage 播种 ----
@@ -108,6 +147,10 @@ async function initStorage() {
       // 永远不会被耐用备份覆盖；一旦 WebView 在更新时被系统清空，
       // 配置将永久丢失、且无法从云端恢复。这里统一回写，完成一次性迁移。
       try { await flushAll(); } catch (e) { console.warn('[Storage] seed flush failed:', e.message); }
+
+      // 兜底落盘：页面隐藏/卸载、以及 Capacitor 切后台时立即把缓存写 FS，
+      // 避免 WebView 被系统回收导致数据丢失（修复「更新/重启后数据不同步」）。
+      installFlushHooks();
     }
     _loaded = true;
   })();

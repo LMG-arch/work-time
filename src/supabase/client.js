@@ -11,6 +11,37 @@ export function setGlobalUserId(id) { _globalUserId = id; }
 // 初始化为 null，与经典脚本行为一致
 window.sb = null;
 
+// 耐用认证存储适配器：把 Supabase 会话（含匿名用户 id + token）持久化到
+// window.__storage（FS 备份），取代默认 localStorage，使身份跨 WebView 清理与
+// 应用更新保持（修复「每次重启显示新用户」）。Supabase 会按自身规则对会话分多个
+// 键（sb-<ref>-auth-token / auth-event 等），这里统一收进单个映射键，便于耐用化。
+const SB_AUTH_STORE_KEY = 'supabase-auth-store';
+function _readAuthMap() {
+  try { return JSON.parse(window.__storage.getRaw(SB_AUTH_STORE_KEY) || '{}'); } catch { return {}; }
+}
+function _writeAuthMap(m) { window.__storage.setRaw(SB_AUTH_STORE_KEY, JSON.stringify(m)); }
+const sbAuthStorage = {
+  getItem: (k) => { const m = _readAuthMap(); return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
+  setItem: (k, v) => { const m = _readAuthMap(); m[k] = v; _writeAuthMap(m); },
+  removeItem: (k) => { const m = _readAuthMap(); delete m[k]; _writeAuthMap(m); },
+};
+
+// 一次性迁移：把旧 localStorage 中的 Supabase 会话搬进耐用存储，
+// 避免升级后首启因切换适配器而丢失当前会话（导致又新建匿名用户）。
+function migrateLegacyAuthStorage() {
+  try {
+    if (window.__storage.getRaw(SB_AUTH_STORE_KEY)) return; // 已迁移
+    const map = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && /^sb-.*-(auth-token|auth-event)$/.test(k)) {
+        map[k] = localStorage.getItem(k);
+      }
+    }
+    if (Object.keys(map).length) _writeAuthMap(map);
+  } catch (e) { console.warn('[Auth] legacy migration failed:', e.message); }
+}
+
 function getSupabaseConfig() {
   try {
     const obj = window.__storage.get('supabase-config');
@@ -38,10 +69,12 @@ function initSupabase() {
     console.error('[Supabase] CDN library not loaded - window.supabase is undefined');
     return null;
   }
+  // 把旧 localStorage 会话迁移到耐用存储（仅首次），确保升级后身份不丢
+  migrateLegacyAuthStorage();
   try {
     window.sb = window.supabase.createClient(config.url, config.key, {
       auth: {
-        storage: localStorage,
+        storage: sbAuthStorage,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false

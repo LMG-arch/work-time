@@ -252,9 +252,9 @@ export function setupEventListeners() {
   // 管理员回收站功能已由 SettingsPage.vue 处理
   // Called after initSocial() so Supabase client is ready
 
-  // Clock-in settings
-  document.getElementById('clockin-settings-btn')?.addEventListener('click', () => window.__openReminderSettings?.());
-  // 提醒设置弹窗由 Vue ReminderSettings 组件处理
+  // Clock-in settings：齿轮按钮的点击已在 ClockinPage.vue 内用 @click 绑定
+  // （经典 renderer 在页面未挂载时绑不到该按钮，故改由 Vue 组件接管）。
+  // 提醒设置弹窗由 Vue ReminderSettings 组件处理。
 
   // Auto-launch toggle
   const autoLaunchBtn = document.getElementById('auto-launch-btn');

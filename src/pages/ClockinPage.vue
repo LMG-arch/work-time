@@ -11,6 +11,10 @@ const reminderStore = useReminderStore()
 function fmtDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+// 打开打卡提醒设置弹窗（Vue 生命周期内绑定，避免经典 renderer.js 在页面未挂载时绑不到）
+function openReminderSettings() {
+  window.__openReminderSettings?.()
+}
 function dayHasClockin(records, date) {
   const day = records[fmtDate(date)]
   if (!day) return false
@@ -70,7 +74,7 @@ onMounted(async () => {
   <div class="clockin-view-content">
     <div class="clockin-header-row">
       <div class="clockin-today-label" id="clockin-today-label"></div>
-      <button id="clockin-settings-btn" class="clockin-settings-btn" title="提醒设置">&#x2699;</button>
+      <button id="clockin-settings-btn" class="clockin-settings-btn" title="提醒设置" @click="openReminderSettings">&#x2699;</button>
     </div>
     <div class="growth-card" :class="{ 'milestone-flash': milestoneFlash }">
       <GrowthPlant :streak="streak" />

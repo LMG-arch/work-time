@@ -10,7 +10,9 @@ function loadJson(key, fallback) {
 
 export const useAppStore = defineStore('app', () => {
   const activePage = ref(null)
-  const theme = ref(window.__storage.getRaw('theme') || 'light')
+  // 主题统一以 calendar-theme 为单一真值（经典 CSS 驱动键，写在 document.body.dataset.theme）。
+  // 早期版本曾用独立 `theme` 键，造成与经典路径分裂、切换需重启；现统一到此键。
+  const theme = ref(window.__storage.getRaw('calendar-theme') || 'cosmic')
   const navSettings = ref(window.__storage.get('navSettings') || {})
   const syncEnabled = ref(window.__storage.getRaw('syncEnabled') === 'true')
   // 高级视觉效果的开关与强度档位（星海绽放等氛围/招牌瞬间效果的全局总闸）
@@ -32,7 +34,9 @@ export const useAppStore = defineStore('app', () => {
 
   function setTheme(t) {
     theme.value = t
-    window.__storage.setRaw('theme', t)
+    window.__storage.setRaw('calendar-theme', t)
+    // 立即应用到 body，切换主题即时全局生效（无需重启）
+    if (typeof document !== 'undefined') document.body.dataset.theme = t
   }
 
   function setSyncEnabled(v) {
@@ -60,6 +64,8 @@ export const useAppStore = defineStore('app', () => {
   watch(currentYear, (v) => { window.currentYear = v }, { immediate: true })
   watch(currentMonth, (v) => { window.currentMonth = v }, { immediate: true })
   watch(selectedDate, (v) => { window.selectedDate = v }, { immediate: true })
+  // 主题变化时即时应用到 body（双保险，setTheme 已设置，此 watch 覆盖其它写入路径）
+  watch(theme, (v) => { if (v && typeof document !== 'undefined') document.body.dataset.theme = v })
 
   return {
     activePage,

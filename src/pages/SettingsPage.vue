@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import SettingsSection from '../components/SettingsSection.vue'
 import { isCapacitorPlatform, sanitizeUrl } from '../utils.js'
+import { useAppStore } from '../stores/appStore.js'
 
 // ===== 全局依赖（通过 window 访问现有模块函数）=====
 const getSupabaseConfig = window.getSupabaseConfig
@@ -32,6 +33,9 @@ const safeAvatarUrl = computed(() => {
 })
 
 // ===== 主题 =====
+// 统一使用 appStore（单一真值，存储键 calendar-theme，响应式应用到 body），
+// 避免与经典路径双键分裂导致切换需重启。
+const appStore = useAppStore()
 const THEMES = window.THEMES || [
   { id: 'default', name: '经典', color: '#333' },
   { id: 'dark', name: '暗黑', color: '#1a1a2e' },
@@ -49,14 +53,10 @@ const THEMES = window.THEMES || [
   { id: 'slate', name: '石板', color: '#546e7a' },
   { id: 'cosmic', name: '星海绽放', color: '#9d8cff' },
 ]
-const currentTheme = ref(document.body.dataset.theme || 'default')
+const currentTheme = computed(() => appStore.theme)
 
 function setTheme(themeId) {
-  const apply = () => {
-    currentTheme.value = themeId
-    document.body.dataset.theme = themeId
-    window.__storage.setRaw('calendar-theme', themeId)
-  }
+  const apply = () => { appStore.setTheme(themeId) }
   if (document.startViewTransition) {
     document.startViewTransition(apply)
   } else {
