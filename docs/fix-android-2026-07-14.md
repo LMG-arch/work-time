@@ -54,3 +54,27 @@
 - 流水线：`vite build` → 同步 `android/app/src/main/assets/public/` → `gradlew assembleRelease` → 提交 `0833ccd` → 打 tag `v3.17.7` → 推送 → GitHub Release 上传 APK。
 - 发布链接：https://github.com/LMG-arch/work-time/releases/tag/v3.17.7
 - 状态：✅ 已发布（2026-07-14）。APK：`work-calendar-v3.17.7.apk`（3,470,386 B，gitignore，本地留存）。downloadUrl 已写入 `version.json`。
+
+## 发布 (v3.17.8) — 数据持久化根因修复
+
+> 用户反馈：安装新版本后服务配置需重新输入；输入账号密码后提示「用户名或密码错误」；本地数据丢失需同步服务端。
+
+### 根因链（三层叠加）
+
+1. **Filesystem 插件未打包**（根本原因）：`android/app/build.gradle` 从未声明 `implementation project(':capacitor-filesystem')`，原生代码不进 APK → 运行时 `window.Capacitor.Plugins.Filesystem` 为 null → `storage.js` 的 `_hasFS` 始终 false → **整个 FS 耐用层空转**（CRITICAL_FLUSH / flushAll / installFlushHooks 全部跳过），所有数据仅存 WebView localStorage（易失）。
+2. **salt 丢失导致登录失败**：lmg 账号密码重置用 salt `bac7b0ac...`（设备本地），重装/更新后 localStorage 被清 → salt 丢失 → 登录哈希不匹配 → 「用户名或密码错误」。
+3. **数据恢复依赖登录**：登录成功后 `handleLogin()` 自动调用 `syncCalendarData()` 拉取云端数据；但登录被 salt 阻断，形成死循环。
+
+### 修复
+
+| 层 | 修复 | 文件 |
+|---|---|---|
+| 原生插件 | 补 `implementation project(':capacitor-filesystem')` + LocalNotifications | `android/app/build.gradle` |
+| Cap 同步 | 首次运行 `npx cap sync android`，生成 `capacitor.build.gradle`（自动声明插件） | `android/app/capacitor.build.gradle`(新建) |
+| 存储时序 | `_hasFS = !!FS`（模块加载即确定，不等 initStorage 完成） | `src/storage.js` |
+| Salt 恢复 | 注入 `src/public/salt-seed.js`，set-if-missing 写入 social-account-salt | `src/public/salt-seed.js`(新建) + `src/index.html` |
+
+### 版本与构建
+- 版本：3.17.7 → 3.17.8（versionCode 45）；首次 `gradlew clean assembleRelease`（190 tasks executed vs 之前 14 tasks 增量）
+- 发布链接：https://github.com/LMG-arch/work-time/releases/tag/v3.17.8
+- 状态：✅ 已发布（2026-07-14）。APK：`work-calendar-v3.17.8.apk`（3,471,810 B）。downloadUrl 已写入 `version.json`。
