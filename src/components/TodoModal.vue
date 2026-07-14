@@ -135,11 +135,11 @@ async function confirm() {
       if (type.value === 'weekly' && editingTodo.value.weeklyDone) {
         updates.weeklyDone = editingTodo.value.weeklyDone
       }
-      await window.calendarAPI.updateTodo(editingTodo.value.id, updates)
+      await todoStore.updateTodo(editingTodo.value.id, updates)
       Object.assign(editingTodo.value, updates)
       window.showToast?.('待办已更新')
     } else {
-      await window.calendarAPI.addTodo(updates)
+      await todoStore.addTodo(updates)
       window.showToast?.('待办已添加')
     }
   } catch (e) {
@@ -149,10 +149,10 @@ async function confirm() {
   }
 
   visible.value = false
-  todoStore.refreshFromWindow()
   if (typeof window.__refreshTodoList === 'function') {
     window.__refreshTodoList(calendarStore.selectedDate)
   }
+  window.__refreshTodoView?.()
   if (typeof window.renderCalendar === 'function') window.renderCalendar()
   window.__refreshCalendarGrid?.()
 }

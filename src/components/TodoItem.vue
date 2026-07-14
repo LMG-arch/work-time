@@ -48,7 +48,7 @@ async function toggleDone() {
     console.error('[TodoItem] toggleDone IPC failed:', e.message)
   }
   emit('refresh')
-  todoStore.refreshFromWindow()
+  await todoStore.loadTodos()
   if (typeof window.renderCalendar === 'function') window.renderCalendar()
   window.__refreshCalendarGrid?.()
 }
@@ -59,7 +59,7 @@ async function deleteTodo() {
     const result = await window.calendarAPI.deleteTodo(props.todo.id)
     if (result && result.success) {
       emit('refresh')
-      todoStore.refreshFromWindow()
+      await todoStore.loadTodos()
       if (typeof window.renderCalendar === 'function') window.renderCalendar()
       window.__refreshCalendarGrid?.()
       if (typeof window.showToast === 'function') window.showToast('已删除待办')
@@ -71,7 +71,7 @@ async function deleteTodo() {
 }
 
 function openEdit() {
-  todoStore.startEdit(props.todo)
+  window.__openTodoModal(props.todo)
 }
 </script>
 

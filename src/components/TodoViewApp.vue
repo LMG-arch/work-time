@@ -15,6 +15,7 @@ const onceTodos = computed(() => {
   refreshTick.value
   return todoStore.todos.filter(t => {
     if (t.type !== 'once') return false
+    if (t.deleted) return false
     if (filter.value === 'all') return true
     if (filter.value === 'done') return !!t.done
     return !t.done
@@ -23,7 +24,7 @@ const onceTodos = computed(() => {
 
 const weeklyTodos = computed(() => {
   refreshTick.value
-  return todoStore.todos.filter(t => t.type === 'weekly')
+  return todoStore.todos.filter(t => t.type === 'weekly' && !t.deleted)
 })
 
 const todayStr = computed(() => {

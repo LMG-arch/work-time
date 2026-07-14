@@ -478,6 +478,12 @@ function scheduleReminders() {
     const currentTime = `${hh}:${mm}`;
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
+    // 休息日/请假类状态不弹打卡提醒（避免写入脏打卡记录）
+    const dayStatus = store.days?.[todayStr]?.status;
+    if (dayStatus && ['rest', 'leave', 'annual', 'sick', 'personal'].includes(dayStatus)) {
+      return;
+    }
+
     // 清理过期的分钟通知记录
     for (const key of Object.keys(_notifiedThisMinute)) {
       if (!key.endsWith(currentTime)) {

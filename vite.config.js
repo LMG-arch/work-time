@@ -3,6 +3,9 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import fs from 'fs'
 
+// 读取 package.json 注入版本号，供客户端 __APP_VERSION__ 全局使用
+const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'))
+
 // 复制遗留非模块脚本到构建输出 — Vite 不处理非 type="module" 的 script 标签
 function copyLegacyAssets() {
   // 所有业务 JS 已迁移为 ES 模块（经 vue-main.js → shared.js + shims.js 导入），
@@ -60,6 +63,9 @@ export default defineConfig({
   plugins: [vue(), serveLibRaw(), copyLegacyAssets()],
   root: 'src',
   base: './',
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   build: {
     outDir: '../dist',
     emptyOutDir: true,

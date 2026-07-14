@@ -35,6 +35,11 @@ function getStore() {
 // 保留 Electron preload 注入的真实 IPC 桥（若有），供 getAppVersion 调用，避免自递归
 const PRELOAD_API = (typeof window !== 'undefined' && window.calendarAPI) ? window.calendarAPI : null;
 
+// 构建时由 Vite 注入 __APP_VERSION__；同步到 window 供 getAppVersion 回退使用
+if (typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__) {
+  window.__APP_VERSION__ = __APP_VERSION__;
+}
+
 // 尝试挂载存储层实现；若失败（preload 已通过 contextBridge 注入只读属性）则保留 IPC 版本。
 // Electron 环境：用 preload 的 IPC 桥（与 main 进程通信）；Web/Capacitor 环境：用本文件的存储层实现。
 try {
@@ -312,8 +317,8 @@ try {
       } catch (e) { console.warn('[Version] Electron getAppVersion failed:', e.message); }
     }
 
-    // Web 降级
-    return { versionName: '3.13.0', versionCode: 0 };
+    // Web 降级（使用构建注入的真实版本号，避免假更新）
+    return { versionName: window.__APP_VERSION__ || '3.17.5', versionCode: 0 };
   }
   },
   writable: true,

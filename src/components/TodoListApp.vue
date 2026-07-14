@@ -18,6 +18,7 @@ function updateList(dateStr) {
   const d = new Date(ds + 'T00:00:00')
   const weekday = d.getDay()
   todos.value = todoStore.todos.filter(t => {
+    if (t.deleted) return false
     if (t.type === 'once') return t.date === ds
     if (t.type === 'weekly') return (t.weekdays || []).includes(weekday)
     return false

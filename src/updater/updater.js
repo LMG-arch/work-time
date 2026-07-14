@@ -29,8 +29,8 @@ export async function getLocalVersion() {
       return { versionName: v.version, versionCode: v.versionCode || 0 };
     }
   } catch (e) { console.warn('[Updater] Failed to fetch version.json:', e.message); }
-  // 最终回退：使用 package.json 中的版本号
-  return { versionName: '3.13.0', versionCode: 0 };
+  // 最终回退：使用构建注入的真实版本号，避免假更新
+  return { versionName: (typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__) ? __APP_VERSION__ : '3.17.5', versionCode: 0 };
 }
 
 // 版本比较：返回 1 (a>b), 0 (a=b), -1 (a<b)
