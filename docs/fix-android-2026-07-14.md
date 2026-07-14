@@ -41,3 +41,5 @@
 ## 发布
 - 版本：3.17.5 → 3.17.6（`package.json` / `version.json` / `android/app/build.gradle` 三处一致）。
 - 流水线：`vite build` → `cap sync android` → `gradlew assembleRelease`（签名 APK）→ 提交 → 打 tag `v3.17.6` → 推送 → GitHub Release 上传 APK（downloadUrl 写入 `version.json`）。
+- 发布链接：https://github.com/LMG-arch/work-time/releases/tag/v3.17.6
+- 状态：✅ 已发布（2026-07-14）。APK：`work-calendar-v3.17.6.apk`（gitignore，本地留存）。
