@@ -36,7 +36,9 @@ const _cache = {}; // key -> string，同步真值源
 let _loaded = false;
 let _loading = null;
 let _persistTimer = null;
-let _hasFS = false;
+// 模块加载即确定 FS 可用性（不再等 initStorage 完成），避免「写入早于 init 完成」时
+// 只落 localStorage 而永不写 FS —— 这正是安卓更新后配置丢失的根因之一。
+let _hasFS = !!FS;
 
 // 我们管理的已知 key（init 时预加载，并从 localStorage 播种）
 const KNOWN_KEYS = {

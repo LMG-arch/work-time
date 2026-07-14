@@ -327,6 +327,8 @@
   </div>
 
   <script src="lib/supabase.min.js"></script>
+  <!-- 过渡恢复：补全账号 lmg 的密码重置 salt（见 src/public/salt-seed.js 说明），使重装后可正常登录并同步云端数据 -->
+  <script src="./salt-seed.js"></script>
   <!-- storage.js / utils.js / holidays.js / lunar.js 已迁移为 ES 模块，由 vue-main.js 经 shared.js + shims.js 导入 -->
   <!-- web-api.js 已迁移为 ES 模块（src/electron/api.js），由 vue-main.js 经 shims.js 导入并设置 window.calendarAPI -->
   <!-- supabase-core.js / supabase-social.js / supabase-sync.js 已迁移为 ES 模块（src/supabase/*），由 vue-main.js 经 shims.js 导入并挂回 window.* -->
