@@ -43,3 +43,14 @@
 - 流水线：`vite build` → `cap sync android` → `gradlew assembleRelease`（签名 APK）→ 提交 → 打 tag `v3.17.6` → 推送 → GitHub Release 上传 APK（downloadUrl 写入 `version.json`）。
 - 发布链接：https://github.com/LMG-arch/work-time/releases/tag/v3.17.6
 - 状态：✅ 已发布（2026-07-14）。APK：`work-calendar-v3.17.6.apk`（gitignore，本地留存）。
+
+## 发布 (v3.17.7) — UI 改进
+
+> 延续 v3.17.6 流水线；本轮为 UI 增强（详见 `docs/fix-ui-2026-07-14.md`）。
+
+- 版本：3.17.6 → 3.17.7（`package.json` / `version.json` / `android/app/build.gradle` 三处一致：versionCode 44）。
+- 改动：过去日期边框淡化、状态角标配色 + 淡底色、好友圈动态/好友/我的三页签（Vue 化、安卓端可用）。
+- 清理：移除 v3.17.6 临时 `salt-seed.js` 密码恢复注入（不随正式版外泄硬编码 salt）。
+- 流水线：`vite build` → 同步 `android/app/src/main/assets/public/` → `gradlew assembleRelease` → 提交 `0833ccd` → 打 tag `v3.17.7` → 推送 → GitHub Release 上传 APK。
+- 发布链接：https://github.com/LMG-arch/work-time/releases/tag/v3.17.7
+- 状态：✅ 已发布（2026-07-14）。APK：`work-calendar-v3.17.7.apk`（3,470,386 B，gitignore，本地留存）。downloadUrl 已写入 `version.json`。
