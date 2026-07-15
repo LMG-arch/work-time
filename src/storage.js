@@ -17,7 +17,20 @@
 // window.calendarAPI 不可配置，web-api.js 的赋值在其上静默失败，故本封装不影响桌面路径。
 // 桌面/浏览器下无 Capacitor Filesystem，自动退化为纯 localStorage（行为与原先一致）。
 
-const FS = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) || null;
+// FS 引用惰性检测：Capacitor 桥（window.Capacitor.Plugins.Filesystem）可能在
+// storage.js 模块求值之后才就绪，故不能在模块加载时一次性求值（否则 FS 永远为
+// null，整个耐用层空转——这正是安卓更新/重启后配置与数据丢失的根因）。
+// 调用时检测，一旦就绪即缓存复用；之前未就绪则后续调用会重新探测直到成功。
+// 首次检测到插件时自动触发 initStorage（从 FS 读入缓存并落盘），无需外部重试。
+let _fsRef = null;
+function getFS() {
+  if (_fsRef) return _fsRef;
+  _fsRef = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) || null;
+  if (_fsRef && !_loaded && !_loading) {
+    storage.init().catch(e => console.warn('[Storage] init failed:', e.message));
+  }
+  return _fsRef;
+}
 const PREFIX = 'wc-'; // Data 目录下文件名前缀，避免与其它文件冲突
 
 // 关键键：写入时立即落盘 FS（不走 300ms 防抖），避免应用被杀/更新时丢失
@@ -36,9 +49,7 @@ const _cache = {}; // key -> string，同步真值源
 let _loaded = false;
 let _loading = null;
 let _persistTimer = null;
-// 模块加载即确定 FS 可用性（不再等 initStorage 完成），避免「写入早于 init 完成」时
-// 只落 localStorage 而永不写 FS —— 这正是安卓更新后配置丢失的根因之一。
-let _hasFS = !!FS;
+// 注：FS 可用性改由 getFS() 在调用时惰性检测，不再依赖模块加载时刻的值。
 
 // 我们管理的已知 key（init 时预加载，并从 localStorage 播种）
 const KNOWN_KEYS = {
@@ -81,7 +92,7 @@ function rawRemove(key) {
 // ---- 异步落盘到 Filesystem（防抖）----
 function _persist(key, val) {
   try { localStorage.setItem(key, val == null ? '' : val); } catch (e) { /* 配额或隐私模式，忽略 */ }
-  if (!_hasFS) return;
+  if (!getFS()) return;
   if (CRITICAL_FLUSH_KEYS[key]) {
     // 关键键：跳过防抖，立即全量落盘 FS（一次写入量很小，开销可忽略）
     flushAll().catch(e => console.warn('[Storage] critical flush failed:', e.message));
@@ -92,15 +103,16 @@ function _persist(key, val) {
 }
 
 async function flushAll() {
-  if (!_hasFS) return;
+  const fs = getFS();
+  if (!fs) return;
   const entries = Object.keys(_cache);
   for (const k of entries) {
     const v = _cache[k];
     try {
       if (v == null) {
-        await FS.deleteFile({ path: PREFIX + k, directory: 'DATA' }).catch(() => {});
+        await fs.deleteFile({ path: PREFIX + k, directory: 'DATA' }).catch(() => {});
       } else {
-        await FS.writeFile({ path: PREFIX + k, data: v, directory: 'DATA', encoding: 'utf8' });
+        await fs.writeFile({ path: PREFIX + k, data: v, directory: 'DATA', encoding: 'utf8' });
       }
     } catch (e) { console.warn('[Storage] FS persist failed:', e.message); }
   }
@@ -131,13 +143,13 @@ async function initStorage() {
   if (_loaded) return;
   if (_loading) return _loading;
   _loading = (async () => {
-    if (FS) {
-      _hasFS = true;
+    const fs = getFS();
+    if (fs) {
       for (const k of Object.keys(KNOWN_KEYS)) {
         // 若该 key 已被写操作写入缓存，保留写操作的结果（避免回灌旧值）
         if (k in _cache) continue;
         try {
-          const r = await FS.readFile({ path: PREFIX + k, directory: 'DATA' });
+          const r = await fs.readFile({ path: PREFIX + k, directory: 'DATA' });
           _cache[k] = (r && r.data != null) ? String(r.data) : null;
         } catch {
           // 文件不存在：从 localStorage 播种，保证老用户升级不丢数据
@@ -188,8 +200,10 @@ export const storage = {
 // 兼容垫片：未迁移的经典脚本继续通过 window.__storage 读取
 if (typeof window !== 'undefined') {
   window.__storage = storage;
-  // 脚本加载即自动初始化（页面启动早期触发，无需各模块手动调用）
-  if (FS) {
+  // 脚本加载即自动初始化（页面启动早期触发，无需各模块手动调用）。
+  // 用 getFS() 惰性检测：即使此刻 Capacitor 桥未就绪，initStorage 内部也会在
+  // FS 可用时读取并落盘，无需外部重试。
+  if (getFS()) {
     storage.init().catch(e => console.warn('[Storage] init failed:', e.message));
   }
 }

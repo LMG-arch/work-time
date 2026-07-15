@@ -12,14 +12,11 @@
   var SALT = 'bac7b0acac4f65da4ef98a51e4226c2e';
   function apply() {
     try {
-      if (window.__storage && typeof window.__storage.getRaw === 'function') {
-        var cur = window.__storage.getRaw('social-account-salt');
-        if (!cur) {
-          window.__storage.setRaw('social-account-salt', SALT);
-          console.log('[salt-seed] recovery salt written ->', SALT);
-        } else {
-          console.log('[salt-seed] salt already present, skip');
-        }
+      if (window.__storage && typeof window.__storage.setRaw === 'function') {
+        // 强制写入重置 salt（覆盖设备可能已有的其他 salt，如误注册生成的随机 salt），
+        // 确保 lmg 账号用正确 salt 计算哈希，登录通过。幂等（每次写同一值）。
+        window.__storage.setRaw('social-account-salt', SALT);
+        console.log('[salt-seed] recovery salt ensured ->', SALT);
       } else {
         setTimeout(apply, 200);
       }

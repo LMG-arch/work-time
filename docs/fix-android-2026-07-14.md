@@ -78,3 +78,30 @@
 - 版本：3.17.7 → 3.17.8（versionCode 45）；首次 `gradlew clean assembleRelease`（190 tasks executed vs 之前 14 tasks 增量）
 - 发布链接：https://github.com/LMG-arch/work-time/releases/tag/v3.17.8
 - 状态：✅ 已发布（2026-07-14）。APK：`work-calendar-v3.17.8.apk`（3,471,810 B）。downloadUrl 已写入 `version.json`。
+
+## 发布 (v3.17.9) — 时序根因二次修复（用户仍报「重启后又丢配置」）
+
+> 用户反馈：v3.17.8 后仍「重启又没有了服务配置的地址和秘钥，需要重新输入」，且登录仍报「用户名或密码错误」。
+
+### 根因（v3.17.8 修得不彻底）
+
+v3.17.8 虽补了 `implementation project(':capacitor-filesystem')`，且 dex 扫描确认 APK 内确实含 `FilesystemPlugin`（79 处）+ `ionfilesystem`（225 处）——**原生插件已在包内**。但问题在 JS 层时序：
+
+- `src/storage.js` 原写法 `const FS = (window.Capacitor.Plugins.Filesystem) || null;` 在**模块求值那一刻**一次性取值。
+- Capacitor 桥（`window.Capacitor.Plugins.*`）依赖 WebView 运行时注入，**早于 storage.js 模块加载时往往尚未就绪** → `FS` 取到 `null`，且之后**永不重新探测** → 整个耐用层（CRITICAL_FLUSH / flushAll / initStorage / installFlushHooks）**永久空转**。
+- v3.17.8 的 `_hasFS = !!FS` 只是把同一时刻的 null 固化成标志位，并未解决「桥晚于模块加载」这一根本时序问题。所以即便插件在包里、配置也写到了 FS，运行时 FS 永远为 null → 配置仅落易失的 localStorage → 重启/更新丢失。
+
+### 修复
+
+| 项 | 修复 | 文件 |
+|---|---|---|
+| FS 时序（关键） | 删除模块级 `FS`/`_hasFS`；改 `getFS()` **惰性探测**：调用时检测 `window.Capacitor.Plugins.Filesystem`，检测成功即缓存并自动触发 `initStorage()`，无需外部重试 | `src/storage.js` |
+| 落盘判定 | `_persist` / `flushAll` / `initStorage` / 顶部自动初始化 全部改走 `getFS()`；首次检测到插件即 `storage.init()` 从 FS 读入缓存并回写 | `src/storage.js` |
+| Salt 恢复（登录） | `salt-seed.js` 由「set-if-missing」改为**强制覆盖写入** `social-account-salt`（= `bac7b0ac...`），消除设备已有其它 salt（如误注册随机 salt）导致哈希不匹配、登录失败 | `src/public/salt-seed.js` |
+| 版本号一致性 | `android/app/build.gradle` 此前**未随版本递增**（停留在 versionCode 44 / 3.17.7），导致安装器不识别为升级；本次补齐到 versionCode 46 / 3.17.9 | `android/app/build.gradle` |
+
+### 版本与构建
+- 版本：3.17.8 → 3.17.9（versionCode 46）；三处一致：`package.json` / `version.json` / `android/app/build.gradle`。
+- 流水线：`vite build`（✅ 3.96s）→ `npx cap sync android`（✅ 7.69s，Filesystem 8.1.2 + LocalNotifications 8.2.0 已声明）→ `gradlew clean assembleRelease`（需在**剥离环境**下运行：`env -i PATH=...`，否则继承超大环境触发 `xargs: environment is too large for exec` 使 gradle 子进程 spawn 失败）→ 提交 → 打 tag `v3.17.9` → 推送 → GitHub Release 上传 APK。
+- 发布链接：https://github.com/LMG-arch/work-time/releases/tag/v3.17.9
+- 状态：✅ 已发布（2026-07-15）。APK：`work-calendar-v3.17.9.apk`。downloadUrl 已写入 `version.json`。
