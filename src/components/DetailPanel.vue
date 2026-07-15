@@ -53,9 +53,9 @@ watch(selectedDate, updateData)
   <div v-if="selectedDate">
     <div id="detail-date" class="detail-date">{{ formatDateCN(selectedDate) }}</div>
     <StatusButtons :selectedDate="selectedDate" :currentStatus="dayData?.status" @update="updateData" />
-    <ColorPicker :selectedDate="selectedDate" :currentColor="dayData?.color || ''" />
-    <TagEditor :selectedDate="selectedDate" :tags="dayData?.tags || []" />
-    <NoteEditor :selectedDate="selectedDate" :note="dayData?.note || ''" />
+    <ColorPicker :selectedDate="selectedDate" :currentColor="dayData?.color || ''" @update="updateData" />
+    <TagEditor :selectedDate="selectedDate" :tags="dayData?.tags || []" @update="updateData" />
+    <NoteEditor :selectedDate="selectedDate" :note="dayData?.note || ''" @update="updateData" />
     <div class="todo-section">
       <div class="todo-header-row">
         <span class="todo-title">待办</span>

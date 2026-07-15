@@ -3,24 +3,26 @@ import { ref } from 'vue'
 import { useCalendarStore } from '../stores/calendarStore.js'
 
 const props = defineProps({ selectedDate: String, tags: { type: Array, default: () => [] } })
+const emit = defineEmits(['update'])
 const tagInput = ref('')
 const calendarStore = useCalendarStore()
 
 const QUICK_TAGS = ['加班','迟到','早退','会议','培训','请假','远程','外勤']
 
-function addTag(tag) {
+async function addTag(tag) {
   const trimmed = (tag || tagInput.value).trim()
   if (!trimmed || props.tags.includes(trimmed)) { tagInput.value = ''; return }
   const newTags = [...props.tags, trimmed]
-  saveTags(newTags)
+  await saveTags(newTags)
   tagInput.value = ''
 }
-function removeTag(tag) {
-  saveTags(props.tags.filter(t => t !== tag))
+async function removeTag(tag) {
+  await saveTags(props.tags.filter(t => t !== tag))
 }
 async function saveTags(newTags) {
   const d = calendarStore.getDayData(props.selectedDate)
   await calendarStore.saveDayData(props.selectedDate, d.status || '', d.note || '', newTags, d.color || '')
+  emit('update')
   window.renderCalendar?.()
   window.__refreshCalendarGrid?.()
 }

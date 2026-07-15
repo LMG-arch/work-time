@@ -2,6 +2,7 @@
 import { useCalendarStore } from '../stores/calendarStore.js'
 
 const props = defineProps({ selectedDate: String, currentColor: String })
+const emit = defineEmits(['update'])
 const calendarStore = useCalendarStore()
 
 const COLORS = [
@@ -18,6 +19,7 @@ const COLORS = [
 async function setColor(color) {
   const d = calendarStore.getDayData(props.selectedDate)
   await calendarStore.saveDayData(props.selectedDate, d.status || '', d.note || '', d.tags || [], color)
+  emit('update')
   window.renderCalendar?.()
   window.__refreshCalendarGrid?.()
 }

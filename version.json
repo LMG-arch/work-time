@@ -1,13 +1,13 @@
 {
-  "version": "3.17.12",
-  "versionCode": 49,
+  "version": "3.17.13",
+  "versionCode": 50,
   "releaseDate": "2026-07-15",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.12/work-calendar-v3.17.12.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.13/work-calendar-v3.17.13.apk",
   "changelog": [
-    "【安卓持久化终极修复】根因：@capacitor/filesystem 插件此前从未被 import 注册，window.Capacitor.Plugins.Filesystem 始终为 undefined，整个 FS 耐用层从 v3.17.8 起空转死代码，写入只落 localStorage（重启被清）→ 重启必丢配置与登录态",
-    "修复1：storage.js 静态 import { Filesystem }，使插件在 WebView 真正注册，FS 落盘终于生效",
-    "修复2：_restoreFromFS 读回补 encoding:'utf8'（否则默认返回 base64，JSON.parse 失败仍丢）",
-    "新增 __storageDebug() 诊断接口，控制台可一键查看 FS 可用性与缓存关键数据，便于二次定位"
+    "fix: 修复详情面板标签/颜色/备注保存后界面不刷新（删除标签看似无效）",
+    "fix: TagEditor / ColorPicker / NoteEditor 保存后补发 update 事件，DetailPanel 监听后重读数据",
+    "fix: 对齐 StatusButtons 既有 @update 刷新模式，消除 stale 引用导致的 UI 不同步",
+    "chore: 版本三处一致 package.json / version.json / build.gradle"
   ],
   "forceUpdate": false
 }

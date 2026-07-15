@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useCalendarStore } from '../stores/calendarStore.js'
 
 const props = defineProps({ selectedDate: String, note: String })
+const emit = defineEmits(['update'])
 const calendarStore = useCalendarStore()
 const noteText = ref(props.note || '')
 
@@ -12,6 +13,7 @@ watch(() => props.selectedDate, () => { noteText.value = props.note || '' })
 async function saveNote() {
   const d = calendarStore.getDayData(props.selectedDate)
   await calendarStore.saveDayData(props.selectedDate, d.status || '', noteText.value, d.tags || [], d.color || '')
+  emit('update')
   window.renderCalendar?.()
   window.__refreshCalendarGrid?.()
   window.showToast?.('备注已保存')
