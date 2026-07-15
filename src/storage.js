@@ -17,17 +17,24 @@
 // window.calendarAPI 不可配置，web-api.js 的赋值在其上静默失败，故本封装不影响桌面路径。
 // 桌面/浏览器下无 Capacitor Filesystem，自动退化为纯 localStorage（行为与原先一致）。
 
-// FS 引用惰性检测：Capacitor 桥（window.Capacitor.Plugins.Filesystem）可能在
-// storage.js 模块求值之后才就绪，故不能在模块加载时一次性求值（否则 FS 永远为
-// null，整个耐用层空转——这正是安卓更新/重启后配置与数据丢失的根因）。
-// 调用时检测，一旦就绪即缓存复用；之前未就绪则后续调用会重新探测直到成功。
-// 首次检测到插件时自动触发 initStorage（从 FS 读入缓存并落盘），无需外部重试。
+// ⚠️ 关键修复（v3.17.12）：必须静态导入 @capacitor/filesystem 才能在 WebView 中
+// 注册该插件。此前整个 src 从未 import 它，导致 window.Capacitor.Plugins.Filesystem
+// 始终为 undefined，getFS() 永远返回 null —— 从 v3.17.8 起整个 FS 耐用层就是空转
+// 死代码，写入只落到易失的 localStorage，安卓重启必丢配置与登录态。
+import { Filesystem } from '@capacitor/filesystem';
+
+// FS 引用检测：仅在 Capacitor 运行时（安卓/iOS）启用 FS；
+// Electron / 纯浏览器没有 Capacitor，自动退化为纯 localStorage（与原行为一致）。
 let _fsRef = null;
 function getFS() {
   if (_fsRef) return _fsRef;
-  _fsRef = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) || null;
-  if (_fsRef && !_loaded && !_loading) {
-    storage.init().catch(e => console.warn('[Storage] init failed:', e.message));
+  try {
+    if (typeof window !== 'undefined' && window.Capacitor &&
+        window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('Filesystem')) {
+      _fsRef = Filesystem; // 静态导入的插件实例，注册后即可用
+    }
+  } catch (e) {
+    console.warn('[Storage] FS plugin unavailable:', e && e.message);
   }
   return _fsRef;
 }
@@ -153,7 +160,7 @@ async function _restoreFromFS(fs) {
   for (const k of Object.keys(KNOWN_KEYS)) {
     if (k in _cache) continue; // 已被本次会话写操作覆盖的值优先保留
     try {
-      const r = await fs.readFile({ path: PREFIX + k, directory: 'DATA' });
+      const r = await fs.readFile({ path: PREFIX + k, directory: 'DATA', encoding: 'utf8' });
       _cache[k] = (r && r.data != null) ? String(r.data) : null;
     } catch {
       // 文件不存在：从 localStorage 播种，保证老用户升级不丢数据
@@ -220,9 +227,23 @@ export const storage = {
 // 兼容垫片：未迁移的经典脚本继续通过 window.__storage 读取
 if (typeof window !== 'undefined') {
   window.__storage = storage;
-  // 脚本加载即自动初始化（页面启动早期触发，无需各模块手动调用）。
-  // 用 getFS() 惰性检测：即使此刻 Capacitor 桥未就绪，initStorage 内部也会在
-  // FS 可用时读取并落盘，无需外部重试。
+  // 诊断辅助：在 WebView 控制台执行 __storageDebug() 可查看 FS 是否真正注册可用、
+  // 缓存是否含关键数据。若重启后仍丢，请导出此对象协助定位。
+  window.__storageDebug = function () {
+    return {
+      fsPluginAvailable: !!(typeof window !== 'undefined' && window.Capacitor &&
+        window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('Filesystem')),
+      fsRefSet: !!_fsRef,
+      loaded: _loaded,
+      loading: !!_loading,
+      cacheKeys: Object.keys(_cache),
+      hasSupabaseConfig: !!_cache['supabase-config'],
+      hasAuthStore: !!_cache['supabase-auth-store'],
+      hasBoundUserId: !!_cache['social-bound-user-id'],
+      hasSocialUser: !!_cache['social-account-username']
+    };
+  };
+  // 脚本加载即自动初始化：FS 插件已通过 import 注册，getFS() 立即可用即触发还原。
   if (getFS()) {
     storage.init().catch(e => console.warn('[Storage] init failed:', e.message));
   }
