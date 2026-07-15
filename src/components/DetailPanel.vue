@@ -32,6 +32,8 @@ function updateData() {
   dayData.value = calendarStore.getDayData(selectedDate.value)
 }
 
+function openAddTodo() { window.__openTodoModal?.() }
+
 // Bridge mode: traditional view calls this to set the date
 window.__vueDetailPanel = (dateStr) => {
   selectedDate.value = dateStr
@@ -57,6 +59,7 @@ watch(selectedDate, updateData)
     <div class="todo-section">
       <div class="todo-header-row">
         <span class="todo-title">待办</span>
+        <button class="todo-add-btn" @click="openAddTodo">+ 添加</button>
       </div>
       <TodoListApp :selectedDate="selectedDate" />
     </div>

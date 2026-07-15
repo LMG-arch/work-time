@@ -34,10 +34,15 @@ const todayStr = computed(() => {
 
 function filterBy(key) { filter.value = key }
 function onItemRefresh() { refreshTick.value++; todoStore.refreshFromWindow() }
+function openAdd() { window.__openTodoModal?.() }
 </script>
 
 <template>
   <div>
+    <div class="todo-header-row">
+      <span class="todo-title">待办</span>
+      <button class="todo-add-btn" @click="openAdd">+ 添加待办</button>
+    </div>
     <div class="todo-filter-bar">
       <span class="todo-filter-tab" :class="{ active: filter === 'all' }" @click="filterBy('all')">全部</span>
       <span class="todo-filter-tab" :class="{ active: filter === 'undone' }" @click="filterBy('undone')">未完成</span>
