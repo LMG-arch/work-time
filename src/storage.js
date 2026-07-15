@@ -138,34 +138,54 @@ function installFlushHooks() {
   } catch (e) { console.warn('[Storage] appStateChange hook failed:', e.message); }
 }
 
-// ---- 一次性异步初始化：FS -> 缓存，缺失则从 localStorage 播种 ----
+// ---- 一次性异步初始化：FS -> 缓存；Capacitor 桥晚于模块加载时反复探测 ----
+// 关键修复（v3.17.10）：此前 initStorage 在桥未就绪时也会把 _loaded 置 true，
+// 导致后续 getFS() 的自动重读被「!_loaded」挡住，FS 中已写入的配置/会话永远
+// 不被读回缓存 → 重启后账号登出、服务配置丢失。现改为：桥未就绪时**不**置
+// _loaded，而是限时重试探测，直到桥就绪读回 FS 才标记 loaded。
+const FS_INIT_MAX_RETRIES = 30;   // 最多约 9s 内反复探测 Capacitor 桥
+const FS_INIT_RETRY_MS = 300;
+
+// 把 FS 中的已知键读入缓存；文件不存在则从 localStorage 播种；并把恢复出的值
+// 回填 localStorage，使任何直接读 localStorage 的代码（Supabase 旧适配器、迁移
+// 逻辑、Feed 缓存等）在 WebView 清空后也能拿到，避免「恢复到了缓存却读不到」。
+async function _restoreFromFS(fs) {
+  for (const k of Object.keys(KNOWN_KEYS)) {
+    if (k in _cache) continue; // 已被本次会话写操作覆盖的值优先保留
+    try {
+      const r = await fs.readFile({ path: PREFIX + k, directory: 'DATA' });
+      _cache[k] = (r && r.data != null) ? String(r.data) : null;
+    } catch {
+      // 文件不存在：从 localStorage 播种，保证老用户升级不丢数据
+      try { _cache[k] = localStorage.getItem(k); } catch { _cache[k] = null; }
+    }
+  }
+  // 把恢复出的值回填 localStorage，覆盖被 WebView 清空的旧值
+  for (const k of Object.keys(_cache)) {
+    try { if (_cache[k] != null) localStorage.setItem(k, _cache[k]); } catch {}
+  }
+  // 把从 localStorage 播种进缓存的值落盘 FS，完成一次性迁移
+  try { await flushAll(); } catch (e) { console.warn('[Storage] seed flush failed:', e.message); }
+  // 页面隐藏/卸载、Capacitor 切后台时立即把缓存写 FS，防止 WebView 被回收
+  installFlushHooks();
+}
+
 async function initStorage() {
   if (_loaded) return;
   if (_loading) return _loading;
   _loading = (async () => {
-    const fs = getFS();
-    if (fs) {
-      for (const k of Object.keys(KNOWN_KEYS)) {
-        // 若该 key 已被写操作写入缓存，保留写操作的结果（避免回灌旧值）
-        if (k in _cache) continue;
-        try {
-          const r = await fs.readFile({ path: PREFIX + k, directory: 'DATA' });
-          _cache[k] = (r && r.data != null) ? String(r.data) : null;
-        } catch {
-          // 文件不存在：从 localStorage 播种，保证老用户升级不丢数据
-          try { _cache[k] = localStorage.getItem(k); } catch { _cache[k] = null; }
-        }
+    let restored = false;
+    for (let attempt = 0; attempt < FS_INIT_MAX_RETRIES && !restored; attempt++) {
+      const fs = getFS();
+      if (fs) {
+        try { await _restoreFromFS(fs); } catch (e) { console.warn('[Storage] restore failed:', e.message); }
+        restored = true;
+        break;
       }
-      // 关键修复：把「从 localStorage 播种进缓存」的值落盘到 FS。
-      // 否则仅存于 localStorage 的旧配置（如更新前录入的 supabase-config）
-      // 永远不会被耐用备份覆盖；一旦 WebView 在更新时被系统清空，
-      // 配置将永久丢失、且无法从云端恢复。这里统一回写，完成一次性迁移。
-      try { await flushAll(); } catch (e) { console.warn('[Storage] seed flush failed:', e.message); }
-
-      // 兜底落盘：页面隐藏/卸载、以及 Capacitor 切后台时立即把缓存写 FS，
-      // 避免 WebView 被系统回收导致数据丢失（修复「更新/重启后数据不同步」）。
-      installFlushHooks();
+      if (attempt < FS_INIT_MAX_RETRIES - 1) await new Promise(r => setTimeout(r, FS_INIT_RETRY_MS));
     }
+    // FS 就绪则已读回；仍不可用则退化为纯 localStorage（与历史行为一致），
+    // 标记 loaded 避免无限重试。
     _loaded = true;
   })();
   return _loading;
