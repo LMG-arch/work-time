@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useCalendarStore } from '../stores/calendarStore.js'
 import { useTodoStore } from '../stores/todoStore.js'
 import { useReminderStore } from '../stores/reminderStore.js'
@@ -7,18 +8,80 @@ import { useAppStore } from '../stores/appStore.js'
 import DetailPanel from '../components/DetailPanel.vue'
 import { dailyLine } from '../data/poetry'
 import { Lunar } from '../lunar.js'
+import { useSwipe } from '../composables/useSwipe.js'
+import { useLongPress } from '../composables/useLongPress.js'
+import ActionSheet from '../components/ActionSheet.vue'
 
 const calendarStore = useCalendarStore()
 const todoStore = useTodoStore()
 const reminderStore = useReminderStore()
 const appStore = useAppStore()
 
+// ── 触控手势：月滑动切换 + 长按快捷标记 ──
+const swipeZone = ref(null)
+const pendingDate = ref(null)
+const suppressClick = ref(false)
+const daySheetOpen = ref(false)
+const daySheetDate = ref(null)
+
+const { dx: gridDx, swiping: gridSwiping } = useSwipe(swipeZone, {
+  direction: 'horizontal',
+  threshold: 56,
+  onLeft: () => nextMonth(),
+  onRight: () => prevMonth(),
+})
+
+const gridStyle = computed(() =>
+  gridSwiping.value
+    ? { transform: `translateX(${gridDx.value * 0.32}px)`, transition: 'none' }
+    : { transform: 'translateX(0)', transition: 'transform 0.25s ease' }
+)
+
+const { clear: clearLongPress } = useLongPress(swipeZone, {
+  delay: 420,
+  onStart: (e) => {
+    suppressClick.value = false
+    const cell = e.target && e.target.closest ? e.target.closest('.day-cell') : null
+    pendingDate.value = cell ? cell.dataset.date : null
+    if (!pendingDate.value) clearLongPress()
+  },
+  onLongPress: () => {
+    if (!pendingDate.value) return
+    suppressClick.value = true
+    daySheetDate.value = pendingDate.value
+    daySheetOpen.value = true
+  },
+})
+
+const DAY_ACTIONS = [
+  { label: '上班', value: 'work' },
+  { label: '休息', value: 'rest' },
+  { label: '出差', value: 'trip' },
+  { label: '请假', value: 'leave' },
+  { label: '年假', value: 'annual' },
+  { label: '病假', value: 'sick' },
+  { label: '事假', value: 'personal' },
+  { label: '清除标记', value: '', danger: true },
+]
+
+async function onDayAction(action) {
+  const ds = daySheetDate.value
+  if (!ds) return
+  const d = calendarStore.getDayData(ds)
+  await calendarStore.saveDayData(ds, action.value || '', d.note || '', d.tags || [], d.color || '')
+  window.renderCalendar?.()
+  window.__refreshCalendarGrid?.()
+  daySheetOpen.value = false
+}
+
 const dailyPoetic = ref(dailyLine())
 
 const refreshCount = ref(0)
-const currentYear = ref(new Date().getFullYear())
-const currentMonth = ref(new Date().getMonth())
-const selectedDate = ref(null)
+// 使用 store 的导航状态而非组件本地 ref（Pinia 单例，跨页面切换保留）：
+// 1) 修复切页后日历重置回当月、丢失选中日期（#12）
+// 2) store 的 watch 会把这些值同步到 window.*，且 TodoModal 读
+//    calendarStore.selectedDate 作为默认日期（修复 #4 从日历添加待办日期为空）。
+const { currentYear, currentMonth, selectedDate } = storeToRefs(calendarStore)
 
 window.__refreshCalendarGrid = () => { refreshCount.value++ }
 window.__calendarGoToday = goToday
@@ -90,6 +153,12 @@ function lunar(yr, mo, dy) {
   if (!Lunar) return { text: '', isFirstDay: false }
   return Lunar.solar2lunar(yr, mo - 1, dy)
 }
+// 补位格（前/后月）必须用 dateStr 的真实年月日算农历，
+// 原先统一传当前年月，导致 6 月 30 日格显示 7 月 30 日农历、31 日落入 30 天月时进位错误。
+function lunarForCell(cd) {
+  const [y, m, d] = cd.dateStr.split('-')
+  return lunar(+y, +m, +d)
+}
 function todosForDate(dateStr) {
   if (!todoStore.todos) return []
   const d = new Date(dateStr + 'T00:00:00')
@@ -155,6 +224,7 @@ function statusBg(dateStr) {
 }
 
 function selectDate(dateStr, isOther) {
+  if (suppressClick.value) { suppressClick.value = false; return }
   if (isOther) {
     const p = dateStr.split('-')
     currentYear.value = parseInt(p[0])
@@ -203,6 +273,7 @@ onMounted(async () => {
 
 <template>
   <div class="calendar-view" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+    <div class="calendar-swipe" ref="swipeZone">
     <div class="calendar-header">
       <button class="nav-btn" @click="prevMonth">&lt;</button>
       <div class="month-label-group">
@@ -219,7 +290,7 @@ onMounted(async () => {
       <span v-for="d in DAYS_CN" :key="d">{{ d }}</span>
     </div>
 
-    <div class="calendar-grid" style="flex-shrink:0;">
+    <div class="calendar-grid" :style="gridStyle">
       <div v-for="(cd, idx) in calendarDays" :key="idx"
         class="day-cell" data-tilt data-tilt-max="5" data-tilt-lift="0" :class="{ 'other-month': cd.isOther, today: cd.dateStr === todayStr, selected: cd.dateStr === selectedDate, 'has-note': dayData(cd.dateStr).note, 'has-tag': dayData(cd.dateStr).tags?.length > 0, 'has-todo': todosForDate(cd.dateStr).length > 0, 'is-past': !cd.isOther && cd.dateStr < todayStr }"
         :style="dayData(cd.dateStr).color ? { background: dayData(cd.dateStr).color } : statusBg(cd.dateStr)"
@@ -244,9 +315,18 @@ onMounted(async () => {
       </span>
       <span class="busy-legend-text">色越深越忙</span>
     </div>
+    </div><!-- /calendar-swipe -->
 
     <div style="flex:1;overflow-y:auto;overflow-x:hidden;">
       <DetailPanel :selectedDate="selectedDate" />
     </div>
+
+    <ActionSheet
+      :open="daySheetOpen"
+      title="快速标记"
+      :actions="DAY_ACTIONS"
+      @select="onDayAction"
+      @update:open="v => daySheetOpen = v"
+    />
   </div>
 </template>

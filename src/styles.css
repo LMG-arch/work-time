@@ -2675,3 +2675,68 @@ body[data-theme] [data-tilt] {
 @media (max-width: 420px) {
   .overview-grid { grid-template-columns: 1fr; justify-items: center; }
 }
+
+/* ============================================================
+   2026-07-25 · 移动端触控 / 手势专项
+   - 全局触控基线：去点击高亮、收敛滚动链、保留惯性
+   - 日历滑动区：横向手势由 JS 接管（pan-y 让纵向滚动放行）
+   - 触控目标 ≥ 44px（工具栏 / 导航 / 今日 / 日历格）
+   - 小屏（≤400px / ≤360px）收紧内边距，保证 7 列月历不被挤爆
+   - 全部动画尊重 prefers-reduced-motion
+   ============================================================ */
+
+/* 1) 全局触控基线 */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* 可滚动容器：阻止滚动链传播到父级（避免整页橡皮筋），保留原生惯性 */
+.calendar-view > div,
+.social-scroll,
+.page-view,
+#app > div,
+.todo-view-content,
+.clockin-view-content,
+.stats-content {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.calendar-swipe {
+  touch-action: pan-y;
+  overscroll-behavior-x: contain;
+  flex-shrink: 0;
+}
+
+/* 2) 触控目标放大（Android/iOS 可达性基线 ≥ 44px） */
+.tool-btn { min-height: 46px; }
+.nav-btn { min-width: 40px; min-height: 40px; }
+.today-btn { min-height: 40px; }
+.day-cell { min-width: 40px; }
+.todo-check { width: 24px; height: 24px; }
+
+/* 3) 小屏适配：≤400px 收紧外边距，保证月历 7 列可读 */
+@media (max-width: 400px) {
+  #app, .app { padding: 8px; }
+  .day-cell { font-size: 13px; }
+  .lunar-label { font-size: 7.5px; }
+  .tool-btn span { font-size: 10px; }
+  .month-label { font-size: 17px; }
+}
+
+/* 4) 极窄屏：≤360px（多数入门安卓机）进一步压缩，避免横向溢出 */
+@media (max-width: 360px) {
+  #app, .app { padding: 6px; }
+  .calendar-grid { gap: 2px; }
+  .weekday-row { font-size: 11px; }
+  .day-cell { font-size: 12px; border-radius: 8px; }
+  .lunar-label { font-size: 7px; }
+  .status-label { font-size: 9px; padding: 0 2px; }
+  .toolbar { padding: 8px 6px 4px; gap: 4px; }
+  .tool-btn { border-radius: 9px; padding: 8px 0; }
+  .tool-btn span { font-size: 9px; }
+  .tool-icon { width: 17px; height: 17px; }
+  .month-label { font-size: 16px; }
+  .today-btn { padding: 5px 10px; font-size: 11px; }
+  .stat-card { padding: 12px 4px; }
+  .stat-num { font-size: 22px; }
+}
+

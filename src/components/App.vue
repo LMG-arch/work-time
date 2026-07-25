@@ -51,6 +51,28 @@ let uninstallAmbient = null
 let uninstallSignature = null
 const showSplash = ref(true)
 
+// 左边缘滑动关闭浮层（移动端「返回 / 收起」手势）
+let edgeX0 = 0, edgeY0 = 0, edgeT0 = 0, edgeActive = false
+function onEdgeDown(e) {
+  if (e.pointerType !== 'touch') return
+  if (e.clientX > 20) return
+  edgeActive = true
+  edgeX0 = e.clientX
+  edgeY0 = e.clientY
+  edgeT0 = e.timeStamp
+}
+function onEdgeUp(e) {
+  if (!edgeActive) return
+  edgeActive = false
+  const dx = e.clientX - edgeX0
+  const dy = e.clientY - edgeY0
+  const dt = e.timeStamp - edgeT0
+  if (dx > 90 && Math.abs(dy) < 70 && dt < 500) {
+    const overlay = document.querySelector('.dialog-overlay')
+    if (overlay) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  }
+}
+
 onMounted(() => {
   // 双保险：无论 SplashScreen 内部计时是否异常，最长 4s 后强制收起闪屏，
   // 杜绝「只剩导航栏 / 一片空白」的永久盖屏（沙箱无法跑真机，此为防御性兜底）。
@@ -68,6 +90,9 @@ onMounted(() => {
   appStore.$subscribe(applyPremiumClass)
   // 从托盘唤醒时重播启动闪屏
   document.addEventListener('visibilitychange', onVisibility)
+  // 左边缘滑动关闭浮层
+  document.addEventListener('pointerdown', onEdgeDown, { passive: true })
+  document.addEventListener('pointerup', onEdgeUp, { passive: true })
 })
 
 function applyPremiumClass() {
@@ -83,6 +108,8 @@ onBeforeUnmount(() => {
   if (uninstallAmbient) uninstallAmbient()
   if (uninstallSignature) uninstallSignature()
   document.removeEventListener('visibilitychange', onVisibility)
+  document.removeEventListener('pointerdown', onEdgeDown)
+  document.removeEventListener('pointerup', onEdgeUp)
 })
 </script>
 

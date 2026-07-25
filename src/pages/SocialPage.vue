@@ -4,6 +4,7 @@ import EmptyIllustration from '../components/EmptyIllustration.vue'
 import FriendsTab from '../components/FriendsTab.vue'
 import ProfileTab from '../components/ProfileTab.vue'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from 'reka-ui'
+import { usePullToRefresh } from '../composables/usePullToRefresh.js'
 
 // ===== Tab 管理 =====
 const TABS = [
@@ -13,6 +14,20 @@ const TABS = [
 ]
 const activeTab = ref('feed')
 
+// ===== 下拉刷新（仅动态页顶部）=====
+const feedScroll = ref(null)
+function refreshFeed() {
+  posts.value = []
+  page.value = 0
+  hasMore.value = true
+  return loadPosts().then(() => checkFriendRequests())
+}
+const { pullDistance, refreshing } = usePullToRefresh(feedScroll, {
+  threshold: 64,
+  max: 96,
+  onRefresh: refreshFeed,
+})
+
 // ===== 动态（Feed）逻辑 =====
 const posts = ref([])
 const loading = ref(false)
@@ -20,10 +35,12 @@ const hasMore = ref(true)
 const page = ref(0)
 const PAGE_SIZE = 10
 const friendRequests = ref(0)
+const myUserId = ref(null)
 const getFns = () => ({
   getFeedPosts: window.getFeedPosts,
   getFriendRequests: window.getFriendRequests,
   createPost: window.createPost,
+  updatePost: window.updatePost,
   toggleLike: window.toggleLike,
   addComment: window.addComment,
   getComments: window.getComments,
@@ -34,8 +51,13 @@ const getFns = () => ({
   showToast: window.showToast,
 })
 
-onMounted(() => { loadPosts(); checkFriendRequests() })
+onMounted(() => {
+  loadPosts()
+  checkFriendRequests()
+  window.getEffectiveUserId?.().then(id => { myUserId.value = id })
+})
 window.__refreshSocialFeed = () => { posts.value = []; page.value = 0; hasMore.value = true; loadPosts() }
+window.__refreshFriendRequests = () => checkFriendRequests()
 
 function mapPost(p) {
   return {
@@ -97,15 +119,25 @@ const showPostModal = ref(false)
 const postText = ref('')
 const postImage = ref(null)
 const postImageUrl = ref('')
+const editingPost = ref(null)
+const submitting = ref(false)
 
 watch(postImage, (newVal, oldVal) => {
-  if (oldVal && postImageUrl.value) URL.revokeObjectURL(postImageUrl.value)
+  if (oldVal && postImageUrl.value && postImageUrl.value.startsWith('blob:')) URL.revokeObjectURL(postImageUrl.value)
   postImageUrl.value = newVal ? URL.createObjectURL(newVal) : ''
 })
-onUnmounted(() => { if (postImageUrl.value) URL.revokeObjectURL(postImageUrl.value) })
+onUnmounted(() => { if (postImageUrl.value && postImageUrl.value.startsWith('blob:')) URL.revokeObjectURL(postImageUrl.value) })
 
-function openPostModal() { showPostModal.value = true; postText.value = ''; postImage.value = null }
-function closePostModal() { showPostModal.value = false; postImage.value = null }
+function openPostModal() { showPostModal.value = true; postText.value = ''; postImage.value = null; editingPost.value = null }
+function closePostModal() { showPostModal.value = false; postImage.value = null; editingPost.value = null }
+function clearImage() { postImage.value = null; postImageUrl.value = '' }
+function openEditModal(post) {
+  editingPost.value = post
+  postText.value = post.content || ''
+  postImage.value = null
+  postImageUrl.value = post.imageUrl || ''
+  showPostModal.value = true
+}
 
 function onImageSelect(e) {
   const file = e.target.files[0]
@@ -115,16 +147,32 @@ function onImageSelect(e) {
 }
 
 async function submitPost() {
-  if (!postText.value.trim() && !postImage.value) { window.showToast?.('请输入内容或选择图片'); return }
-  const { createPost: cpFn, uploadPostImage: upFn } = getFns()
+  if (submitting.value) return
+  if (!postText.value.trim() && !postImage.value && !postImageUrl.value) { window.showToast?.('请输入内容或选择图片'); return }
+  const { createPost: cpFn, updatePost: upPostFn, uploadPostImage: upImgFn } = getFns()
   if (!cpFn) { window.showToast?.('服务未连接'); return }
+  submitting.value = true
   try {
     let imageUrl = ''
-    if (postImage.value) { window.showToast?.('正在上传图片...'); imageUrl = await upFn(postImage.value) || '' }
-    const post = await cpFn(postText.value.trim(), imageUrl)
-    if (post) { closePostModal(); window.__refreshSocialFeed?.(); window.showToast?.('动态已发布') }
-    else { window.showToast?.('发布失败，请检查网络') }
-  } catch (e) { window.showToast?.('发布失败') }
+    if (postImage.value) {
+      window.showToast?.('正在上传图片...')
+      imageUrl = await upImgFn(postImage.value)
+      // 上传失败则中断，避免静默降级为无图帖导致用户误以为带图发布成功
+      if (!imageUrl) { window.showToast?.('图片上传失败，请重试'); return }
+    }
+    else if (postImageUrl.value) { imageUrl = postImageUrl.value }
+    if (editingPost.value) {
+      if (!upPostFn) { window.showToast?.('服务未连接'); return }
+      const updated = await upPostFn(editingPost.value.id, postText.value.trim(), imageUrl)
+      if (updated) { closePostModal(); window.__refreshSocialFeed?.(); window.showToast?.('动态已更新') }
+      else { window.showToast?.('更新失败，请检查网络') }
+    } else {
+      const post = await cpFn(postText.value.trim(), imageUrl)
+      if (post) { closePostModal(); window.__refreshSocialFeed?.(); window.showToast?.('动态已发布') }
+      else { window.showToast?.('发布失败，请检查网络') }
+    }
+  } catch (e) { window.showToast?.(editingPost.value ? '更新失败' : '发布失败') }
+  finally { submitting.value = false }
 }
 
 // Like/Unlike
@@ -132,6 +180,7 @@ async function toggleLike(postId) {
   const { toggleLike: tlFn } = getFns()
   if (!tlFn) return
   const liked = await tlFn(postId)
+  if (liked === null) return // 防重锁命中，跳过 UI 更新（见 supabase/social.js toggleLike）
   const post = posts.value.find(p => p.id === postId)
   if (post) { post.liked = liked; post.likes = Math.max(0, (post.likes || 0) + (liked ? 1 : -1)) }
 }
@@ -146,7 +195,8 @@ async function addComment(postId, text) {
   if (!text.trim()) return
   const { addComment: acFn } = getFns()
   if (!acFn) return
-  await acFn(postId, text.trim())
+  const res = await acFn(postId, text.trim())
+  if (!res) { window.showToast?.('评论失败，请检查网络'); return } // 插入失败不虚增计数
   const post = posts.value.find(p => p.id === postId)
   if (post) { post.commentCount = (post.commentCount || 0) + 1; post.newComment = ''; post.comments = await loadComments(postId) }
 }
@@ -164,9 +214,7 @@ async function deletePost(postId) {
   if (ok) { posts.value = posts.value.filter(p => p.id !== postId); window.showToast?.('已删除') }
 }
 function isMyPost(post) {
-  const { getCurrentUserId: uidFn } = getFns()
-  const uid = uidFn?.()
-  return uid && post.user_id === uid
+  return myUserId.value && post.user_id === myUserId.value
 }
 </script>
 
@@ -189,7 +237,11 @@ function isMyPost(post) {
         <button class="settings-action-btn btn-xs" @click="openPostModal">+ 发布</button>
       </div>
 
-      <div class="social-scroll" @scroll="onScroll">
+      <div class="social-scroll" ref="feedScroll" @scroll="onScroll">
+        <div class="ptr-indicator" :style="{ height: (refreshing ? 48 : Math.min(pullDistance, 64)) + 'px', opacity: refreshing ? 1 : Math.min(1, pullDistance / 64) }">
+          <span class="ptr-spinner" :class="{ spinning: refreshing }"></span>
+          <span class="ptr-text">{{ refreshing ? '刷新中…' : (pullDistance >= 64 ? '释放刷新' : '下拉刷新') }}</span>
+        </div>
         <div v-for="post in posts" :key="post.id" class="post-card" data-tilt data-tilt-max="5" data-tilt-lift="4">
           <div class="post-author-row">
             <div class="feed-avatar">
@@ -200,7 +252,10 @@ function isMyPost(post) {
               <div class="post-nickname">{{ post.nickname || '匿名' }}</div>
               <div class="post-time">{{ post.createdAt || '' }}</div>
             </div>
-            <span v-if="isMyPost(post)" class="post-delete" @click="deletePost(post.id)">&times;</span>
+            <template v-if="isMyPost(post)">
+              <span class="post-edit" @click="openEditModal(post)" title="编辑">✎</span>
+              <span class="post-delete" @click="deletePost(post.id)" title="删除">&times;</span>
+            </template>
           </div>
           <div v-if="post.content" class="post-text">{{ post.content }}</div>
           <img v-if="post.imageUrl" :src="post.imageUrl" class="post-image" alt="">
@@ -226,26 +281,30 @@ function isMyPost(post) {
     </template>
 
     <!-- 好友 -->
-    <FriendsTab v-else-if="activeTab === 'friends'" />
+    <div v-else-if="activeTab === 'friends'" class="social-scroll">
+      <FriendsTab />
+    </div>
 
     <!-- 个人 -->
-    <ProfileTab v-else-if="activeTab === 'profile'" />
+    <div v-else-if="activeTab === 'profile'" class="social-scroll">
+      <ProfileTab />
+    </div>
 
     <!-- Post Modal -->
     <DialogRoot v-model:open="showPostModal" @update:open="v => showPostModal = v">
       <DialogPortal>
         <DialogOverlay class="dialog-overlay" />
         <DialogContent class="dialog-content" @interact-outside="closePostModal">
-          <DialogTitle class="dialog-title">发布动态</DialogTitle>
+          <DialogTitle class="dialog-title">{{ editingPost ? '编辑动态' : '发布动态' }}</DialogTitle>
           <textarea v-model="postText" placeholder="分享你的心情..." rows="4" class="post-textarea"></textarea>
-          <div v-if="postImage" class="post-image-preview">
+          <div v-if="postImage || postImageUrl" class="post-image-preview">
             <img :src="postImageUrl" class="post-image-preview-img" alt="">
-            <span class="post-image-remove" @click="postImage = null">&times;</span>
+            <span class="post-image-remove" @click="clearImage">&times;</span>
           </div>
           <div><label class="post-add-image">📷 图片<input type="file" accept="image/*" @change="onImageSelect"></label></div>
           <div class="modal-actions">
             <DialogClose class="modal-btn cancel">取消</DialogClose>
-            <button class="modal-btn confirm" @click="submitPost">发布</button>
+            <button class="modal-btn confirm" :disabled="submitting" @click="submitPost">{{ submitting ? '提交中...' : (editingPost ? '保存' : '发布') }}</button>
           </div>
         </DialogContent>
       </DialogPortal>
@@ -254,6 +313,9 @@ function isMyPost(post) {
 </template>
 
 <style scoped>
+/* ===== 布局：tab 栏固定 + 内容区独立滚动 ===== */
+.social-content { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+
 /* ===== Tab 栏 ===== */
 .social-tab-bar { display: flex; gap: 0; padding: 8px 12px 0; border-bottom: 1px solid var(--border, rgba(0,0,0,0.08)); margin-bottom: 2px; flex-shrink: 0; }
 .social-tab { flex: 1; text-align: center; padding: 9px 0; font-size: 14px; font-weight: 500; color: var(--text3, #999); cursor: pointer; position: relative; transition: color .2s; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -270,6 +332,12 @@ function isMyPost(post) {
 
 .social-scroll { overflow-y: auto; flex: 1; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0 0 8px; }
 
+/* 下拉刷新指示器 */
+.ptr-indicator { display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; color: var(--text3, #999); font-size: 12px; }
+.ptr-spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border, #ddd); border-top-color: var(--accent, #9d8cff); }
+.ptr-spinner.spinning { animation: ptr-spin 0.7s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+
 .post-card { margin: 8px 10px; padding: 12px; border-radius: 12px; background: var(--bg-card, rgba(0,0,0,0.02)); transition: transform .15s; }
 .post-author-row { display: flex; align-items: center; gap: 10px; }
 .feed-avatar { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: linear-gradient(135deg, var(--accent,#9d8cff), #b388ff); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; font-weight: 600; }
@@ -279,6 +347,8 @@ function isMyPost(post) {
 .post-time { font-size: 11px; color: var(--text3, #bbb); margin-top: 1px; }
 .post-delete { font-size: 18px; color: #ccc; cursor: pointer; padding: 2px; line-height: 1; }
 .post-delete:hover { color: #e53935; }
+.post-edit { font-size: 15px; color: #ccc; cursor: pointer; padding: 2px 4px; line-height: 1; }
+.post-edit:hover { color: var(--accent, #9d8cff); }
 .post-text { margin-top: 8px; font-size: 14px; line-height: 1.55; color: var(--text1, #333); word-break: break-all; white-space: pre-wrap; }
 .post-image { width: 100%; border-radius: 8px; margin-top: 8px; display: block; }
 .post-actions { display: flex; gap: 20px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border, rgba(0,0,0,0.06)); }
@@ -310,4 +380,5 @@ function isMyPost(post) {
 .modal-btn { font-size: 13px; padding: 7px 18px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; }
 .modal-btn.cancel { background: transparent; color: var(--text3, #888); border: 1px solid var(--border, #ddd); }
 .modal-btn.confirm { background: var(--accent, #9d8cff); color: #fff; }
+.modal-btn.confirm:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
