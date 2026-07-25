@@ -1,13 +1,23 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useReminderStore } from '../stores/reminderStore.js'
 import { useCalendarStore } from '../stores/calendarStore.js'
 
 const reminderStore = useReminderStore()
 const calendarStore = useCalendarStore()
 
+// 响应式当前时间：驱动 currentTime/todayStr 跨点/跨天自动更新。
+// 原先 todayStr/currentTime 是无依赖 computed，首次求值后永久缓存，
+// 导致到点按钮永不解除禁用、跨午夜打卡写入昨天。
+const now = ref(new Date())
+let nowTimer = null
+onMounted(() => {
+  nowTimer = setInterval(() => { now.value = new Date() }, 30 * 1000)
+})
+onBeforeUnmount(() => { if (nowTimer) clearInterval(nowTimer) })
+
 const todayStr = computed(() => {
-  const d = new Date()
+  const d = now.value
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 })
 
@@ -24,8 +34,8 @@ const restDayLabel = computed(() => {
 })
 
 const currentTime = computed(() => {
-  const now = new Date()
-  return String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0')
+  const d = now.value
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0')
 })
 
 function getCardStatus(r) {

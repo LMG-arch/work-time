@@ -151,22 +151,27 @@ async function getFeedPosts(limit = 20, offset = 0) {
   const friendIds = await getFriendIds(uid);
   friendIds.push(uid); // Include own posts
 
-  // Fetch posts + profiles in parallel with likes + comments
-  const [postsRes, likesRes, commentsRes] = await Promise.all([
-    window.sb.from('posts').select('*').in('user_id', friendIds).is('deleted_at', null)
-      .order('created_at', { ascending: false }).range(offset, offset + limit - 1),
-    window.sb.from('post_likes').select('post_id, user_id').in('user_id', friendIds).is('deleted_at', null),
-    window.sb.from('post_comments').select('post_id').in('user_id', friendIds).is('deleted_at', null)
-  ]);
-
+  // Fetch posts for self + friends
+  const postsRes = await window.sb.from('posts').select('*').in('user_id', friendIds).is('deleted_at', null)
+    .order('created_at', { ascending: false }).range(offset, offset + limit - 1);
   const posts = postsRes.data;
   if (!posts || posts.length === 0) return [];
 
-  // Fetch profiles for post authors
+  // 点赞/评论按 post_id 统计（而非按点赞者 user_id）：
+  // 原先 .in('user_id', friendIds) 只统计"我和好友发出的赞"，好友帖子被其
+  // 非共同好友点赞时不计数，导致显示数恒低于真实数。
+  const postIds = posts.map(p => p.id);
   const userIds = [...new Set(posts.map(p => p.user_id))];
-  const { data: profiles } = await window.sb.from('profiles').select('id, nickname, avatar').in('id', userIds);
+
+  // Fetch likes/comments for these posts + author profiles in parallel
+  const [likesRes, commentsRes, profilesRes] = await Promise.all([
+    window.sb.from('post_likes').select('post_id, user_id').in('post_id', postIds).is('deleted_at', null),
+    window.sb.from('post_comments').select('post_id').in('post_id', postIds).is('deleted_at', null),
+    window.sb.from('profiles').select('id, nickname, avatar').in('id', userIds)
+  ]);
+
   const profileMap = {};
-  if (profiles) profiles.forEach(p => profileMap[p.id] = p);
+  if (profilesRes.data) profilesRes.data.forEach(p => profileMap[p.id] = p);
 
   // Build like/comment counts
   const likeCounts = {};
@@ -196,6 +201,15 @@ async function deletePost(postId) {
   return !error;
 }
 
+async function updatePost(postId, content, imageUrl) {
+  const uid = await getEffectiveUserId();
+  if (!uid) return null;
+  const updates = { content: content || '', image_url: imageUrl || '' };
+  const { data, error } = await window.sb.from('posts').update(updates).eq('id', postId).eq('user_id', uid).is('deleted_at', null).select().single();
+  if (error) { console.error('[Supabase] updatePost error:', error); return null; }
+  return data;
+}
+
 // ===== Likes =====
 
 let _likeLock = {};
@@ -204,7 +218,9 @@ async function toggleLike(postId) {
   const uid = await getEffectiveUserId();
   if (!uid) return false;
   // Prevent double-click race condition
-  if (_likeLock[postId]) return false;
+  // 锁内返回 null 而非 false：与"取消点赞成功"的 false 区分，
+  // 调用方据 null 跳过 UI 更新，避免快速双击时计数被多减/状态错乱。
+  if (_likeLock[postId]) return null;
   _likeLock[postId] = true;
   try {
     const { data: existing } = await window.sb.from('post_likes').select('id').eq('post_id', postId).eq('user_id', uid).is('deleted_at', null).maybeSingle();
@@ -223,6 +239,7 @@ async function toggleLike(postId) {
 // ===== Comments =====
 
 async function getComments(postId) {
+  if (!window.sb) return [];
   const { data: comments } = await window.sb.from('post_comments')
     .select('*')
     .eq('post_id', postId)
@@ -312,11 +329,13 @@ async function sendFriendRequest(friendId) {
 }
 
 async function acceptFriendRequest(requestId) {
+  if (!window.sb) return false;
   const { error } = await window.sb.from('friendships').update({ status: 'accepted' }).eq('id', requestId);
   return !error;
 }
 
 async function rejectFriendRequest(requestId) {
+  if (!window.sb) return false;
   const { error } = await window.sb.from('friendships').delete().eq('id', requestId);
   return !error;
 }
@@ -476,6 +495,7 @@ export {
   createPost,
   getFeedPosts,
   deletePost,
+  updatePost,
   toggleLike,
   getComments,
   addComment,

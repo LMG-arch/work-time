@@ -53,6 +53,7 @@ const CRITICAL_FLUSH_KEYS = {
 };
 
 const _cache = {}; // key -> string，同步真值源
+const _deletedKeys = new Set(); // 已删除但尚未落盘 FS 的键，flushAll 时显式删文件（修复登出后凭据复活）
 let _loaded = false;
 let _loading = null;
 let _persistTimer = null;
@@ -93,12 +94,16 @@ function rawSet(key, val) {
 }
 function rawRemove(key) {
   delete _cache[key];
+  _deletedKeys.add(key);
   _persist(key, null);
 }
 
 // ---- 异步落盘到 Filesystem（防抖）----
 function _persist(key, val) {
-  try { localStorage.setItem(key, val == null ? '' : val); } catch (e) { /* 配额或隐私模式，忽略 */ }
+  try {
+    if (val == null) localStorage.removeItem(key);
+    else localStorage.setItem(key, val);
+  } catch (e) { /* 配额或隐私模式，忽略 */ }
   if (!getFS()) return;
   if (CRITICAL_FLUSH_KEYS[key]) {
     // 关键键：跳过防抖，立即全量落盘 FS（一次写入量很小，开销可忽略）
@@ -122,6 +127,16 @@ async function flushAll() {
         await fs.writeFile({ path: PREFIX + k, data: v, directory: 'DATA', encoding: 'utf8' });
       }
     } catch (e) { console.warn('[Storage] FS persist failed:', e.message); }
+  }
+  // 显式删除已移除键的 FS 文件：rawRemove 只删内存缓存，上面遍历不到被删键，
+  // 必须单独 deleteFile，否则重启后 _restoreFromFS 把残留文件读回导致凭据复活。
+  if (_deletedKeys.size > 0) {
+    for (const k of _deletedKeys) {
+      try {
+        await fs.deleteFile({ path: PREFIX + k, directory: 'DATA' }).catch(() => {});
+      } catch (e) { /* 文件不存在属正常 */ }
+    }
+    _deletedKeys.clear();
   }
 }
 

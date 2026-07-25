@@ -23,12 +23,14 @@ async function acceptReq(id) {
   if (!await window.acceptFriendRequest?.(id)) return
   window.showToast?.('已同意')
   await loadAll()
+  window.__refreshFriendRequests?.()
 }
 
 async function rejectReq(id) {
   if (!await window.rejectFriendRequest?.(id)) return
   window.showToast?.('已拒绝')
   await loadAll()
+  window.__refreshFriendRequests?.()
 }
 
 async function removeFriend(id) {
@@ -45,10 +47,14 @@ async function addFriend() {
   try {
     const target = await window.getProfileByDisplayId?.(did)
     if (!target) { addMsg.value = '找不到该用户，请检查ID'; return }
-    if (target.id === window.getCurrentUserId?.()) { addMsg.value = '不能添加自己'; return }
-    const ok = await window.sendFriendRequest?.(target.id)
-    if (ok) { addMsg.value = '已发送好友请求'; addIdInput.value = '' }
-    else addMsg.value = '发送失败，可能已是好友'
+    // 用 getEffectiveUserId 而非 getCurrentUserId：多设备账号经 linked_id 迁移后，
+    // 原始 auth id 与 profile id 可能不一致，导致"不能添加自己"判断失效。
+    const myId = await window.getEffectiveUserId?.()
+    if (target.id === myId) { addMsg.value = '不能添加自己'; return }
+    // sendFriendRequest 返回 { error: null|string }，对象恒 truthy，必须判断 error 字段
+    const result = await window.sendFriendRequest?.(target.id)
+    if (result && !result.error) { addMsg.value = '已发送好友请求'; addIdInput.value = '' }
+    else addMsg.value = result?.error || '发送失败，可能已是好友'
   } catch (e) { addMsg.value = '操作失败: ' + e.message }
 }
 </script>
@@ -60,7 +66,8 @@ async function addFriend() {
       <div class="section-title">好友申请 ({{ requests.length }})</div>
       <div v-for="req in requests" :key="req.id" class="friend-item">
         <div class="friend-info">
-          <div class="post-avatar avatar-placeholder">{{ (req.profile?.nickname || '?')[0] }}</div>
+          <img v-if="req.profile?.avatar" :src="req.profile.avatar" class="post-avatar" alt="">
+          <span v-else class="post-avatar avatar-placeholder">{{ (req.profile?.nickname || '?')[0] }}</span>
           <span class="friend-name">{{ req.profile?.nickname || '未知' }}</span>
         </div>
         <div class="friend-actions">

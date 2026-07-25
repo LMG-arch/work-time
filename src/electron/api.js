@@ -166,6 +166,15 @@ try {
             return resolve({ success: false, error: '无效的数据格式' });
           }
 
+          // 二次确认：导入将合并/覆盖本地数据，先统计条数让用户确认，防止误选文件丢数据
+          const daysCount = imported.days && typeof imported.days === 'object'
+            ? Object.keys(imported.days).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).length
+            : Object.keys(imported).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).length;
+          const todosCount = Array.isArray(imported.todos) ? imported.todos.length : 0;
+          if (!confirm(`即将导入并覆盖本地数据：\n\n打卡记录 ${daysCount} 天\n待办事项 ${todosCount} 条\n\n此操作会覆盖现有数据且不可撤销，确定继续吗？`)) {
+            return resolve({ success: false, cancelled: true });
+          }
+
           const store = getStore();
           if (imported.days && typeof imported.days === 'object') {
             // 验证 days 数据

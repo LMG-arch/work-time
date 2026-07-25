@@ -216,4 +216,4 @@ v3.17.9 让**写入**到达 FS（惰性 getFS，保存时 flushAll 落盘），�
 - 版本：3.17.12 → 3.17.13（versionCode 50）；三处一致。
 - 流水线：`vite build`（✅ 3.45s）→ `npx cap sync android`（✅ 8.1s，Filesystem 8.1.2 + LocalNotifications 8.2.0）→ `gradlew clean assembleRelease`（JDK 21 + `env -i` 剥离环境）→ 提交 → tag `v3.17.13` → 推送 → GitHub Release。
 - 发布链接：https://github.com/LMG-arch/work-time/releases/tag/v3.17.13
-- 状态：待发布。APK：`work-calendar-v3.17.13.apk`。downloadUrl 已写入 `version.json`。
+- 状态：✅ 已发布（2026-07-15）。APK：`work-calendar-v3.17.13.apk`（3,478,950 B）。downloadUrl 已写入 `version.json`。

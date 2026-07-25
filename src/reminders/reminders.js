@@ -301,11 +301,29 @@ export function getClockinStatusForDate(dateStr) {
 // 防止重复注册监听器
 let _notifListenersRegistered = false;
 
+// 按 channelId 精准取消指定类型的已调度通知。
+// 修复两类「幽灵通知」：原先打卡/待办通知要么全取消（误伤对方）、要么不取消（残留），
+// 改为按 channel 只取消本类型，互不干扰。
+async function cancelPendingByChannels(channelIds) {
+  if (!isCapacitorPlatform()) return;
+  try {
+    const { LocalNotifications } = window.Capacitor.Plugins;
+    if (!LocalNotifications) return;
+    const pending = await LocalNotifications.getPending();
+    const targets = (pending.notifications || []).filter(n => channelIds.includes(n.channelId));
+    if (targets.length > 0) await LocalNotifications.cancel({ notifications: targets });
+  } catch (e) { console.warn('[Notifications] cancel by channel error:', e.message); }
+}
+
 export async function scheduleReminderNotifications() {
   if (reminderNotifTimer) clearInterval(reminderNotifTimer);
 
   const enabled = allReminders.filter(r => r.enabled);
-  if (enabled.length === 0) return;
+  if (enabled.length === 0) {
+    // 修复：禁用全部提醒后也必须取消已调度的打卡通知，否则旧通知照常"幽灵弹出"
+    await cancelPendingByChannels(['clockin-reminders', 'clockin-silent']);
+    return;
+  }
 
   // Capacitor Android local notifications
   const isCapacitor = isCapacitorPlatform();
@@ -391,15 +409,8 @@ export async function scheduleReminderNotifications() {
         });
       }
 
-      // Cancel all existing scheduled notifications
-      try {
-        const pending = await LocalNotifications.getPending();
-        if (pending.notifications && pending.notifications.length > 0) {
-          await LocalNotifications.cancel({ notifications: pending.notifications });
-        }
-      } catch (cancelErr) {
-        console.warn('[Notifications] Cancel pending error:', cancelErr.message);
-      }
+      // Cancel existing clock-in notifications（只取消打卡类，避免误伤待办提醒）
+      await cancelPendingByChannels(['clockin-reminders', 'clockin-silent']);
 
       // Create notification channels (Android 8+)
       try {
@@ -576,6 +587,10 @@ export function scheduleTodoReminders() {
       if (!LocalNotifications) return;
 
       const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
+      // 修复：调度前先取消旧的待办通知，避免重复叠加；无待办时也清除
+      // 已完成/已删除待办的残留通知（fire-and-forget：新通知尚未 schedule，
+      // getPending 快照不含它们，故不会误删本次要调度的通知）。
+      cancelPendingByChannels(['todo-reminders']);
       if (todosWithRemind.length === 0) return;
 
       const notifications = [];

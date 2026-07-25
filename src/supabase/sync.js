@@ -80,13 +80,11 @@ async function applyCalendarData(data) {
     try {
       const store = window.__storage.get('work-calendar-data') || { days: {}, todos: [] };
       if (data.workData) {
-        if (data.workData.days) store.days = { ...store.days, ...data.workData.days };
-        if (data.workData.todos) {
-          const todoMap = {};
-          (store.todos || []).forEach(t => { if (t && t.id) todoMap[t.id] = t; });
-          data.workData.todos.forEach(t => { if (t && t.id) todoMap[t.id] = t; });
-          store.todos = Object.values(todoMap);
-        }
+        // 整体替换而非并集：所有调用方（sync 合并 / 单向 pull / 墓碑清理）都传入
+        // 完整数据集。并集会把本地已删除（被合并阶段排除）的旧副本重新并回来，
+        // 导致已删除的打卡记录同步后"复活"并回推云端污染所有设备。
+        if (data.workData.days) store.days = { ...data.workData.days };
+        if (data.workData.todos) store.todos = data.workData.todos.filter(t => t && t.id);
       }
       window.__storage.set('work-calendar-data', store);
     } catch (e) { console.warn('[Sync] Failed to save work-calendar-data:', e.message); }
@@ -174,25 +172,19 @@ async function _doSyncCalendarData() {
         const localDay = localData.workData.days?.[date];
         const cloudDay = cloudData.workData.days?.[date];
 
+        // 保留 tombstone（deleted 标记）而非剔除：删除操作靠 tombstone 跨设备传播。
+        // 若在合并时剔除，先删除的设备会过早丢失删除记录，其它设备同步时会把
+        // 本地未删除副本当作"仅有本地"保留 → 删除被"复活"。tombstone 读取时被
+        // 过滤（electron/api.js getAllData）且 status=null 在日历渲染为空白格，
+        // 由下方 30 天清理逻辑定期移除，故保留是安全的。
         if (localDay && cloudDay) {
-          // Both exist: keep newer
           const localTime = new Date(localDay.updatedAt || 0).getTime();
           const cloudTime = new Date(cloudDay.updatedAt || 0).getTime();
-          const winner = localTime >= cloudTime ? localDay : cloudDay;
-          // Only keep if not deleted
-          if (!winner.deleted) {
-            mergedDays[date] = winner;
-          }
+          mergedDays[date] = localTime >= cloudTime ? localDay : cloudDay;
         } else if (localDay) {
-          // Only local: keep if not deleted
-          if (!localDay.deleted) {
-            mergedDays[date] = localDay;
-          }
+          mergedDays[date] = localDay;
         } else if (cloudDay) {
-          // Only cloud: keep if not deleted
-          if (!cloudDay.deleted) {
-            mergedDays[date] = cloudDay;
-          }
+          mergedDays[date] = cloudDay;
         }
       }
       cloudData.workData.days = mergedDays;
@@ -255,6 +247,9 @@ async function _doSyncCalendarData() {
     }
 
     await applyCalendarData(cloudData);
+    // 主题本地优先：sync 合并未处理 theme，applyCalendarData 会用云端 theme 覆盖本地，
+    // 导致本地刚切换的主题被回滚。此处恢复本地主题（随后会被 push 回云端）。
+    if (localData.theme) window.__storage.setRaw('calendar-theme', localData.theme);
   }
 
   // 清理超过 30 天的 tombstone 记录，避免数据膨胀
@@ -318,6 +313,7 @@ async function pullFromCloud() {
 // Returns a promise that resolves when sync completes (or immediately if no sync needed)
 // 同步锁：防止初始化/登录期间并发写入导致数据冲突
 let _syncTimer = null;
+let _syncTimerResolve = null;
 function autoSyncPush() {
   if (!isSyncEnabled() || !window.sb) return Promise.resolve();
   // 如果同步正在进行中（初始化/登录），跳过此次自动同步
@@ -325,10 +321,17 @@ function autoSyncPush() {
     console.log('[Sync] Skipped auto-sync: sync already in progress');
     return Promise.resolve();
   }
-  if (_syncTimer) clearTimeout(_syncTimer);
+  if (_syncTimer) {
+    clearTimeout(_syncTimer);
+    // 修复：取消防抖时必须先 resolve 上一个挂起的 Promise，
+    // 否则先前 await autoSyncPush() 的调用方将永久悬挂。
+    if (_syncTimerResolve) { _syncTimerResolve({ error: null, debounced: true }); _syncTimerResolve = null; }
+  }
   return new Promise((resolve, reject) => {
+    _syncTimerResolve = resolve;
     _syncTimer = setTimeout(async () => {
       _syncTimer = null;
+      _syncTimerResolve = null;
       try {
         const result = await syncCalendarData();
         resolve(result);

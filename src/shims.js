@@ -78,6 +78,7 @@ if (typeof window !== 'undefined') {
   window.createPost = supabaseSocial.createPost
   window.getFeedPosts = supabaseSocial.getFeedPosts
   window.deletePost = supabaseSocial.deletePost
+  window.updatePost = supabaseSocial.updatePost
   window.toggleLike = supabaseSocial.toggleLike
   window.getComments = supabaseSocial.getComments
   window.addComment = supabaseSocial.addComment

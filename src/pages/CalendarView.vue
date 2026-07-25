@@ -297,7 +297,7 @@ onMounted(async () => {
         :data-date="cd.dateStr" :data-status="dayData(cd.dateStr).status" :data-busy="cd.isOther ? 0 : busyLevel(cd.dateStr)" @click="selectDate(cd.dateStr, cd.isOther)">
         <div class="busy-heat" aria-hidden="true"></div>
         <span class="day-num">{{ cd.day }}</span>
-        <span class="lunar-label" :class="{ 'lunar-month': lunar(currentYear, currentMonth + 1, cd.day).isFirstDay }">{{ lunar(currentYear, currentMonth + 1, cd.day).text }}</span>
+        <span class="lunar-label" :class="{ 'lunar-month': lunarForCell(cd).isFirstDay }">{{ lunarForCell(cd).text }}</span>
         <span v-if="dayData(cd.dateStr).status && !cd.isOther" class="status-label">{{ STATUS_CHARS[dayData(cd.dateStr).status] }}</span>
         <span v-if="todosForDate(cd.dateStr).length > 0 && !cd.isOther" class="todo-count">{{ undoneCount(cd.dateStr) || '' }}</span>
         <span v-if="holidayInfo(cd.dateStr) && !cd.isOther" class="holiday-label" :class="{ 'is-holiday-day': holidayInfo(cd.dateStr).type === 'holiday', 'is-workday-day': holidayInfo(cd.dateStr).type === 'workday' }">{{ holidayInfo(cd.dateStr).name }}</span>

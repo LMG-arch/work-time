@@ -29,7 +29,6 @@ function moveToolbarIndicator() {
 
 export function switchView(view) {
   currentView = view;
-  syncToWindow();
 
   // Vue 管理的页面：隐藏传统 .app，显示 #app
   const VUE_PAGES = ['calendar', 'clockin', 'settings', 'social', 'stats']
@@ -39,6 +38,10 @@ export function switchView(view) {
     const appEl = document.getElementById('app');
     if (appEl) appEl.style.display = '';
     window.__vueActivate?.(view);
+    // 修复：先 activate 再 sync。原顺序相反，切向日历时 CalendarView 尚未挂载，
+    // __calendarSyncDate 会打到已卸载旧实例的死闭包上导致同步丢失。
+    // setTimeout(0) 让 Vue 完成挂载后再推送当前年月/选中日期。
+    setTimeout(() => syncToWindow(), 0);
     document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
     const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
     const activeBtn = document.getElementById(activeMap[view]);
@@ -48,6 +51,7 @@ export function switchView(view) {
   }
 
   // 非 Vue 页面：隐藏 #app，显示传统 .app
+  syncToWindow();
   const appEl = document.getElementById('app');
   if (appEl) appEl.style.display = 'none';
   window.__vueDeactivate?.();
@@ -515,14 +519,10 @@ export function setupEventListeners() {
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    if (e.key === 'ArrowLeft') {
-      if (currentView === 'calendar') window.__calendarPrevMonth?.();
-      else changeMonth(-1);
-    }
-    if (e.key === 'ArrowRight') {
-      if (currentView === 'calendar') window.__calendarNextMonth?.();
-      else changeMonth(1);
-    }
+    // 修复：←/→ 仅在日历页响应。原先其它页面也会调遗留 changeMonth，
+    // 静默污染 window.currentYear/Month，回到日历页后行为不可预期。
+    if (e.key === 'ArrowLeft' && currentView === 'calendar') window.__calendarPrevMonth?.();
+    if (e.key === 'ArrowRight' && currentView === 'calendar') window.__calendarNextMonth?.();
     if (e.key === 't' && !e.ctrlKey && !e.metaKey) { window.__openTodoModal?.(); e.preventDefault(); }
     if (e.key === 'Escape') {
       closeDetailPanel();
