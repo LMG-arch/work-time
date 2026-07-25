@@ -1,13 +1,20 @@
 {
-  "version": "3.17.13",
-  "versionCode": 50,
-  "releaseDate": "2026-07-15",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.13/work-calendar-v3.17.13.apk",
+  "version": "3.17.14",
+  "versionCode": 51,
+  "releaseDate": "2026-07-25",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.14/work-calendar-v3.17.14.apk",
   "changelog": [
-    "fix: 修复详情面板标签/颜色/备注保存后界面不刷新（删除标签看似无效）",
-    "fix: TagEditor / ColorPicker / NoteEditor 保存后补发 update 事件，DetailPanel 监听后重读数据",
-    "fix: 对齐 StatusButtons 既有 @update 刷新模式，消除 stale 引用导致的 UI 不同步",
-    "chore: 版本三处一致 package.json / version.json / build.gradle"
+    "fix: 好友页滚动失效（flex 布局 + 独立滚动容器）",
+    "fix: 发帖支持编辑/删除（新增 updatePost API + 权限校验）",
+    "fix: 重复发帖（提交锁防重入）",
+    "fix: 删除记录同步后复活（tombstone 合并 + 整替换）",
+    "fix: 登出后凭据复活（FS 层删除文件 + localStorage 清理）",
+    "fix: 打卡页实时时间/日期不刷新（响应式 now + 30s 定时）",
+    "fix: 日历 TodoModal 默认日期空/切页丢状态（storeToRefs）",
+    "fix: 补位格农历算错（按真实年月日取数）",
+    "fix: 禁用提醒后仍弹通知（按 channel 精准取消）",
+    "fix: 社交点赞/评论/请求空值防护 + 图片上传失败提示",
+    "fix: 导入数据前确认计数（防误覆盖）"
   ],
   "forceUpdate": false
 }
