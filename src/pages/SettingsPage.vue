@@ -401,6 +401,63 @@ async function diagnoseNotifications() {
   }
 }
 
+// ===== 单个权限点击：请求 / 跳转对应系统设置 =====
+async function requestPerm(key) {
+  if (!isCapacitorPlatform()) { showToast('仅安卓端可操作权限'); return }
+  const { LocalNotifications } = window.Capacitor.Plugins
+  try {
+    if (key === 'notification') {
+      if (!LocalNotifications?.requestPermissions) { openPermissionDetail(key); return }
+      const perm = await LocalNotifications.requestPermissions()
+      await checkAndroidPermissions()
+      showToast(perm.display === 'granted' ? '通知权限已开启 ✓' : '请在系统弹窗中允许通知')
+      return
+    }
+    if (key === 'exact-alarm') {
+      if (LocalNotifications?.requestExactNotificationSetting) {
+        await LocalNotifications.requestExactNotificationSetting()
+        await checkAndroidPermissions()
+        showToast('请在系统设置中开启“精确闹钟”')
+      } else {
+        openPermissionDetail(key)
+      }
+      return
+    }
+    // overlay / battery / install 无 JS 直申请接口，跳转对应系统设置页
+    openPermissionDetail(key)
+  } catch (e) {
+    console.warn('[Perm] request failed:', e.message)
+    showToast('无法自动跳转，请手动前往系统设置')
+  }
+}
+
+// 根据权限 key 拉起对应系统设置深链，失败回退到应用详情页
+function openPermissionDetail(key) {
+  const appId = 'com.workcalendar.app'
+  const actions = {
+    'overlay': 'android.settings.action.MANAGE_OVERLAY_PERMISSION',
+    'battery': 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+    'install': 'android.settings.MANAGE_UNKNOWN_APP_SOURCES',
+  }
+  const hint = {
+    'overlay': '请开启“后台弹出界面/显示在其他应用上方”',
+    'battery': '请关闭“电池优化”',
+    'install': '请开启“允许安装未知应用”',
+    'notification': '请开启“通知”',
+    'exact-alarm': '请开启“精确闹钟”',
+  }
+  const action = actions[key]
+  const intentUrl = action
+    ? `intent:#Intent;action=${action};package=${appId};end`
+    : `package:${appId}`
+  const { App } = window.Capacitor.Plugins
+  if (App?.openUrl) {
+    try { App.openUrl({ url: intentUrl }); if (hint[key]) showToast(hint[key]); return } catch (e) { console.debug('[Perm] openUrl intent failed:', e.message) }
+  }
+  try { window.open(intentUrl, '_system'); if (hint[key]) showToast(hint[key]); return } catch (e) { console.debug('[Perm] window.open intent failed:', e.message) }
+  openAppSettings()
+}
+
 const perms = [
   { name: '通知权限', desc: '打卡提醒和待办提醒', key: 'notification' },
   { name: '精确闹钟', desc: '准时提醒不延迟', key: 'exact-alarm' },
@@ -666,7 +723,7 @@ onUnmounted(() => {
     <SettingsSection v-if="isAndroid" title="安卓权限" collapsible>
       <div class="settings-hint" style="margin-bottom:8px;">以下权限影响通知和更新功能，建议全部开启</div>
       <div>
-        <div v-for="p in perms" :key="p.key" class="perm-item">
+        <div v-for="p in perms" :key="p.key" class="perm-item perm-clickable" @click="requestPerm(p.key)">
           <div>
             <div style="font-size:13px;font-weight:500;">{{ p.name }}</div>
             <div style="font-size:11px;color:var(--text-secondary);">{{ p.desc }}</div>
@@ -675,6 +732,7 @@ onUnmounted(() => {
             class="perm-status"
             :class="getPermStatus(p.key).cls"
           >{{ getPermStatus(p.key).text }}</span>
+          <span class="perm-chevron">›</span>
         </div>
       </div>
       <button class="settings-action-btn full" style="margin-top:8px;" @click="openAppSettings">前往系统设置</button>
@@ -829,8 +887,23 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 8px 8px;
+  margin: 0 -8px;
   border-bottom: 1px solid var(--border, #e0e0e0);
+}
+.perm-clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.perm-clickable:active {
+  background: var(--border, #eee);
+}
+.perm-chevron {
+  color: var(--text3, #aaa);
+  font-size: 18px;
+  margin-left: 6px;
+  flex-shrink: 0;
 }
 .perm-status {
   font-size: 12px;

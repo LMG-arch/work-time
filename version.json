@@ -1,20 +1,12 @@
 {
-  "version": "3.17.14",
-  "versionCode": 51,
-  "releaseDate": "2026-07-25",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.14/work-calendar-v3.17.14.apk",
+  "version": "3.17.15",
+  "versionCode": 52,
+  "releaseDate": "2026-07-28",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.15/work-calendar-v3.17.15.apk",
   "changelog": [
-    "fix: 好友页滚动失效（flex 布局 + 独立滚动容器）",
-    "fix: 发帖支持编辑/删除（新增 updatePost API + 权限校验）",
-    "fix: 重复发帖（提交锁防重入）",
-    "fix: 删除记录同步后复活（tombstone 合并 + 整替换）",
-    "fix: 登出后凭据复活（FS 层删除文件 + localStorage 清理）",
-    "fix: 打卡页实时时间/日期不刷新（响应式 now + 30s 定时）",
-    "fix: 日历 TodoModal 默认日期空/切页丢状态（storeToRefs）",
-    "fix: 补位格农历算错（按真实年月日取数）",
-    "fix: 禁用提醒后仍弹通知（按 channel 精准取消）",
-    "fix: 社交点赞/评论/请求空值防护 + 图片上传失败提示",
-    "fix: 导入数据前确认计数（防误覆盖）"
+    "fix: 设置页折叠状态持久化（主题风格/导航栏/安卓权限按标题记忆，默认折叠）",
+    "fix: 安卓权限行可点击（通知/精确闹钟走插件请求，overlay/电池/安装跳转对应系统设置深链）",
+    "fix: 权限行点击无响应问题（新增 requestPerm + openPermissionDetail）"
   ],
   "forceUpdate": false
 }

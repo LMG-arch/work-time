@@ -1,10 +1,26 @@
 <script setup>
-defineProps({
+import { ref, watch } from 'vue'
+const props = defineProps({
   title: { type: String, required: true },
   collapsible: { type: Boolean, default: false },
 })
-import { ref } from 'vue'
-const open = ref(true)
+
+// 折叠状态持久化：按标题记忆，避免每次打开设置页都要手动收起
+const STORAGE_KEY = 'settings-section-' + props.title
+
+function loadOpen() {
+  try {
+    const v = window.__storage?.get(STORAGE_KEY)
+    if (typeof v === 'boolean') return v
+  } catch (e) { console.debug('[SettingsSection] load failed:', e.message) }
+  return false // 默认折叠，减少首屏滚动负担
+}
+
+const open = ref(loadOpen())
+
+watch(open, (v) => {
+  try { window.__storage?.set(STORAGE_KEY, v) } catch (e) { console.debug('[SettingsSection] save failed:', e.message) }
+})
 </script>
 
 <template>
