@@ -1,9 +1,10 @@
 {
-  "version": "3.17.15",
-  "versionCode": 52,
-  "releaseDate": "2026-07-28",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.15/work-calendar-v3.17.15.apk",
+  "version": "3.17.16",
+  "versionCode": 53,
+  "releaseDate": "2026-07-25",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.16/work-calendar-v3.17.16.apk",
   "changelog": [
+    "fix: 修复部分国产 ROM（如 vivo）启动即闪退的致命崩溃（WebView.getCurrentWebViewPackage() 返回 null 导致原生 NPE）",
     "fix: 设置页折叠状态持久化（主题风格/导航栏/安卓权限按标题记忆，默认折叠）",
     "fix: 安卓权限行可点击（通知/精确闹钟走插件请求，overlay/电池/安装跳转对应系统设置深链）",
     "fix: 权限行点击无响应问题（新增 requestPerm + openPermissionDetail）"
