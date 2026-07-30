@@ -5,6 +5,7 @@ window.__bootLog && window.__bootLog('shims.js loaded')
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './components/App.vue'
+import { showPendingCrashReport, persistJsError } from './crashReporter.js'
 window.__bootLog && window.__bootLog('Vue + App imported')
 
 // ===== 全局错误可见化 =====
@@ -40,6 +41,7 @@ function showFatal(msg, stack) {
       '⚠ 运行错误（请把这段截图发给开发者）\n[' + stamp + ']\n\n' +
       String(msg) + (stack ? '\n\n' + String(stack) : '');
     el.appendChild(pre);
+    persistJsError(msg, stack);
   } catch (_) { /* 极致兜底：连 DOM 都写不了就放弃 */ }
 }
 
@@ -73,3 +75,6 @@ window.__bootLog && window.__bootLog('stores initialized')
 
 app.mount('#app')
 window.__bootLog && window.__bootLog('Vue mounted #app, children=' + document.getElementById('app').childElementCount)
+
+// 启动后检查并展示上次原生/JS 崩溃日志（原生层已写入文件）
+showPendingCrashReport()

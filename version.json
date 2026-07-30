@@ -1,13 +1,12 @@
 {
-  "version": "3.17.16",
-  "versionCode": 53,
-  "releaseDate": "2026-07-25",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.16/work-calendar-v3.17.16.apk",
+  "version": "3.17.17",
+  "versionCode": 54,
+  "releaseDate": "2026-07-30",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.17/work-calendar-v3.17.17.apk",
   "changelog": [
-    "fix: 修复部分国产 ROM（如 vivo）启动即闪退的致命崩溃（WebView.getCurrentWebViewPackage() 返回 null 导致原生 NPE）",
-    "fix: 设置页折叠状态持久化（主题风格/导航栏/安卓权限按标题记忆，默认折叠）",
-    "fix: 安卓权限行可点击（通知/精确闹钟走插件请求，overlay/电池/安装跳转对应系统设置深链）",
-    "fix: 权限行点击无响应问题（新增 requestPerm + openPermissionDetail）"
+    "feat: 内置原生崩溃捕获器（MainApplication + 进程级 UncaughtExceptionHandler），崩溃栈写入 crashlogs 文件，下次启动自动弹窗可一键复制/分享，无需 adb 也能定位问题",
+    "fix: 继续排查部分设备使用数日后再次闪退问题（数据相关），本轮以可观测化为主，拿到真实崩溃栈后将一次性根治",
+    "chore: 提供 grab-crash.bat 一键 adb 抓取崩溃日志（可捕获 WebView 渲染进程崩溃）"
   ],
   "forceUpdate": false
 }
