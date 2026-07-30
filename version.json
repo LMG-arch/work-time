@@ -1,12 +1,13 @@
 {
-  "version": "3.17.17",
-  "versionCode": 54,
+  "version": "3.17.18",
+  "versionCode": 55,
   "releaseDate": "2026-07-30",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.17/work-calendar-v3.17.17.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.18/work-calendar-v3.17.18.apk",
   "changelog": [
-    "feat: 内置原生崩溃捕获器（MainApplication + 进程级 UncaughtExceptionHandler），崩溃栈写入 crashlogs 文件，下次启动自动弹窗可一键复制/分享，无需 adb 也能定位问题",
-    "fix: 继续排查部分设备使用数日后再次闪退问题（数据相关），本轮以可观测化为主，拿到真实崩溃栈后将一次性根治",
-    "chore: 提供 grab-crash.bat 一键 adb 抓取崩溃日志（可捕获 WebView 渲染进程崩溃）"
+    "fix: 修复「覆盖更新/使用数日后仍闪退、必须卸载重装」的根因——vivo 等 ROM 静默自动更新系统 WebView 后，旧版 app_webview 数据目录腐化导致原生崩溃",
+    "fix: WebView 数据目录按系统 WebView 版本隔离（setDataDirectorySuffix），每次 WebView 升级使用全新目录，彻底避免跨版本数据腐化；覆盖更新不再需要卸载",
+    "fix: 崩溃自恢复——检测到连续崩溃自动清空 WebView 数据目录（等价于隐式卸载重装），用户无需手动卸载即可恢复",
+    "chore: 保留进程级崩溃落盘与 grab-crash.bat，若仍异常可继续拿栈定位"
   ],
   "forceUpdate": false
 }
