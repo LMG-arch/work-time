@@ -1,13 +1,14 @@
 {
-  "version": "3.17.18",
-  "versionCode": 55,
-  "releaseDate": "2026-07-30",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.18/work-calendar-v3.17.18.apk",
+  "version": "3.17.19",
+  "versionCode": 56,
+  "releaseDate": "2026-07-31",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.19/work-calendar-v3.17.19.apk",
   "changelog": [
-    "fix: 修复「覆盖更新/使用数日后仍闪退、必须卸载重装」的根因——vivo 等 ROM 静默自动更新系统 WebView 后，旧版 app_webview 数据目录腐化导致原生崩溃",
-    "fix: WebView 数据目录按系统 WebView 版本隔离（setDataDirectorySuffix），每次 WebView 升级使用全新目录，彻底避免跨版本数据腐化；覆盖更新不再需要卸载",
-    "fix: 崩溃自恢复——检测到连续崩溃自动清空 WebView 数据目录（等价于隐式卸载重装），用户无需手动卸载即可恢复",
-    "chore: 保留进程级崩溃落盘与 grab-crash.bat，若仍异常可继续拿栈定位"
+    "fix: 修复 Capacitor 插件异常导致闪退——Bridge.callPluginMethod 在插件方法抛异常时重新抛出 RuntimeException 杀死进程（Bridge.java:856），改为通知 JS 侧错误回调并存活，任何插件失败不再崩溃 App",
+    "fix: 崩溃日志实锤：vivo V2419A(SDK36) 上 CapacitorPlugins 线程 InvocationTargetException，确认为插件反射调用异常被桥层放大为致命崩溃",
+    "keep: v3.17.18 的 WebView 数据目录按版本隔离 + 崩溃自恢复保留",
+    "keep: v3.17.16 的启动期 NPE 空值保护保留",
+    "keep: v3.17.17 的原生崩溃捕获器保留"
   ],
   "forceUpdate": false
 }
