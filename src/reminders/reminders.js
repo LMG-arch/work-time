@@ -301,6 +301,13 @@ export function getClockinStatusForDate(dateStr) {
 // 防止重复注册监听器
 let _notifListenersRegistered = false;
 
+// ⚠️ 关键约束：Android 13+ 对每个应用的「精确闹钟(exact alarm)」有 500 个并发硬上限，
+// 超过后 AlarmManager.setExactAndAllowWhileIdle 会抛 IllegalStateException，
+// 经 Capacitor Bridge 放大为致命崩溃（表现为"用两天就闪退"）。
+// 以下两个常量把总量牢牢压在上限之下，并缩短排期窗口以留足安全余量。
+const SCHEDULE_HORIZON_DAYS = 14;   // 排期窗口：14 天（App 每次前台恢复都会滚动重排，足够覆盖）
+const MAX_TOTAL_ALARMS = 400;       // 精确闹钟总配额上限（打卡+待办共享），远低于系统 500 的硬限
+
 // 按 channelId 精准取消指定类型的已调度通知。
 // 修复两类「幽灵通知」：原先打卡/待办通知要么全取消（误伤对方）、要么不取消（残留），
 // 改为按 channel 只取消本类型，互不干扰。
@@ -313,6 +320,50 @@ async function cancelPendingByChannels(channelIds) {
     const targets = (pending.notifications || []).filter(n => channelIds.includes(n.channelId));
     if (targets.length > 0) await LocalNotifications.cancel({ notifications: targets });
   } catch (e) { console.warn('[Notifications] cancel by channel error:', e.message); }
+}
+
+// 全局调度串行锁：打卡与待办两个调度器会先后触发，若并发各自读取 getPending 快照，
+// 会同时以为配额充足而超发 → 仍会突破上限。用一个 Promise 链把所有 safeSchedule 串起来，
+// 保证「读配额→调度」整体原子执行，两者真正共享 MAX_TOTAL_ALARMS 配额。
+let _safeScheduleLock = Promise.resolve();
+
+// 安全调度：绝不突破系统 500 精确闹钟上限的守门员。
+// 1) 按触发时间升序 —— 配额不够时优先保留"最近要响"的通知，丢弃最远的；
+// 2) 查询当前已挂起数量，动态算出可用配额（打卡+待办共享 MAX_TOTAL_ALARMS）；
+// 3) 分批(每批50)调度，降低单次 IPC 压力，任一批失败也不影响已成功的批次。
+function safeSchedule(LocalNotifications, notifications, label) {
+  const run = async () => {
+    if (!notifications || notifications.length === 0) return;
+    // 按触发时间升序：优先保留最近的
+    notifications.sort((a, b) => new Date(a.schedule.at) - new Date(b.schedule.at));
+
+    let available = MAX_TOTAL_ALARMS;
+    try {
+      const pending = await LocalNotifications.getPending();
+      const used = (pending && pending.notifications ? pending.notifications.length : 0);
+      available = Math.max(0, MAX_TOTAL_ALARMS - used);
+    } catch (e) {
+      console.warn('[Notifications] getPending failed, using default budget:', e.message);
+    }
+
+    const toSchedule = notifications.slice(0, available);
+    const dropped = notifications.length - toSchedule.length;
+
+    for (let i = 0; i < toSchedule.length; i += 50) {
+      const batch = toSchedule.slice(i, i + 50);
+      try {
+        await LocalNotifications.schedule({ notifications: batch });
+      } catch (e) {
+        // 双保险：即便触碰系统上限，也吞掉异常、停止后续批次，绝不让它冒泡成崩溃
+        console.warn(`[Notifications] ${label} batch schedule failed (likely alarm limit), stopping:`, e.message);
+        break;
+      }
+    }
+    console.log(`[Notifications] ${label}: scheduled ${toSchedule.length}, dropped ${dropped} (budget ${available}/${MAX_TOTAL_ALARMS})`);
+  };
+  // 串行执行；无论前一次成功或失败都继续，避免锁被 rejected 卡死
+  _safeScheduleLock = _safeScheduleLock.then(run, run);
+  return _safeScheduleLock;
 }
 
 export async function scheduleReminderNotifications() {
@@ -454,11 +505,11 @@ export async function scheduleReminderNotifications() {
       // 非工作日状态列表，这些日期跳过打卡通知
       const nonWorkStatuses = ['rest', 'leave', 'annual', 'sick', 'personal'];
 
-      // Schedule notifications for the next 30 days
+      // 排期窗口内滚动预调度（窗口 = SCHEDULE_HORIZON_DAYS，见文件顶部常量说明）
       const notifications = [];
       const today = new Date();
 
-      for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
+      for (let dayOffset = 0; dayOffset < SCHEDULE_HORIZON_DAYS; dayOffset++) {
         const targetDate = new Date(today);
         targetDate.setDate(targetDate.getDate() + dayOffset);
         const dateStr = dateToStr(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
@@ -496,10 +547,8 @@ export async function scheduleReminderNotifications() {
         }
       }
 
-      if (notifications.length > 0) {
-        await LocalNotifications.schedule({ notifications });
-        console.log('[Notifications] Scheduled', notifications.length, 'notifications for next 30 days');
-      }
+      // 经安全调度：绝不突破系统精确闹钟上限（打卡与待办共享 MAX_TOTAL_ALARMS 配额）
+      await safeSchedule(LocalNotifications, notifications, 'clock-in');
     } catch (e) {
       console.error('[Notifications] Capacitor scheduling error:', e);
       showToast('通知设置失败: ' + (e.message || '未知错误'));
@@ -575,7 +624,7 @@ export async function scheduleReminderNotifications() {
 
 let todoRemindTimer = null;
 
-export function scheduleTodoReminders() {
+export async function scheduleTodoReminders() {
   if (todoRemindTimer) clearInterval(todoRemindTimer);
 
   const isCapacitor = isCapacitorPlatform();
@@ -587,16 +636,15 @@ export function scheduleTodoReminders() {
       if (!LocalNotifications) return;
 
       const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
-      // 修复：调度前先取消旧的待办通知，避免重复叠加；无待办时也清除
-      // 已完成/已删除待办的残留通知（fire-and-forget：新通知尚未 schedule，
-      // getPending 快照不含它们，故不会误删本次要调度的通知）。
-      cancelPendingByChannels(['todo-reminders']);
+      // 修复：调度前先【await】取消旧的待办通知，避免重复叠加与配额泄漏；无待办时也清除。
+      // 必须 await —— 否则取消与新调度并发竞争，旧闹钟未释放就叠加新的，长期累积会突破系统上限。
+      await cancelPendingByChannels(['todo-reminders']);
       if (todosWithRemind.length === 0) return;
 
       const notifications = [];
       const today = new Date();
 
-      for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
+      for (let dayOffset = 0; dayOffset < SCHEDULE_HORIZON_DAYS; dayOffset++) {
         const targetDate = new Date(today);
         targetDate.setDate(targetDate.getDate() + dayOffset);
         const dateStr = dateToStr(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
@@ -638,9 +686,8 @@ export function scheduleTodoReminders() {
         }
       }
 
-      if (notifications.length > 0) {
-        LocalNotifications.schedule({ notifications });
-      }
+      // 经安全调度：与打卡共享 MAX_TOTAL_ALARMS 配额，绝不突破系统精确闹钟上限
+      await safeSchedule(LocalNotifications, notifications, 'todo');
     } catch (e) {
       console.error('[TodoRemind] Scheduling error:', e);
     }

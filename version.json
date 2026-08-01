@@ -1,14 +1,14 @@
 {
-  "version": "3.17.19",
-  "versionCode": 56,
+  "version": "3.17.20",
+  "versionCode": 57,
   "releaseDate": "2026-07-31",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.19/work-calendar-v3.17.19.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.20/work-calendar-v3.17.20.apk",
   "changelog": [
-    "fix: 修复 Capacitor 插件异常导致闪退——Bridge.callPluginMethod 在插件方法抛异常时重新抛出 RuntimeException 杀死进程（Bridge.java:856），改为通知 JS 侧错误回调并存活，任何插件失败不再崩溃 App",
-    "fix: 崩溃日志实锤：vivo V2419A(SDK36) 上 CapacitorPlugins 线程 InvocationTargetException，确认为插件反射调用异常被桥层放大为致命崩溃",
+    "fix: 修复「用两天就崩」的真凶——提醒/待办调度累计超出 Android 500 并发精确闹钟硬限制，抛 IllegalStateException 经 Bridge.callPluginMethod 杀进程",
+    "fix: reminders.js 将调度窗口从 30 天收紧到 14 天，并新增 safeSchedule() 全局配额上限 400 + 序列化锁，永不触发系统 500 限制且自愈已卡在 500 的设备",
+    "keep: v3.17.19 的 Bridge 插件异常 crash shield 保留",
     "keep: v3.17.18 的 WebView 数据目录按版本隔离 + 崩溃自恢复保留",
-    "keep: v3.17.16 的启动期 NPE 空值保护保留",
-    "keep: v3.17.17 的原生崩溃捕获器保留"
+    "keep: v3.17.16 的启动期 N开发者空值保护保留，v3.17.17 的原生崩溃捕获器保留"
   ],
   "forceUpdate": false
 }
