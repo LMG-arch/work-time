@@ -1,14 +1,14 @@
 {
-  "version": "3.17.20",
-  "versionCode": 57,
-  "releaseDate": "2026-07-31",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.20/work-calendar-v3.17.20.apk",
+  "version": "3.17.21",
+  "versionCode": 58,
+  "releaseDate": "2026-08-15",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.21/work-calendar-v3.17.21.apk",
   "changelog": [
-    "fix: 修复「用两天就崩」的真凶——提醒/待办调度累计超出 Android 500 并发精确闹钟硬限制，抛 IllegalStateException 经 Bridge.callPluginMethod 杀进程",
-    "fix: reminders.js 将调度窗口从 30 天收紧到 14 天，并新增 safeSchedule() 全局配额上限 400 + 序列化锁，永不触发系统 500 限制且自愈已卡在 500 的设备",
+    "fix: 修复安卓通知「攒一堆、打开 App 才一起弹」——原调度只用 allowWhileIdle 未设 exact，触发的是 inexact 闹钟，被系统 Doze 延迟并批量合并；改为在精确闹钟权限授予时使用 exact:true(setExactAndAllowWhileIdle)，到时刻精确实时响铃",
+    "fix: 新增 resolveExactMode() 统一判定精确闹钟模式——权限未授予时退回 inexact（绝不崩溃），授予后精确触发；权限未开时仅弹一次引导",
+    "keep: v3.17.20 的 safeSchedule 400 配额 + 14 天窗口（永不触发系统 500 闹钟上限）保留",
     "keep: v3.17.19 的 Bridge 插件异常 crash shield 保留",
-    "keep: v3.17.18 的 WebView 数据目录按版本隔离 + 崩溃自恢复保留",
-    "keep: v3.17.16 的启动期 N开发者空值保护保留，v3.17.17 的原生崩溃捕获器保留"
+    "keep: v3.17.18 的 WebView 数据目录按版本隔离 + 崩溃自恢复保留"
   ],
   "forceUpdate": false
 }

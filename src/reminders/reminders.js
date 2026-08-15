@@ -366,6 +366,47 @@ function safeSchedule(LocalNotifications, notifications, label) {
   return _safeScheduleLock;
 }
 
+// 决定本次调度是否使用「精确闹钟」(exact:true)。
+// 关键点：精确闹钟权限(Android 12+)未授予时若仍用 exact，setExactAndAllowWhileIdle 会抛异常；
+// 故仅在权限为 granted（或旧系统 unknown/无需权限）时返回 true，否则退回 inexact（不崩溃）。
+// inexact 闹钟会被系统 Doze 延迟并批量合并 → 表现为「攒一堆、用户打开 App 才一起弹」。
+// 用 exact:true 才能让提醒在设定时刻精确、实时地响（含 Doze 期间）。
+// 会话内缓存结果，且精确权限未授予时只弹一次引导，避免每次调度重复弹窗。
+let _exactModeResolved = false;
+let _exactModeValue = true;
+async function resolveExactMode(LocalNotifications) {
+  if (_exactModeResolved) return _exactModeValue;
+  let useExact = true;
+  try {
+    if (LocalNotifications.checkExactNotificationSetting) {
+      const exactPerm = await LocalNotifications.checkExactNotificationSetting();
+      if (exactPerm && exactPerm.exact_alarm === 'notGranted') {
+        if (!window._exactAlarmPrompted) {
+          window._exactAlarmPrompted = true;
+          const userConfirmed = confirm(
+            '⚠️ 精确闹钟权限未开启\n\n' +
+            '没有此权限，打卡/待办提醒会被系统延迟甚至攒批，"到时间不响、打开 App 才一起弹"！\n\n' +
+            '点击"确定"前往系统设置开启"精确闹钟(Alarms & reminders)"权限后，重启应用即可准时响铃。'
+          );
+          if (userConfirmed && LocalNotifications.changeExactNotificationSetting) {
+            await LocalNotifications.changeExactNotificationSetting();
+          }
+        }
+        // 打开设置后权限不会立即生效，需用户手动开启并重启；本会话仍按未授予处理（退回 inexact）
+        const recheck = await LocalNotifications.checkExactNotificationSetting().catch(() => null);
+        useExact = !(recheck && recheck.exact_alarm === 'notGranted');
+      }
+    }
+  } catch (e) {
+    console.warn('[Notifications] Exact mode resolve error:', e.message);
+    useExact = true;
+  }
+  _exactModeResolved = true;
+  _exactModeValue = useExact;
+  console.log('[Notifications] exact alarm mode =', useExact);
+  return useExact;
+}
+
 export async function scheduleReminderNotifications() {
   if (reminderNotifTimer) clearInterval(reminderNotifTimer);
 
@@ -403,26 +444,9 @@ export async function scheduleReminderNotifications() {
         return;
       }
 
-      // Check exact alarm permission (Android 12+) — without this, alarms are delayed ~15min
-      try {
-        if (LocalNotifications.checkExactNotificationSetting) {
-          const exactPerm = await LocalNotifications.checkExactNotificationSetting();
-          if (exactPerm && exactPerm.exact_alarm !== 'granted') {
-            const userConfirmed = confirm(
-              '⚠️ 精确闹钟权限未开启\n\n' +
-              '没有此权限，打卡提醒会延迟15分钟！\n\n' +
-              '点击"确定"前往设置页面开启：\n' +
-              '1. 找到"精确闹钟"或"Alarms & reminders"\n' +
-              '2. 开启"上班日历"的权限'
-            );
-            if (userConfirmed && LocalNotifications.changeExactNotificationSetting) {
-              await LocalNotifications.changeExactNotificationSetting();
-            }
-          }
-        }
-      } catch (exactErr) {
-        console.warn('[Notifications] Exact alarm check error:', exactErr.message);
-      }
+      // 决定精确闹钟模式：精确权限未授予时退回 inexact（不崩溃），
+      // 否则用 exact:true 让系统精确实时触发（Doze 下也能响，根治「攒一批再一起弹」）。
+      const useExact = await resolveExactMode(LocalNotifications);
 
       // Register action type for clock-in confirmation (only once)
       try {
@@ -535,7 +559,7 @@ export async function scheduleReminderNotifications() {
             id: generateNotifId(),
             title: '上班日历 · 打卡提醒',
             body: `⏰ ${r.label} (${r.time})`,
-            schedule: { at: scheduleDate, allowWhileIdle: true },
+            schedule: { at: scheduleDate, allowWhileIdle: true, exact: useExact },
             smallIcon: 'ic_launcher',
             largeIcon: 'ic_launcher_round',
             extra: { reminderId: r.id, date: dateStr },
@@ -634,6 +658,8 @@ export async function scheduleTodoReminders() {
     try {
       const { LocalNotifications } = window.Capacitor.Plugins;
       if (!LocalNotifications) return;
+      // 与打卡共用同一精确闹钟判定，确保待办提醒也实时、精确触发
+      const useExact = await resolveExactMode(LocalNotifications);
 
       const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
       // 修复：调度前先【await】取消旧的待办通知，避免重复叠加与配额泄漏；无待办时也清除。
@@ -677,7 +703,7 @@ export async function scheduleTodoReminders() {
             id: generateNotifId(),
             title: '上班日历 · 待办提醒',
             body: `📋 ${todo.text} (${targetTime})`,
-            schedule: { at: scheduleDate, allowWhileIdle: true },
+            schedule: { at: scheduleDate, allowWhileIdle: true, exact: useExact },
             smallIcon: 'ic_launcher',
             channelId: 'todo-reminders',
             sound: 'default',
