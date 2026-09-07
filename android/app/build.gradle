@@ -14,8 +14,8 @@ android {
         applicationId "com.workcalendar.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 58
-        versionName "3.17.21"
+        versionCode 59
+        versionName "3.17.22"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -53,6 +53,7 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.work:work-runtime:$androidxWorkVersion"
     implementation project(':capacitor-android')
     implementation project(':capacitor-filesystem')
     implementation project(':capacitor-local-notifications')

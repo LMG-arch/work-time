@@ -5,6 +5,8 @@ import android.os.Build;
 import android.util.Log;
 import android.webkit.WebView;
 
+import com.workcalendar.app.NotificationScheduler;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -55,6 +57,19 @@ public class MainApplication extends Application {
         }
 
         super.onCreate();
+
+        // 注册后台周期性通知调度任务（WorkManager）
+        // 即使用户数天不打开 App，也能定期刷新 LocalNotifications 预调度
+        registerPeriodicNotificationWork();
+    }
+
+    // 注册 WorkManager 周期性任务：每 30 分钟唤醒一次，刷新通知调度
+    private void registerPeriodicNotificationWork() {
+        try {
+            NotificationScheduler.registerPeriodicWork(this);
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to register periodic notification work", t);
+        }
     }
 
     // ---------- WebView 版本隔离 ----------

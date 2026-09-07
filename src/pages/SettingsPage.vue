@@ -414,8 +414,10 @@ async function requestPerm(key) {
       return
     }
     if (key === 'exact-alarm') {
-      if (LocalNotifications?.requestExactNotificationSetting) {
-        await LocalNotifications.requestExactNotificationSetting()
+      // 插件暴露的方法是 changeExactNotificationSetting（拉起系统精确闹钟授权页），
+      // 不存在 requestExactNotificationSetting —— 旧实现调用后静默失败，用户无法正确授权。
+      if (LocalNotifications?.changeExactNotificationSetting) {
+        await LocalNotifications.changeExactNotificationSetting()
         await checkAndroidPermissions()
         showToast('请在系统设置中开启“精确闹钟”')
       } else {

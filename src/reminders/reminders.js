@@ -308,18 +308,28 @@ let _notifListenersRegistered = false;
 const SCHEDULE_HORIZON_DAYS = 14;   // 排期窗口：14 天（App 每次前台恢复都会滚动重排，足够覆盖）
 const MAX_TOTAL_ALARMS = 400;       // 精确闹钟总配额上限（打卡+待办共享），远低于系统 500 的硬限
 
-// 按 channelId 精准取消指定类型的已调度通知。
-// 修复两类「幽灵通知」：原先打卡/待办通知要么全取消（误伤对方）、要么不取消（残留），
-// 改为按 channel 只取消本类型，互不干扰。
-async function cancelPendingByChannels(channelIds) {
+// 按通知类型(kind)精准取消已调度的通知。
+// ⚠️ 关键修复：getPending() 返回的 pending 对象【不含 channelId】字段
+//（原生 LocalNotification.buildLocalNotificationPendingList 只回传 id/title/body/schedule/extra），
+// 旧实现用 channelIds.includes(n.channelId) 过滤 → 永远匹配不到 → 取消彻底失效，
+// 旧通知（含过期残留）长期堆积，Doze 延迟后或 App 激活时一次性集中弹出。
+// 现改为 extra.kind（新调度）+ title 关键词（兼容旧版本已调度通知）双条件匹配。
+async function cancelPendingByKind(kind, titleKeyword) {
   if (!isCapacitorPlatform()) return;
   try {
     const { LocalNotifications } = window.Capacitor.Plugins;
     if (!LocalNotifications) return;
     const pending = await LocalNotifications.getPending();
-    const targets = (pending.notifications || []).filter(n => channelIds.includes(n.channelId));
-    if (targets.length > 0) await LocalNotifications.cancel({ notifications: targets });
-  } catch (e) { console.warn('[Notifications] cancel by channel error:', e.message); }
+    const targets = (pending.notifications || []).filter(n => {
+      const byKind = !!(n.extra && n.extra.kind === kind);
+      const byTitle = !!(titleKeyword && n.title && String(n.title).indexOf(titleKeyword) !== -1);
+      return byKind || byTitle;
+    });
+    if (targets.length > 0) {
+      await LocalNotifications.cancel({ notifications: targets.map(t => ({ id: t.id })) });
+      console.log(`[Notifications] cancelled ${targets.length} pending notifications (${kind})`);
+    }
+  } catch (e) { console.warn('[Notifications] cancel by kind error:', e.message); }
 }
 
 // 全局调度串行锁：打卡与待办两个调度器会先后触发，若并发各自读取 getPending 快照，
@@ -374,13 +384,21 @@ function safeSchedule(LocalNotifications, notifications, label) {
 // 会话内缓存结果，且精确权限未授予时只弹一次引导，避免每次调度重复弹窗。
 let _exactModeResolved = false;
 let _exactModeValue = true;
+// 原生插件返回的权限字符串只有 'granted' 或 'denied'（见 LocalNotificationsPlugin.getExactAlarmPermissionText），
+// 不存在 'notGranted'。旧实现误判为 'notGranted' → 恒为 false → 权限未授予时既不降级也不引导，
+// 原生兜底走 inexact 闹钟被 Doze 延迟合并，导致「到点不响、打开 App 才一起弹」。
+const EXACT_DENIED = 'denied';
+const EXACT_NOT_GRANTED = 'notGranted';
+
 async function resolveExactMode(LocalNotifications) {
   if (_exactModeResolved) return _exactModeValue;
   let useExact = true;
   try {
     if (LocalNotifications.checkExactNotificationSetting) {
       const exactPerm = await LocalNotifications.checkExactNotificationSetting();
-      if (exactPerm && exactPerm.exact_alarm === 'notGranted') {
+      const state = exactPerm && exactPerm.exact_alarm;
+      const denied = state === EXACT_DENIED || state === EXACT_NOT_GRANTED;
+      if (denied) {
         if (!window._exactAlarmPrompted) {
           window._exactAlarmPrompted = true;
           const userConfirmed = confirm(
@@ -394,7 +412,8 @@ async function resolveExactMode(LocalNotifications) {
         }
         // 打开设置后权限不会立即生效，需用户手动开启并重启；本会话仍按未授予处理（退回 inexact）
         const recheck = await LocalNotifications.checkExactNotificationSetting().catch(() => null);
-        useExact = !(recheck && recheck.exact_alarm === 'notGranted');
+        const recheckState = recheck && recheck.exact_alarm;
+        useExact = !(recheckState === EXACT_DENIED || recheckState === EXACT_NOT_GRANTED);
       }
     }
   } catch (e) {
@@ -413,7 +432,7 @@ export async function scheduleReminderNotifications() {
   const enabled = allReminders.filter(r => r.enabled);
   if (enabled.length === 0) {
     // 修复：禁用全部提醒后也必须取消已调度的打卡通知，否则旧通知照常"幽灵弹出"
-    await cancelPendingByChannels(['clockin-reminders', 'clockin-silent']);
+    await cancelPendingByKind('clockin', '打卡提醒');
     return;
   }
 
@@ -485,7 +504,7 @@ export async function scheduleReminderNotifications() {
       }
 
       // Cancel existing clock-in notifications（只取消打卡类，避免误伤待办提醒）
-      await cancelPendingByChannels(['clockin-reminders', 'clockin-silent']);
+      await cancelPendingByKind('clockin', '打卡提醒');
 
       // Create notification channels (Android 8+)
       try {
@@ -562,7 +581,7 @@ export async function scheduleReminderNotifications() {
             schedule: { at: scheduleDate, allowWhileIdle: true, exact: useExact },
             smallIcon: 'ic_launcher',
             largeIcon: 'ic_launcher_round',
-            extra: { reminderId: r.id, date: dateStr },
+            extra: { reminderId: r.id, date: dateStr, kind: 'clockin' },
             channelId: withSound ? 'clockin-reminders' : 'clockin-silent',
             actionTypeId: 'clockin-action',
             sound: withSound ? 'default' : null,
@@ -664,7 +683,7 @@ export async function scheduleTodoReminders() {
       const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
       // 修复：调度前先【await】取消旧的待办通知，避免重复叠加与配额泄漏；无待办时也清除。
       // 必须 await —— 否则取消与新调度并发竞争，旧闹钟未释放就叠加新的，长期累积会突破系统上限。
-      await cancelPendingByChannels(['todo-reminders']);
+      await cancelPendingByKind('todo', '待办提醒');
       if (todosWithRemind.length === 0) return;
 
       const notifications = [];
@@ -706,6 +725,7 @@ export async function scheduleTodoReminders() {
             schedule: { at: scheduleDate, allowWhileIdle: true, exact: useExact },
             smallIcon: 'ic_launcher',
             channelId: 'todo-reminders',
+            extra: { kind: 'todo', todoId: todo.id },
             sound: 'default',
             vibrate: true
           });
@@ -783,3 +803,9 @@ export async function scheduleTodoReminders() {
     }
   }, 30000);
 }
+
+// 暴露给全局 window 命名空间，供 Android WorkManager Worker 通过 bridge.eval 调用
+window.__WorkCalendarNotifications = {
+  scheduleReminderNotifications,
+  scheduleTodoReminders
+};
