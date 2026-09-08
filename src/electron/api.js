@@ -328,6 +328,18 @@ try {
 
     // Web 降级（使用构建注入的真实版本号，避免假更新）
     return { versionName: window.__APP_VERSION__ || '3.17.5', versionCode: 0 };
+  },
+
+  // --- Update check ---
+  // Electron: 走主进程代理（渲染层 CSP 收紧后不再直连 GitHub raw）。
+  // Web/Capacitor: 本方法返回受控错误，由 updater.js 回退直连逻辑。
+  async getLatestVersion() {
+    if (PRELOAD_API && typeof PRELOAD_API.getLatestVersion === 'function') {
+      try {
+        return await PRELOAD_API.getLatestVersion();
+      } catch (e) { console.warn('[Updater] IPC getLatestVersion failed:', e.message); }
+    }
+    return { error: 'not-supported' };
   }
   },
   writable: true,

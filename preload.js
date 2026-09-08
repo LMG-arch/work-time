@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('calendarAPI', {
   notifyTodo: (text, time) => ipcRenderer.send('notify-todo', text, time),
   // App version
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  // Update check (proxied by main process; renderer CSP no longer allows raw.githubusercontent.com)
+  getLatestVersion: () => ipcRenderer.invoke('get-latest-version'),
   // Reminders
   getReminders: () => ipcRenderer.invoke('get-reminders'),
   saveReminders: (reminders) => ipcRenderer.invoke('save-reminders', reminders),

@@ -10,6 +10,12 @@ let dataPath;
 let store = { days: {}, todos: [], reminders: null, reminderRecords: {} };
 let reminderTimers = [];
 
+// 待办提醒去重标记：独立文件持久化，避免污染 calendar-data.json 主数据文件。
+// 曾挂载在 store._todoReminded 上，会被 saveStore 序列化进主文件，且随 sync-read
+// 同步逻辑传播；现隔离为单独文件 todo-reminded.json。
+let todoRemindFile;
+let todoRemindedMap = {};
+
 // 规范化 reminders 存储格式：确保 { items: [...], updatedAt: ... } 结构
 function normalizeReminders(raw) {
   if (Array.isArray(raw)) return { items: raw, updatedAt: null };
@@ -37,6 +43,7 @@ function getDefaultReminders() {
 
 function initStore() {
   dataPath = path.join(app.getPath('userData'), 'calendar-data.json');
+  todoRemindFile = path.join(app.getPath('userData'), 'todo-reminded.json');
   try {
     const raw = fs.readFileSync(dataPath, 'utf-8');
     store = JSON.parse(raw);
@@ -46,11 +53,34 @@ function initStore() {
     // 规范化旧格式的 reminders：统一存储为 { items: [...], updatedAt: ... }
     const norm = normalizeReminders(store.reminders);
     store.reminders = norm || store.reminders;
+    // 一次性迁移：旧版本把待办提醒去重标记序列化在 _todoReminded 里，搬进独立文件后剥离
+    if (store._todoReminded) {
+      Object.assign(todoRemindedMap, store._todoReminded);
+      delete store._todoReminded;
+      saveStoreSilent();
+    }
   } catch {
     store = { days: {}, todos: [], reminders: null, reminderRecords: {} };
   }
+  // 读取独立去重标记文件
+  try {
+    const rawTodo = fs.readFileSync(todoRemindFile, 'utf-8');
+    const parsed = JSON.parse(rawTodo);
+    if (parsed && typeof parsed === 'object') todoRemindedMap = parsed;
+  } catch { /* 文件不存在或损坏：忽略，去重标记将重建 */ }
   // 清理超过 90 天的墓碑记录和旧数据
   cleanupOldDays();
+}
+
+// 持久化待办提醒去重标记（独立文件，与主数据分离）
+function saveTodoReminded() {
+  try {
+    const tempPath = todoRemindFile + '.tmp';
+    fs.writeFileSync(tempPath, JSON.stringify(todoRemindedMap, null, 2), 'utf-8');
+    fs.renameSync(tempPath, todoRemindFile);
+  } catch (e) {
+    console.error('[Main] saveTodoReminded failed:', e.message);
+  }
 }
 
 // 清理超过 90 天的墓碑记录，防止数据无限增长
@@ -261,9 +291,37 @@ function registerIPC() {
   });
 
     // Auto-launch: Windows only (IPC handlers always registered, but setAutoLaunch is no-op on non-Windows)
-    ipcMain.handle('get-app-version', () => {
-      return { versionName: app.getVersion(), versionCode: 0 };
-    });
+  ipcMain.handle('get-app-version', () => {
+    return { versionName: app.getVersion(), versionCode: 0 };
+  });
+  // 更新检查：由主进程代理 GitHub version.json 拉取，供渲染层 getLatestVersion 调用。
+  // 渲染层 CSP connect-src 已收紧（不再放行 raw.githubusercontent.com），
+  // 全部更新检查流量经由本 IPC 通道出网。
+  const https = require('https');
+  const UPDATE_CHECK_URL = 'https://raw.githubusercontent.com/LMG-arch/work-time/main/version.json';
+  ipcMain.handle('get-latest-version', async () => {
+    try {
+      const data = await new Promise((resolve, reject) => {
+        const req = https.get(UPDATE_CHECK_URL, { headers: { 'User-Agent': 'work-calendar-updater' } }, (res) => {
+          if (res.statusCode !== 200) { res.resume(); reject(new Error('HTTP ' + res.statusCode)); return; }
+          let body = '';
+          res.on('data', (c) => body += c);
+          res.on('end', () => resolve(body));
+        });
+        req.on('error', reject);
+        req.setTimeout(10000, () => req.destroy(new Error('timeout')));
+      });
+      const json = JSON.parse(data);
+      // 校验来源可信度：必须是指向本仓库/GitHub 官方的下载地址
+      if (json.downloadUrl && !/^https:\/\/(github\.com\/LMG-arch\/work-time|objects\.githubusercontent\.com|objects\.github\.com|release-assets\.githubusercontent\.com)\//.test(json.downloadUrl)) {
+        return { error: '更新源下载地址不可信' };
+      }
+      return json;
+    } catch (e) {
+      console.error('[Main] get-latest-version failed:', e.message);
+      return { error: e.message };
+    }
+  });
     ipcMain.handle('get-auto-launch', () => {
       if (process.platform !== 'win32') return false;
       return isAutoLaunchEnabled();
@@ -559,7 +617,7 @@ function createWindow() {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'${devConnectSrc} https://*.supabase.co https://supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io https://raw.githubusercontent.com; font-src 'self' data:; object-src 'none'; base-uri 'self';`
+          `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'${devConnectSrc} https://*.supabase.co https://supabase.co https://*.supabase.io wss://*.supabase.co wss://*.supabase.io; font-src 'self' data:; object-src 'none'; base-uri 'self';`
         ]
       }
     });
@@ -732,18 +790,18 @@ function scheduleTodoReminders() {
 
       if (remindTimeStr !== currentTime) continue;
 
-      // Check if already reminded (persist to store so it survives restart)
+      // Check if already reminded (persist in separate file so it survives restart
+      // without polluting calendar-data.json)
       const remindedKey = `todo-reminded-${todo.id}-${todayStr}`;
-      if (!store._todoReminded) store._todoReminded = {};
-      if (store._todoReminded[remindedKey]) continue;
-      store._todoReminded[remindedKey] = Date.now();
+      if (todoRemindedMap[remindedKey]) continue;
+      todoRemindedMap[remindedKey] = Date.now();
       // Clean up old keys (keep last 7 days), and persist to disk
       const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      for (const key of Object.keys(store._todoReminded)) {
-        if (store._todoReminded[key] < cutoff) delete store._todoReminded[key];
+      for (const key of Object.keys(todoRemindedMap)) {
+        if (todoRemindedMap[key] < cutoff) delete todoRemindedMap[key];
       }
-      // 持久化去重标记到文件，防止重启后重复提醒
-      saveStoreSilent();
+      // 持久化去重标记到独立文件，防止重启后重复提醒
+      saveTodoReminded();
 
       const iconPath = path.join(__dirname, 'assets', 'icon.png');
       const iconOpts = fs.existsSync(iconPath) ? { icon: iconPath } : {};

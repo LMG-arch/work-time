@@ -1,9 +1,7 @@
 // updater.js — 应用内版本检查与更新提示 (ESM 模块)
 
 const UPDATE_CHECK_URL = 'https://raw.githubusercontent.com/LMG-arch/work-time/main/version.json';
-const UPDATE_CHECK_INTERVAL = 12 * 60 * 60 * 1000; // 12小时检查一次
-
-// 获取本地版本号
+const UPDATE_CHECK_INTERVAL = 12 * 60 * 60 * 1000; // 12小时检查一次// 获取本地版本号
 export async function getLocalVersion() {
   // Android Capacitor 环境
   if (window.Capacitor && window.Capacitor.Plugins) {
@@ -46,15 +44,29 @@ export function compareVersions(a, b) {
   return 0;
 }
 
+// 获取远程版本信息
+// Electron：优先经主进程 IPC 代理（渲染层 CSP 收紧后不再直连 GitHub raw）；
+// Web/Capacitor：回退直连 raw.githubusercontent.com（无 CSP 限制，Android WebView
+// 也允许该域名）。
+async function fetchRemoteVersion() {
+  if (window.calendarAPI && typeof window.calendarAPI.getLatestVersion === 'function') {
+    try {
+      const proxied = await window.calendarAPI.getLatestVersion();
+      if (proxied && !proxied.error) return proxied;
+      console.log('[Updater] IPC proxy returned', proxied?.error || 'empty', '- falling back to direct fetch');
+    } catch (e) { console.warn('[Updater] IPC getLatestVersion failed:', e.message); }
+  }
+  const resp = await fetch(UPDATE_CHECK_URL + '?t=' + Date.now());
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return await resp.json();
+}
+
 // 检查更新
 export async function checkForUpdate(silent) {
   try {
     const local = await getLocalVersion();
 
-    // 从 GitHub 获取远程版本信息（加时间戳防缓存）
-    const resp = await fetch(UPDATE_CHECK_URL + '?t=' + Date.now());
-    if (!resp.ok) return null;
-    const remote = await resp.json();
+    const remote = await fetchRemoteVersion();
 
     if (!remote.version || !remote.downloadUrl) return null;
 

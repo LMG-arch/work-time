@@ -267,7 +267,12 @@ async function loginAccount(username, password) {
   const userId = data.user_id;
   window.__storage.setRaw(ACCOUNT_USERNAME_KEY, username);
   window.__storage.setRaw(ACCOUNT_HASH_KEY, pwHash);
-  // 保持盐值不变（已在上方通过 getSavedSalt 获取）
+  // 修复：登录成功后持久化服务端返回的盐值（服务端存储盐后，登录可能使用
+  // 与注册时不同的盐），否则下次自动恢复会因盐不一致导致哈希对不上。
+  // 当前服务端未返回 salt 时保持既有行为（沿用注册时盐值）。
+  if (typeof data.salt === 'string' && data.salt) {
+    window.__storage.setRaw(ACCOUNT_SALT_KEY, data.salt);
+  }
   setBoundUserId(userId);
   setGlobalUserId(userId);
   return { user: { id: userId } };
