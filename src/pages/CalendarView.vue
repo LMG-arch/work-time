@@ -83,7 +83,12 @@ const refreshCount = ref(0)
 //    calendarStore.selectedDate 作为默认日期（修复 #4 从日历添加待办日期为空）。
 const { currentYear, currentMonth, selectedDate } = storeToRefs(calendarStore)
 
-window.__refreshCalendarGrid = () => { refreshCount.value++ }
+window.__refreshCalendarGrid = () => {
+  // 修复数据新鲜度：先灌回 Pinia，再触发重渲染。原先仅 refreshCount++，
+  // 同步/下载/导入后日历网格仍读旧 daysData（见 stores/calendarStore.js syncFromWindow）。
+  calendarStore.syncFromWindow()
+  refreshCount.value++
+}
 window.__calendarGoToday = goToday
 window.__calendarPrevMonth = prevMonth
 window.__calendarNextMonth = nextMonth

@@ -42,6 +42,12 @@ export const useCalendarStore = defineStore('calendar', () => {
     window.__refreshTodoView?.()
   }
 
+  // 从 window.* 同步（零 IPC）：renderer.refreshAllData 已把最新数据写入 window.allData，
+  // 这里直接灌回 Pinia，避免同步/导入后日历网格仍显示陈旧数据。
+  function syncFromWindow() {
+    daysData.value = window.allData || {}
+  }
+
   // 获取特定日期的数据
   function getDayData(dateStr) {
     return daysData.value[dateStr] || { status: null, note: '', tags: [], color: '' }
@@ -104,10 +110,10 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   // ── Backward compat: window.* sync ──
+  // 修复数据新鲜度：__refreshCalendarGrid 须真正把 window.allData 灌回 daysData，
+  // 而非仅触发重渲染计数（原先 count++ 后组件仍读旧 store 数据 → 同步/下载/导入后不刷新）。
   if (!window.__refreshCalendarGrid) {
-    window.__refreshCalendarGrid = () => {
-      daysData.value = window.allData || {}
-    }
+    window.__refreshCalendarGrid = syncFromWindow
   }
 
   // Sync Pinia → window.* so old JS can read current navigation state
@@ -126,6 +132,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     refreshAll,
     getDayData,
     saveDayData,
+    syncFromWindow,
     changeMonth,
     goToday,
     selectDate,

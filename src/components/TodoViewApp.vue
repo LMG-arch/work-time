@@ -9,7 +9,11 @@ const todoStore = useTodoStore()
 const filter = ref('all')
 const refreshTick = ref(0)
 
-window.__refreshTodoView = () => { refreshTick.value++ }
+window.__refreshTodoView = () => {
+  // 修复数据新鲜度：先把 window.allTodos 灌回 store，再触发重渲染
+  todoStore.refreshFromWindow()
+  refreshTick.value++
+}
 
 const onceTodos = computed(() => {
   refreshTick.value

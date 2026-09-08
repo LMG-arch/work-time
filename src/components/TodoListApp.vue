@@ -9,6 +9,8 @@ const props = defineProps({ selectedDate: { type: String, default: null } })
 const todos = ref([])
 
 window.__refreshTodoList = (dateStr) => {
+  // 修复数据新鲜度：先把 window.allTodos 灌回 store，再更新列表
+  todoStore.refreshFromWindow()
   updateList(dateStr)
 }
 

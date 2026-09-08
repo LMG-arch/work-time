@@ -17,7 +17,11 @@ const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth())
 
 const refreshCount = ref(0)
-window.__refreshStats = () => { refreshCount.value++ }
+window.__refreshStats = () => {
+  // 修复数据新鲜度：先把 window.allData 灌回 calendarStore，再触发重渲染
+  calendarStore.syncFromWindow()
+  refreshCount.value++
+}
 
 // 月份切换：允许查看任意历史 / 未来月份
 const now = new Date()

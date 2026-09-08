@@ -14,7 +14,9 @@ export const useAppStore = defineStore('app', () => {
   // 早期版本曾用独立 `theme` 键，造成与经典路径分裂、切换需重启；现统一到此键。
   const theme = ref(window.__storage.getRaw('calendar-theme') || 'cosmic')
   const navSettings = ref(window.__storage.get('navSettings') || {})
-  const syncEnabled = ref(window.__storage.getRaw('syncEnabled') === 'true')
+  // 同步开关统一委托 sync.js 的单一真值（键 calendar-sync-enabled）。
+  // 原先此处读独立键 'syncEnabled'，与 sync.js 分裂，导致 store 里的开关状态与真实开关不一致。
+  const syncEnabled = ref(typeof window.isSyncEnabled === 'function' ? window.isSyncEnabled() : false)
   // 高级视觉效果的开关与强度档位（星海绽放等氛围/招牌瞬间效果的全局总闸）
   const premium = ref(window.__storage.get('premiumEffects') || { enabled: true, intensity: 'auto' })
   const currentYear = ref(window.currentYear || new Date().getFullYear())
@@ -41,7 +43,8 @@ export const useAppStore = defineStore('app', () => {
 
   function setSyncEnabled(v) {
     syncEnabled.value = v
-    window.__storage.setRaw('syncEnabled', String(v))
+    // 统一写 sync.js 的单一真值键，避免双键分裂
+    if (typeof window.setSyncEnabled === 'function') window.setSyncEnabled(v)
   }
 
   function setPremium(patch) {

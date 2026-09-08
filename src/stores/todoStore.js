@@ -67,16 +67,6 @@ export const useTodoStore = defineStore('todo', () => {
     }
   }
 
-  async function toggleDone(todo, dateStr) {
-    if (window.calendarAPI?.toggleTodoDone) {
-      await window.calendarAPI.toggleTodoDone(todo.id, dateStr)
-      // Refresh from window after persistence
-      refreshFromWindow()
-      window.__refreshTodoView?.()
-      window.__refreshCalendarGrid?.()
-    }
-  }
-
   async function updateTodo(id, updates) {
     if (window.calendarAPI?.updateTodo) {
       await window.calendarAPI.updateTodo(id, updates)
@@ -121,7 +111,6 @@ export const useTodoStore = defineStore('todo', () => {
     loadTodos,
     addTodo,
     deleteTodo,
-    toggleDone,
     updateTodo,
     setFilter,
     startEdit,
