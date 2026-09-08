@@ -2637,11 +2637,43 @@ body.life-mode #app > .life-app {
 body.life-mode .toolbar {
   display: none;
 }
+/* 主题统一（弹层）：上班日历的 ActionSheet/TodoModal/ReminderSettings 等
+   通过 Teleport 挂到 body，继承 body[data-theme]（如 cosmic 深色）变量，
+   而非 #work-embed 的纸墨变量，导致弹出层深色与暖色外壳不协调。
+   在 life-mode 下把主题变量映射到纸墨色板，优先级高于 [data-theme]。 */
+body.life-mode {
+  --bg: #f5f0e8;
+  --card: #fffdfa;
+  --text: #29251f;
+  --text2: #5f574e;
+  --text3: #9a9186;
+  --border: #ded5c8;
+  --header-bg: rgba(255, 253, 250, 0.6);
+  --hover: rgba(77, 48, 69, 0.06);
+  --selected: rgba(77, 48, 69, 0.12);
+  --accent: #4d3045;
+  --accent-soft: #e8dfe5;
+  --toolbar-bg: rgba(255, 253, 250, 0.78);
+  --toolbar-border: #ded5c8;
+  --toast-bg: #4d3045;
+}
 /* 生活工作台自带滚动，关闭 #app>div 的滚动容器约束（v-html 生成 .life-app 直属 #app） */
 body.life-mode #app > .life-app,
 body.life-mode #app > div {
   overflow: visible;
   flex: none;
+}
+/* 修复「今日总览」被「日常集」遮挡：根因有二——
+   1) 全局 button{overflow:hidden} 把品牌按钮 min-content 归零；
+   2) .sidebar 为 flex column，内容超出视口时 brand(flex:0 1 auto) 被
+      flex-shrink 压扁到 20px，头像「日」字块溢出盖到下方导航。
+   修复：禁止 brand 收缩 + 恢复溢出可见，让 sidebar 靠自身 overflow-y 滚动。 */
+body.life-mode .life-app .brand {
+  overflow: visible;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  height: auto;
+  min-height: 0;
 }
 
 /* ============================================================
@@ -2668,6 +2700,41 @@ body.life-mode #app > div {
 #work-embed .calendar-view {
   overflow: visible;
   min-height: calc(100vh - 210px); /* 顶栏 + 侧边栏安全区估算 */
+}
+
+/* ============================================================
+   主题统一：上班日历模块继承生活工作台的纸墨暖色系
+   —— 上班日历组件依赖 --bg/--card/--text/--accent/--work/--rest…
+      等主题变量；嵌入 .life-app 后原会向上冒泡到 body[data-theme]
+      （如 cosmic 深色主题），导致浅色文字画在浅纸背景上、颜色错乱。
+      此处把上班日历所需变量映射到外壳纸墨色板，使工作模块与
+      生活外壳视觉统一，且不影响非 life-mode 下的主题切换。
+   ============================================================ */
+#work-embed {
+  --bg: #f5f0e8;
+  --card: #fffdfa;
+  --text: #29251f;
+  --text2: #5f574e;
+  --text3: #9a9186;
+  --border: #ded5c8;
+  --header-bg: rgba(255, 253, 250, 0.6);
+  --hover: rgba(77, 48, 69, 0.06);
+  --selected: rgba(77, 48, 69, 0.12);
+  --accent: #4d3045;
+  --accent-soft: #e8dfe5;
+  --toolbar-bg: rgba(255, 253, 250, 0.78);
+  --toolbar-border: #ded5c8;
+  --toast-bg: #4d3045;
+  --shadow-md: 0 8px 30px rgba(63, 48, 36, 0.10);
+  --shadow-lg: 0 18px 50px rgba(63, 48, 36, 0.14);
+  /* 上班日历 7 种状态色：沿用生活外壳 plum/terra/sage/sand 色板 */
+  --work: #477358;
+  --rest: #4d6f9e;
+  --trip: #b65f42;
+  --leave: #8a5aa0;
+  --annual: #4d8a8a;
+  --sick: #b44d43;
+  --personal: #a57c45;
 }
 
 

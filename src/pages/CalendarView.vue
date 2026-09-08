@@ -232,12 +232,12 @@ function selectDate(dateStr, isOther) {
     selectedDate.value = null
     return
   }
-  if (selectedDate.value === dateStr) {
-    selectedDate.value = null
-    return
-  }
+  // 点击当前月日期：选中 + 打开下方详情面板 + 弹出「快速标记」选择界面
+  // （上班/休息/出差/请假/年假/病假/事假/清除标记），选择后即时保存并回显。
   selectedDate.value = dateStr
   window.__vueDetailPanel?.(dateStr)
+  daySheetDate.value = dateStr
+  daySheetOpen.value = true
 }
 
 function prevMonth() {
