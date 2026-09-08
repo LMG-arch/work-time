@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { onMounted, onBeforeUnmount } from 'vue'
 import LifeWorkbench from '../pages/LifeWorkbench.vue'
 import TodoModal from './TodoModal.vue'
 import ReminderSettings from './ReminderSettings.vue'
@@ -8,7 +8,6 @@ import { installRipple } from '../effects/ripple'
 import { installTilt } from '../effects/tilt'
 import { installAmbient } from '../effects/ambient'
 import { installSignature } from '../effects/signature'
-import SplashScreen from './SplashScreen.vue'
 import { useAppStore } from '../stores/appStore'
 
 // ===== 统一外壳架构 =====
@@ -42,7 +41,6 @@ window.__vueDeactivate = () => {} // 统一外壳下无「非 Vue 页面」，�
 const appStore = useAppStore()
 let uninstallAmbient = null
 let uninstallSignature = null
-const showSplash = ref(true)
 
 // 左边缘滑动关闭浮层（移动端「返回 / 收起」手势）
 let edgeX0 = 0, edgeY0 = 0, edgeT0 = 0, edgeActive = false
@@ -69,15 +67,12 @@ function onEdgeUp(e) {
 onMounted(() => {
   // 统一外壳：body 始终处于 life-mode（#app 全宽），生活工作台侧边栏常驻
   document.body.classList.add('life-mode')
-  // 双保险：无论 SplashScreen 内部计时是否异常，最长 4s 后强制收起闪屏
-  setTimeout(() => { showSplash.value = false }, 4000)
   installRipple()
   installTilt()
   uninstallAmbient = installAmbient()
   uninstallSignature = installSignature()
   applyPremiumClass()
   appStore.$subscribe(applyPremiumClass)
-  document.addEventListener('visibilitychange', onVisibility)
   document.addEventListener('pointerdown', onEdgeDown, { passive: true })
   document.addEventListener('pointerup', onEdgeUp, { passive: true })
 })
@@ -87,14 +82,9 @@ function applyPremiumClass() {
   document.documentElement.classList.toggle('fx-off', off)
 }
 
-function onVisibility() {
-  if (!document.hidden) showSplash.value = true
-}
-
 onBeforeUnmount(() => {
   if (uninstallAmbient) uninstallAmbient()
   if (uninstallSignature) uninstallSignature()
-  document.removeEventListener('visibilitychange', onVisibility)
   document.removeEventListener('pointerdown', onEdgeDown)
   document.removeEventListener('pointerup', onEdgeUp)
 })
@@ -110,7 +100,4 @@ onBeforeUnmount(() => {
 
   <!-- 全局视觉特效层（花瓣/拖尾/粒子都画在这里，不挡交互） -->
   <EffectLayer />
-
-  <!-- 启动闪屏 -->
-  <SplashScreen :visible="showSplash" @done="showSplash = false" />
 </template>
