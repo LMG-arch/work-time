@@ -21,8 +21,26 @@ export function useSwipe(target, options = {}) {
   const isH = direction === 'horizontal' || direction === 'both'
   const isV = direction === 'vertical' || direction === 'both'
 
+  // 关键修复：不使用 el.setPointerCapture(pid)。
+  // 指针捕获会把 pointer 事件目标重定向为捕获元素，Chromium 据此把 click 事件
+  // 的 target 计算为 pointerdown/up 目标的共同祖先（即容器），导致子元素（如
+  // 日历 day-cell）的 @click 永远收不到事件——表现为「点击日期无反应、弹层不出现」。
+  // 改用 window 级 move/up 监听：滑动期间同样能全程跟踪指针（含移出元素外），
+  // 且完全不干扰 click 事件的正常派发。
+  function attachWindow() {
+    window.addEventListener('pointermove', move, true)
+    window.addEventListener('pointerup', up, true)
+    window.addEventListener('pointercancel', cancel, true)
+  }
+  function detachWindow() {
+    window.removeEventListener('pointermove', move, true)
+    window.removeEventListener('pointerup', up, true)
+    window.removeEventListener('pointercancel', cancel, true)
+  }
+
   function down(e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return
+    if (active) return
     active = true
     pid = e.pointerId
     startX = e.clientX
@@ -32,12 +50,12 @@ export function useSwipe(target, options = {}) {
     dy.value = 0
     axis.value = null
     swiping.value = true
-    try { el.setPointerCapture(pid) } catch (_) { /* noop */ }
+    attachWindow()
     onStart && onStart(e)
   }
 
   function move(e) {
-    if (!active) return
+    if (!active || e.pointerId !== pid) return
     dx.value = e.clientX - startX
     dy.value = e.clientY - startY
     if (!axis.value) {
@@ -55,7 +73,8 @@ export function useSwipe(target, options = {}) {
   function up(e) {
     if (!active) return
     active = false
-    try { el.releasePointerCapture(pid) } catch (_) { /* noop */ }
+    detachWindow()
+    if (e.pointerId !== pid) return
     const ex = e.clientX - startX
     const ey = e.clientY - startY
     const dt = Math.max(1, e.timeStamp - startT)
@@ -83,6 +102,7 @@ export function useSwipe(target, options = {}) {
   function cancel() {
     if (!active) return
     active = false
+    detachWindow()
     dx.value = 0
     dy.value = 0
     swiping.value = false
@@ -94,17 +114,12 @@ export function useSwipe(target, options = {}) {
     if (!node) return
     el = node
     node.addEventListener('pointerdown', down)
-    node.addEventListener('pointermove', move)
-    node.addEventListener('pointerup', up)
-    node.addEventListener('pointercancel', cancel)
   }
 
   function unbind() {
+    detachWindow()
     if (!el) return
     el.removeEventListener('pointerdown', down)
-    el.removeEventListener('pointermove', move)
-    el.removeEventListener('pointerup', up)
-    el.removeEventListener('pointercancel', cancel)
     el = null
   }
 
