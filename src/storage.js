@@ -79,7 +79,8 @@ const KNOWN_KEYS = {
   'navSettings': 1,
   'water-records': 1,
   'social-nickname': 1,
-  'calendar-nav-items': 1
+  'calendar-nav-items': 1,
+  'richangji-state-v1': 1 // 生活工作台主状态（整合后本地优先，需纳入 FS 耐用备份，防安卓 WebView 清空丢数据）
 };
 
 // ---- 底层原始字符串读写（同步，缓存驱动）----

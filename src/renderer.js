@@ -31,7 +31,7 @@ export function switchView(view) {
   currentView = view;
 
   // Vue 管理的页面：隐藏传统 .app，显示 #app
-  const VUE_PAGES = ['calendar', 'clockin', 'settings', 'social', 'stats']
+  const VUE_PAGES = ['calendar', 'clockin', 'settings', 'social', 'stats', 'life']
   if (VUE_PAGES.includes(view)) {
     const tradApp = document.querySelector('.app');
     if (tradApp) tradApp.style.display = 'none';
@@ -43,7 +43,7 @@ export function switchView(view) {
     // setTimeout(0) 让 Vue 完成挂载后再推送当前年月/选中日期。
     setTimeout(() => syncToWindow(), 0);
     document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-    const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
+    const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn', life: 'life-btn' };
     const activeBtn = document.getElementById(activeMap[view]);
     if (activeBtn) activeBtn.classList.add('active');
     moveToolbarIndicator();
@@ -60,7 +60,7 @@ export function switchView(view) {
 
   document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
   document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-  const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn' };
+  const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn', life: 'life-btn' };
   const activeBtn = document.getElementById(activeMap[view]);
   if (activeBtn) activeBtn.classList.add('active');
   moveToolbarIndicator();
@@ -77,6 +77,8 @@ export async function refreshAllData() {
     window.allReminders = allReminders;
     allReminderRecords = await window.calendarAPI.getAllReminderRecords();
     window.allReminderRecords = allReminderRecords;
+    // 上班数据刷新后重渲染生活工作台时光档案的「上班」展示
+    try { window.__lifeRefreshArchive?.(); } catch (e) {}
     // 仅在非 Vue 日历视图时调用传统 DOM 渲染
     if (currentView !== 'calendar' && currentView !== 'stats' && currentView !== 'settings' && currentView !== 'social') window.renderCalendar();
     // 通知 Vue 组件刷新
@@ -179,6 +181,8 @@ export function setupEventListeners() {
   document.getElementById('clockin-btn').addEventListener('click', () => switchView('clockin'));
   document.getElementById('settings-btn').addEventListener('click', () => switchView('settings'));
   document.getElementById('social-btn').addEventListener('click', () => switchView('social'));
+  const lifeBtn = document.getElementById('life-btn');
+  if (lifeBtn) lifeBtn.addEventListener('click', () => switchView('life'));
 
   // Data export/import
   document.getElementById('export-btn').addEventListener('click', async () => {
@@ -578,6 +582,8 @@ async function initApp() {
   window.__bootLog && window.__bootLog('loading data via IPC (calendarAPI exists=' + !!window.calendarAPI + ')...');
   try {
     await Promise.all([window.loadAllData(), window.loadHolidays(), window.loadTodos(), window.loadReminders(), window.loadReminderRecords()]);
+    // 上班数据首次加载完成后重渲染时光档案（含「上班」展示）
+    try { window.__lifeRefreshArchive?.(); } catch (e) {}
     window.__bootLog && window.__bootLog('all data loaded OK');
   } catch (e) {
     console.error('[Init] Data loading failed:', e.message);
@@ -610,6 +616,16 @@ async function initApp() {
     if (typeof initSocial === 'function') await initSocial();
   } catch (e) {
     console.error('[Init] initSocial failed:', e.message);
+  }
+
+  // 关键修复：SocialPage 常驻挂载，其 onMounted 早于 initSocial 完成，
+  // 导致首屏 loadPosts 时 window.sb 尚未就绪而拉空且无重试。
+  // 这里在 Supabase 客户端就绪后重放好友动态与好友申请刷新。
+  try {
+    window.__refreshSocialFeed?.();
+    window.__refreshFriendRequests?.();
+  } catch (e) {
+    console.error('[Init] social refresh replay failed:', e.message);
   }
 
   // setupAdminControls 已由 SettingsPage.vue 处理

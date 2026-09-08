@@ -1,0 +1,242 @@
+<div class="sync-pill" id="syncPill" role="status" title="同步状态（点击重试）"><i id="syncDot"></i><b id="syncText">同步中…</b></div>
+  <svg aria-hidden="true" class="svg-sprite">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h15a2 2 0 0 1 2 2v11H4a2 2 0 0 1-2-2V6a3 3 0 0 1 3-3h12v3"/><path d="M16 11h5v4h-5a2 2 0 0 1 0-4Z"/></symbol>
+    <symbol id="i-habit" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="m8 12 3 3 10-11"/></symbol>
+    <symbol id="i-fitness" viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect height="16" rx="2" width="18" x="3" y="5"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2l2.3 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 2-1.6L21 7H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><path d="M4 7h16v14H4zM3 3h18v4H3zM9 11h6"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 20h16"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0 5 5m-5-5L7 9M4 20h16"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 3h6l1 4H8zM7 7l1 14h8l1-14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 21h20zM12 9v5M12 18h.01"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 22c4 0 7-3 7-7 0-3-2-6-5-9 0 3-2 4-3 5 0-3-1-6-3-9 0 5-3 7-3 12 0 5 3 8 7 8z"/></symbol>
+    <symbol id="i-media" viewBox="0 0 24 24"><path d="M4 4h7v16H4zM13 4h7v7h-7zM13 13h7v7h-7z"/><path d="m7 8 2 2-2 2z"/></symbol>
+  </svg>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <button aria-label="自定义工作台外观" class="brand" id="brandSettingsBtn" type="button"><div class="brand-inner"><div class="brand-mark" id="brandAvatar">日</div><div><strong id="brandName">日常集</strong><span id="brandTagline">生活有迹可循</span></div></div><i class="brand-edit">自定义</i></button>
+      <nav aria-label="主导航" class="side-nav">
+        <button class="nav-item active" data-nav="dashboard"><svg><use href="#i-home"/></svg><span>今日总览</span></button>
+        <div class="nav-label">生活模块</div>
+        <button class="nav-item" data-nav="money"><svg><use href="#i-wallet"/></svg><span>记账理财</span></button>
+        <button class="nav-item" data-nav="habits"><svg><use href="#i-habit"/></svg><span>习惯健康</span></button>
+        <button class="nav-item" data-nav="fitness"><svg><use href="#i-fitness"/></svg><span>减脂健身</span></button>
+        <button class="nav-item" data-nav="planner"><svg><use href="#i-calendar"/></svg><span>日程统筹</span></button>
+        <button class="nav-item" data-nav="home"><svg><use href="#i-cart"/></svg><span>待买清单</span></button>
+        <button class="nav-item" data-nav="media"><svg><use href="#i-media"/></svg><span>书影音</span></button>
+        <div class="nav-label">工作模块</div>
+        <button class="nav-item" data-nav="work" data-work-sub="calendar"><svg><use href="#i-calendar"/></svg><span>上班日历</span></button>
+        <button class="nav-item" data-nav="work" data-work-sub="clockin"><svg><use href="#i-clock"/></svg><span>打卡待办</span></button>
+        <button class="nav-item" data-nav="work" data-work-sub="social"><svg><use href="#i-list"/></svg><span>好友圈</span></button>
+        <button class="nav-item" data-nav="work" data-work-sub="stats"><svg><use href="#i-chart"/></svg><span>月度统计</span></button>
+        <button class="nav-item" data-nav="work" data-work-sub="settings"><svg><use href="#i-more"/></svg><span>设置</span></button>
+        <div class="nav-label">数据</div>
+        <button class="nav-item" data-nav="archive"><svg><use href="#i-archive"/></svg><span>时光档案</span></button>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="system-alert danger" hidden id="syncBanner"><div><strong id="syncBannerTitle">云端同步失败</strong><span id="syncBannerMsg">当前数据已安全保存在本机。点击重试，重新连接云端后自动合并。</span></div><button class="btn ghost" id="syncRetryBtn">重试同步</button></div>
+      <header class="topbar">
+        <div><p class="eyebrow" id="todayLabel"></p><h1 id="viewTitle">今天，慢慢来</h1></div>
+        <div class="top-actions">
+          <span class="save-state"><span></span><b id="saveText">已自动保存</b></span>
+          <button class="btn ghost" id="clearSamplesBtn" title="清空示例"><svg><use href="#i-trash"/></svg><span>清空示例</span></button>
+        </div>
+      </header>
+
+      <section class="view active" data-title="今天，慢慢来" id="view-dashboard">
+        <div class="dashboard-grid">
+          <article class="hero-card"><div><p class="eyebrow light">今日生活指数</p><h2><span id="lifeScore">82</span><small>/ 100</small></h2><p id="heroSummary">三件要事，一点运动，留一笔清楚账。</p></div><div class="score-orbit"><span></span><i></i><b></b></div></article>
+          <article class="panel quick-panel"><div class="panel-head"><div><p class="eyebrow">快速开始</p><h2>记下一件小事</h2></div><span class="mini-note">输入时自动保存</span></div><div class="quick-grid">
+            <button class="quick-action terracotta" data-quick="money"><svg><use href="#i-wallet"/></svg><span><strong>记一笔</strong><small>支出或收入</small></span><i>+</i></button>
+            <button class="quick-action plum" data-quick="planner"><svg><use href="#i-calendar"/></svg><span><strong>排日程</strong><small>待办与提醒</small></span><i>+</i></button>
+            <button class="quick-action sage" data-quick="fitness"><svg><use href="#i-fitness"/></svg><span><strong>记体重</strong><small>减脂趋势</small></span><i>+</i></button>
+            <button class="quick-action sand" data-quick="home"><svg><use href="#i-cart"/></svg><span><strong>待买物品</strong><small>采购清单</small></span><i>+</i></button>
+          </div></article>
+          <article class="panel stat-card"><div class="stat-icon terracotta"><svg><use href="#i-wallet"/></svg></div><div><span>本月支出</span><strong id="monthExpense">¥0</strong><small id="budgetHint">预算余量充足</small></div></article>
+          <article class="panel stat-card"><div class="stat-icon sage"><svg><use href="#i-habit"/></svg></div><div><span>今日习惯</span><strong id="habitProgress">0 / 5</strong><small id="habitHint">从一件小事开始</small></div></article>
+          <article class="panel stat-card"><div class="stat-icon plum"><svg><use href="#i-calendar"/></svg></div><div><span>今日待办</span><strong id="taskProgress">0 件</strong><small id="taskHint">节奏刚刚好</small></div></article>
+          <article class="panel span-2"><div class="panel-head"><div><p class="eyebrow">今日节奏</p><h2>待办清单</h2></div><button class="text-btn" data-nav="planner">查看全部</button></div><div class="clean-list" id="dashboardTasks"></div></article>
+          <article class="panel habit-panel"><div class="panel-head"><div><p class="eyebrow">连续发生</p><h2>习惯打卡</h2></div><button class="text-btn" data-nav="habits">管理</button></div><div class="habit-stack" id="dashboardHabits"></div></article>
+          <article class="panel span-2"><div class="panel-head"><div><p class="eyebrow">生活脉络</p><h2>最近记录</h2></div><button class="text-btn" data-nav="archive">进入档案</button></div><div class="timeline" id="recentRecords"></div></article>
+          <article class="panel insight-card"><p class="eyebrow">轻提醒</p><blockquote id="insightText">规律不是把每天塞满，而是知道什么值得留下。</blockquote><span>根据你的记录生成</span></article>
+        </div>
+      </section>
+
+      <section class="view" data-title="记账理财" id="view-money">
+        <div class="module-alert" id="moneyAlert"></div>
+        <div class="section-actions"><button class="btn ghost" data-action="export-money"><svg><use href="#i-chart"/></svg>导出 Excel</button></div>
+        <div class="module-layout">
+          <article class="panel form-panel"><div class="panel-head"><div><p class="eyebrow">收支手账</p><h2>记一笔账</h2></div><span class="draft-status" data-draft-for="moneyForm">草稿自动保存</span></div><form data-draft="moneyForm" id="moneyForm">
+            <div class="segmented"><label><input checked name="flow" type="radio" value="expense"><span>支出</span></label><label><input name="flow" type="radio" value="income"><span>收入</span></label></div>
+            <label class="field amount-field"><span>金额</span><div><b>¥</b><input inputmode="decimal" min="0.01" name="amount" placeholder="0.00" required step="0.01" type="number"></div></label>
+            <div class="form-row"><label class="field"><span>分类</span><select id="moneyCategory" name="category"></select></label><label class="field"><span>日期</span><input name="date" required type="date"></label></div>
+            <label class="field"><span>备注</span><input maxlength="60" name="note" placeholder="这笔钱花在了哪里"></label>
+            <button class="btn primary full" type="submit"><svg><use href="#i-plus"/></svg>记下这笔</button>
+          </form></article>
+          <div class="module-main">
+            <div class="metric-row"><article class="metric income"><span>本月收入</span><strong id="moneyIncome">¥0</strong></article><article class="metric expense"><span>本月支出</span><strong id="moneyExpense">¥0</strong></article><article class="metric"><span>本月剩余</span><strong id="moneyBalance">¥0</strong></article></div>
+            <article class="panel compare-card"><div><p class="eyebrow">月度对比</p><h2 id="monthCompare">暂无对比</h2></div><span id="monthCompareDetail">有了上月数据后，这里会显示变化</span></article>
+            <article class="panel budget-panel"><div class="panel-head"><div><p class="eyebrow">月度预算</p><h2>花得明白，不必紧绷</h2></div><label class="inline-budget">预算 ¥<input id="budgetInput" min="0" step="100" type="number"></label></div><div class="large-progress"><span id="budgetBar"></span></div><div class="progress-label"><span id="budgetUsedText">已使用 0%</span><span id="budgetRemainText">剩余 ¥0</span></div></article>
+            <div class="split-grid">
+              <article class="panel"><div class="panel-head"><div><p class="eyebrow">消费结构</p><h2>钱花在了哪里</h2></div></div><div class="pie-wrap"><svg aria-label="消费结构饼图" id="moneyPie" viewBox="0 0 220 220"></svg><div class="chart-legend" id="moneyLegend"></div></div></article>
+              <article class="panel"><div class="panel-head"><div><p class="eyebrow">流水</p><h2>最近账目</h2></div><select class="compact-select" id="moneyFilter"><option value="all">全部分类</option></select></div><div class="record-list" id="moneyList"></div></article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" data-title="习惯健康" id="view-habits">
+        <style>.habit-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}.habit-layout .panel{border-color:transparent;background:transparent;box-shadow:none;padding:0}.daily-habits{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}</style>
+        <div class="habit-layout">
+          <article class="panel"><div class="panel-head"><div><p class="eyebrow">今天打卡</p><h2>完成一点，就算前进</h2></div><div class="panel-actions"><span class="mini-note">每次点击立即保存</span><button class="btn ghost compact" data-action="open-habit-settings"><svg><use href="#i-plus"/></svg>新增习惯</button></div></div><div class="daily-habits" id="dailyHabitList"></div></article>
+          <div class="metric-row"><article class="metric"><span>今日完成</span><strong id="habitsDone">0 / 5</strong></article><article class="metric"><span>最佳连续</span><strong id="habitsStreak">0 天</strong></article><article class="metric"><span>近 30 天完成率</span><strong id="habitRate">0%</strong></article></div>
+          <article class="panel heatmap-panel"><div class="panel-head"><div><p class="eyebrow">30 天热力图</p><h2>坚持，是有形状的</h2></div><span class="mini-note">手机可横向滑动</span></div><div class="heatmap-scroll"><div class="habit-heatmap" id="habitHeatmap"></div></div></article>
+        </div>
+      </section>
+
+      <section class="view" data-title="减脂健身" id="view-fitness">
+        <div class="module-alert" id="fitnessAlert"></div>
+        <div class="section-actions"><button class="btn ghost" data-action="open-fitness-profile"><svg><use href="#i-fitness"/></svg>目标设置</button><button class="btn ghost" data-action="export-fitness"><svg><use href="#i-chart"/></svg>导出 Excel</button></div>
+        <div class="module-layout">
+          <div class="sticky-stack">
+            <article class="panel form-panel static"><div class="panel-head"><div><p class="eyebrow">每日记录</p><h2>体重与体脂</h2></div><span class="draft-status" data-draft-for="fitnessForm">草稿自动保存</span></div><form data-draft="fitnessForm" id="fitnessForm">
+              <div class="form-row"><label class="field"><span>体重 kg</span><input inputmode="decimal" max="300" min="20" name="weight" required step="0.1" type="number"></label><label class="field"><span>体脂率 %</span><input inputmode="decimal" max="70" min="2" name="bodyFat" step="0.1" type="number"></label></div>
+              <div class="form-row"><label class="field"><span>摄入热量 kcal</span><input inputmode="numeric" max="10000" min="0" name="calories" type="number"></label><label class="field"><span>运动分钟</span><input inputmode="numeric" max="1440" min="0" name="duration" type="number"></label></div>
+              <label class="field"><span>日期</span><input name="date" required type="date"></label><label class="field"><span>备注</span><input maxlength="60" name="note" placeholder="睡眠、饮食或身体感受"></label>
+              <button class="btn primary full" type="submit"><svg><use href="#i-plus"/></svg>保存今日数据</button>
+            </form></article>
+          </div>
+          <div class="module-main">
+            <div class="metric-row"><article class="metric"><span>当前体重</span><strong id="latestWeight">60 kg</strong></article><article class="metric"><span>距离目标</span><strong id="weightRemain">10 斤</strong></article><article class="metric"><span>当前 BMI</span><strong id="currentBmi">22.0</strong></article></div>
+            <article class="panel target-progress"><div class="panel-head"><div><p class="eyebrow">目标进度</p><h2 id="fitnessEstimate">稳稳向 55 kg 前进</h2></div><span id="fitnessPercent">0%</span></div><div class="large-progress sage-bar"><span id="fitnessProgressBar"></span></div><div class="progress-label"><span id="fitnessStartText">起点 60 kg</span><span id="fitnessTargetText">目标 55 kg</span></div><p class="health-note" id="calorieAdvice"></p></article>
+            <article class="panel"><div class="panel-head"><div><p class="eyebrow">体重趋势</p><h2>日波动与 7 天平均</h2></div><div class="legend-inline"><span><i class="dot-weight"></i>体重</span><span><i class="dot-average"></i>7 日平均</span></div></div><div class="line-chart-wrap"><svg class="line-chart" id="weightChart" preserveAspectRatio="xMidYMid meet" viewBox="0 0 760 280"></svg></div></article>
+            <article class="panel"><div class="panel-head"><div><p class="eyebrow">本周计划</p><h2>运动与三餐安排</h2></div><div class="panel-actions"><span class="mini-note" id="planProgress"></span><button class="btn ghost compact" data-action="open-plan-settings"><svg><use href="#i-plus"/></svg>新增计划</button></div></div><div class="weekly-plan" id="weeklyPlan"></div></article>
+            <article class="panel"><div class="panel-head"><div><p class="eyebrow">身体日志</p><h2>最近记录</h2></div></div><div class="record-list" id="fitnessList"></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" data-title="日程统筹" id="view-planner">
+        <div class="module-layout">
+          <article class="panel form-panel"><div class="panel-head"><div><p class="eyebrow">提醒事项</p><h2>添加待办</h2></div><span class="draft-status" data-draft-for="plannerForm">草稿自动保存</span></div><form data-draft="plannerForm" id="plannerForm">
+            <label class="field"><span>要做什么</span><input maxlength="60" name="title" placeholder="写下一件具体的事" required></label>
+            <div class="form-row"><label class="field"><span>日期</span><input name="date" required type="date"></label><label class="field"><span>时间</span><input name="time" type="time"></label></div>
+            <div class="form-row"><label class="field"><span>清单</span><select name="list"><option>生活</option><option>工作</option><option>家庭</option><option>个人</option></select></label><label class="field"><span>优先级</span><select name="priority"><option value="normal">普通</option><option value="high">高优先级</option><option value="low">低优先级</option></select></label></div>
+            <label class="field"><span>备注</span><input maxlength="100" name="note" placeholder="地点、准备事项或补充说明"></label>
+            <label class="switch-row"><input name="remind" type="checkbox" value="1"><span>到时间提醒我</span></label>
+            <button class="btn primary full" type="submit"><svg><use href="#i-plus"/></svg>加入日程</button>
+          </form></article>
+          <div class="module-main">
+            <div class="metric-row"><article class="metric"><span>今天</span><strong id="plannerToday">0</strong></article><article class="metric"><span>已逾期</span><strong id="plannerOverdue">0</strong></article><article class="metric"><span>未来 7 天</span><strong id="plannerWeek">0</strong></article></div>
+            <article class="panel week-panel"><div class="panel-head"><div><p class="eyebrow">一周日历</p><h2>接下来七天</h2></div></div><div class="week-strip" id="weekStrip"></div></article>
+            <article class="panel"><div class="panel-head"><div><p class="eyebrow">智能清单</p><h2>我的提醒事项</h2></div><div class="filter-chips" id="plannerFilters"><button class="active" data-planner-filter="all">全部</button><button data-planner-filter="today">今天</button><button data-planner-filter="scheduled">计划内</button><button data-planner-filter="done">已完成</button></div></div><div class="date-groups" id="plannerList"></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" data-title="待买清单" id="view-home">
+        <div class="module-layout">
+          <article class="panel form-panel"><div class="panel-head"><div><p class="eyebrow">想买先记下</p><h2>添加待买物品</h2></div><span class="draft-status" data-draft-for="homeForm">草稿自动保存</span></div><form data-draft="homeForm" id="homeForm">
+            <label class="field"><span>物品名称</span><input maxlength="40" name="name" placeholder="例如：洗衣液、燕麦奶" required></label>
+            <div class="form-row"><label class="field"><span>数量</span><input maxlength="16" name="quantity" placeholder="2 盒"></label><label class="field"><span>分类</span><select name="category"><option>食品</option><option>日用品</option><option>家居</option><option>数码</option><option>药品</option><option>其他</option></select></label></div>
+            <div class="form-row"><label class="field"><span>预计单价 ¥</span><input inputmode="decimal" min="0" name="price" step="0.01" type="number"></label><label class="field"><span>优先级</span><select name="priority"><option value="normal">有空买</option><option value="high">急需</option><option value="low">等等再买</option></select></label></div>
+            <label class="field"><span>备注</span><input maxlength="60" name="note" placeholder="品牌、规格或购买渠道"></label>
+            <button class="btn primary full" type="submit"><svg><use href="#i-plus"/></svg>加入待买清单</button>
+          </form></article>
+          <div class="module-main">
+            <div class="metric-row"><article class="metric"><span>待买物品</span><strong id="homeTotal">0</strong></article><article class="metric"><span>预计预算</span><strong id="homeBudget">¥0</strong></article><article class="metric"><span>本月买到</span><strong id="homeBought">0</strong></article></div>
+            <article class="panel"><div class="panel-head"><div><p class="eyebrow">采购清单</p><h2>需要的时候再买</h2></div><div class="filter-chips" id="shoppingFilters"><button class="active" data-shopping-filter="pending">待买</button><button data-shopping-filter="all">全部</button><button data-shopping-filter="bought">已买</button></div></div><div class="shopping-list" id="homeList"></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" data-title="书影音" id="view-media">
+        <div class="module-layout media-layout">
+          <article class="panel form-panel"><div class="panel-head"><div><p class="eyebrow">我的精神收藏</p><h2>记下一部作品</h2></div><span class="draft-status" data-draft-for="mediaForm">草稿自动保存</span></div><form data-draft="mediaForm" id="mediaForm">
+            <label class="field"><span>名字</span><input maxlength="60" name="name" placeholder="电影、剧、书或番的名字" required></label>
+            <div class="form-row"><label class="field"><span>类型</span><select name="type"><option>电影</option><option>剧</option><option>书</option><option>番</option></select></label><label class="field"><span>状态</span><select name="status"><option>想看</option><option>在看</option><option>看完</option><option>弃了</option></select></label></div>
+            <div class="form-row"><label class="field"><span>我的评分</span><select name="rating"><option value="0">暂不评分</option><option value="1">★</option><option value="2">★★</option><option value="3">★★★</option><option value="4">★★★★</option><option value="5">★★★★★</option></select></label><label class="field"><span>记录日期</span><input name="date" required type="date"></label></div>
+            <label class="field"><span>一句话短评</span><input maxlength="100" name="review" placeholder="这一部为什么值得记住"></label>
+            <label class="cover-upload"><input accept="image/*" id="mediaCoverInput" type="file"><span id="mediaCoverPreview"><svg><use href="#i-upload"/></svg><b>可选封面</b><small>自动压缩保存，也可以只写名字</small></span></label>
+            <button class="btn primary full" type="submit"><svg><use href="#i-plus"/></svg>加入我的书影音</button>
+          </form></article>
+          <div class="module-main">
+            <div class="metric-row"><article class="metric media-stat"><span>今年看完</span><strong id="mediaFinished">0 部</strong></article><article class="metric media-stat"><span>平均评分</span><strong id="mediaAverage">—</strong></article><article class="metric media-stat"><span>最爱类型</span><strong id="mediaFavorite">—</strong></article></div>
+            <article class="panel annual-card"><div class="panel-head"><div><p class="eyebrow">年度统计</p><h2><span id="mediaYear"></span>，我的精神足迹</h2></div><span class="mini-note">适合截图分享</span></div><div class="rating-distribution" id="ratingDistribution"></div></article>
+            <article class="panel"><div class="media-toolbar"><div><p class="eyebrow">清单</p><h2>书影音收藏</h2></div><div class="media-controls"><div class="view-toggle"><button class="active" data-media-view="wall">封面墙</button><button data-media-view="list">列表</button></div><select class="compact-select" id="mediaStatusFilter"><option value="all">全部状态</option><option>想看</option><option>在看</option><option>看完</option><option>弃了</option></select><select class="compact-select" id="mediaRatingFilter"><option value="0">全部评分</option><option value="5">5 星</option><option value="4">4 星以上</option><option value="3">3 星以上</option></select></div></div><div class="media-wall" id="mediaCollection"></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" data-title="时光档案" id="view-archive"><div class="archive-head"><div><p class="eyebrow">所有日常，都有出处</p><h2>按日期折叠的生活记录</h2></div><div class="filter-chips" id="archiveFilters"><button class="active" data-filter="all">全部</button><button data-filter="work">上班</button><button data-filter="money">财务</button><button data-filter="fitness">健康</button><button data-filter="planner">日程</button><button data-filter="home">待买</button></div></div><div class="archive-list" id="archiveList"></div></section>
+
+      <section class="view work-view" data-title="上班日历" id="view-work">
+        <div class="work-embed" id="work-embed"></div>
+      </section>
+    </main>
+  </div>
+
+  <nav aria-label="手机导航" class="mobile-nav"><button class="active" data-nav="dashboard"><svg><use href="#i-home"/></svg><span>今天</span></button><button data-nav="money"><svg><use href="#i-wallet"/></svg><span>记账</span></button><button data-nav="planner"><svg><use href="#i-calendar"/></svg><span>日程</span></button><button data-nav="habits"><svg><use href="#i-habit"/></svg><span>习惯</span></button><button data-nav="media"><svg><use href="#i-media"/></svg><span>书影音</span></button><button data-nav="work" data-work-sub="calendar"><svg><use href="#i-clock"/></svg><span>工作</span></button></nav>
+  <div class="settings-backdrop" hidden id="habitSettings">
+    <section aria-labelledby="habitSettingsTitle" aria-modal="true" class="settings-sheet" role="dialog">
+      <div class="settings-head"><div><p class="eyebrow">习惯设置</p><h2 id="habitSettingsTitle">新增自己的习惯</h2></div><button aria-label="关闭" class="sheet-close" data-action="close-habit-settings">×</button></div>
+      <form id="habitSettingsForm">
+        <label class="field"><span>习惯名称</span><input maxlength="18" name="name" placeholder="例如：早睡、拉伸、背单词" required></label>
+        <div class="form-row"><label class="field"><span>打卡方式</span><select id="habitTypeSelect" name="type"><option value="check">完成 / 未完成</option><option value="counter">计数累加</option><option value="number">填写数值</option></select></label><label class="field"><span>主题色</span><select name="tone"><option value="sage">鼠尾草绿</option><option value="plum">暮色紫</option><option value="terracotta">陶土橙</option><option value="sand">燕麦色</option></select></label></div>
+        <div class="form-row" id="habitTargetFields"><label class="field"><span>每日目标</span><input max="999" min="0.1" name="target" required step="0.1" type="number" value="1"></label><label class="field"><span>单位</span><input maxlength="6" name="unit" placeholder="次 / 分钟 / 页" value="次"></label></div>
+        <div class="custom-list-head"><span>当前习惯</span><small>删除后历史打卡也会一起移除</small></div><div class="custom-manage-list" id="habitManageList"></div>
+        <div class="sheet-actions"><button class="btn ghost" data-action="close-habit-settings" type="button">取消</button><button class="btn primary" type="submit">添加习惯</button></div>
+      </form>
+    </section>
+  </div>
+
+  <div class="settings-backdrop" hidden id="planSettings">
+    <section aria-labelledby="planSettingsTitle" aria-modal="true" class="settings-sheet" role="dialog">
+      <div class="settings-head"><div><p class="eyebrow">周计划</p><h2 id="planSettingsTitle">添加运动或饮食计划</h2></div><button aria-label="关闭" class="sheet-close" data-action="close-plan-settings">×</button></div>
+      <form id="planSettingsForm">
+        <div class="form-row"><label class="field"><span>类别</span><select name="group"><option>运动</option><option>饮食</option><option>恢复</option><option>其他</option></select></label><label class="field"><span>计划名称</span><input maxlength="28" name="title" placeholder="例如：慢跑 2 次" required></label></div>
+        <label class="field"><span>补充说明</span><input maxlength="60" name="note" placeholder="频次、时长或具体做法"></label>
+        <div class="custom-list-head"><span>现有周计划</span><small>可随时删除不再需要的项目</small></div><div class="custom-manage-list" id="planManageList"></div>
+        <div class="sheet-actions"><button class="btn ghost" data-action="close-plan-settings" type="button">取消</button><button class="btn primary" type="submit">添加计划</button></div>
+      </form>
+    </section>
+  </div>
+
+  <div class="settings-backdrop" hidden id="fitnessProfileSettings">
+    <section aria-labelledby="fitnessProfileTitle" aria-modal="true" class="settings-sheet fitness-profile-sheet" role="dialog">
+      <div class="settings-head"><div><p class="eyebrow">减脂档案</p><h2 id="fitnessProfileTitle">目标设置</h2></div><button aria-label="关闭" class="sheet-close" data-action="close-fitness-profile">×</button></div>
+      <form id="fitnessProfileForm">
+        <div class="form-row"><label class="field"><span>身高 cm</span><input max="230" min="100" name="height" required type="number"></label><label class="field"><span>目标 kg</span><input max="200" min="30" name="target" required step="0.1" type="number"></label></div>
+        <div class="form-row"><label class="field"><span>年龄</span><input max="100" min="14" name="age" required type="number"></label><label class="field"><span>生理性别</span><select name="sex"><option value="female">女</option><option value="male">男</option></select></label></div>
+        <label class="field"><span>日常活动</span><select name="activity"><option value="1.2">久坐</option><option value="1.375">轻度活动</option><option value="1.55">中度活动</option><option value="1.725">高强度活动</option></select></label>
+        <div class="sheet-actions"><button class="btn ghost" data-action="close-fitness-profile" type="button">取消</button><button class="btn primary" type="submit">保存目标</button></div>
+      </form>
+    </section>
+  </div>
+
+  <div class="settings-backdrop" hidden id="brandSettings">
+    <section aria-labelledby="brandSettingsTitle" aria-modal="true" class="settings-sheet" role="dialog">
+      <div class="settings-head"><div><p class="eyebrow">工作台外观</p><h2 id="brandSettingsTitle">把它变成你的日常集</h2></div><button aria-label="关闭" class="sheet-close" data-action="close-brand">×</button></div>
+      <div class="brand-preview"><div class="brand-mark" id="previewAvatar">日</div><div><strong id="previewName">日常集</strong><span id="previewTagline">生活有迹可循</span></div></div>
+      <form id="brandForm">
+        <div class="form-row"><label class="field"><span>页面名称</span><input maxlength="12" name="name" placeholder="日常集" required></label><label class="field"><span>头像文字</span><input maxlength="2" name="avatar" placeholder="日" required></label></div>
+        <label class="field"><span>副标题</span><input maxlength="20" name="tagline" placeholder="生活有迹可循"></label>
+        <div class="field"><span>主题色</span><div class="theme-swatches"><label><input name="theme" type="radio" value="plum"><i style="--swatch:#4d3045"></i><b>暮色紫</b></label><label><input name="theme" type="radio" value="forest"><i style="--swatch:#365f53"></i><b>森林绿</b></label><label><input name="theme" type="radio" value="clay"><i style="--swatch:#8f4f3b"></i><b>陶土棕</b></label><label><input name="theme" type="radio" value="navy"><i style="--swatch:#344b63"></i><b>深海蓝</b></label></div></div>
+        <div class="sheet-actions"><button class="btn ghost" data-action="reset-brand" type="button">恢复默认</button><button class="btn primary" type="submit">保存外观</button></div>
+      </form>
+    </section>
+  </div>
+  <div aria-live="polite" class="toast" id="toast" role="status"></div>
+  <div aria-hidden="true" class="confetti" id="confetti"></div>

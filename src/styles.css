@@ -2706,7 +2706,68 @@ body[data-theme] [data-tilt] {
   flex-shrink: 0;
 }
 
-/* 2) 触控目标放大（Android/iOS 可达性基线 ≥ 44px） */
+/* ============================================================
+   生活工作台整合：life-mode 覆盖层
+   —— 切到「生活」页时，body 加 .life-mode，把 #app 从窄列布局
+      （max-width:700px + padding + flex 列）释放为全宽容器，
+      让生活工作台的侧边栏/顶栏/移动底栏全屏铺开。
+   ============================================================ */
+body.life-mode #app {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  display: block;
+  flex: none;
+  overflow: visible;
+  min-height: 0;
+}
+/* 关键修复：body 默认 overflow:hidden 锁死整页滚动；生活工作台内容超出视口时应可上下滑动 */
+body.life-mode {
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100vh;
+}
+body.life-mode #app > .life-app {
+  display: block;
+}
+/* 隐藏上班日历底部 toolbar，避免与生活工作台移动底栏重叠 */
+body.life-mode .toolbar {
+  display: none;
+}
+/* 生活工作台自带滚动，关闭 #app>div 的滚动容器约束（v-html 生成 .life-app 直属 #app） */
+body.life-mode #app > .life-app,
+body.life-mode #app > div {
+  overflow: visible;
+  flex: none;
+}
+
+/* ============================================================
+   上班日历「工作模块」子视图嵌入适配
+   —— 上班日历 5 页（日历/打卡/好友/统计/设置）通过 Teleport 挂到
+      生活工作台内容区的 #work-embed，需在 .life-app 之外、保持上班日历
+      自身主题变量（--bg/--card/--text...）不被 life.css 覆盖。
+   ============================================================ */
+#work-embed .work-stage {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+/* 上班日历页面容器在内容区内占满可用宽度 */
+#work-embed .calendar-view,
+#work-embed .clockin-view-content,
+#work-embed .stats-content,
+#work-embed .social-content,
+#work-embed .settings-scroll {
+  width: 100%;
+  flex: 1;
+}
+/* 上班日历视图默认依赖 #app>div 滚动，嵌入后由 .work-embed 容器滚动；这里放开其高度约束 */
+#work-embed .calendar-view {
+  overflow: visible;
+  min-height: calc(100vh - 210px); /* 顶栏 + 侧边栏安全区估算 */
+}
+
+
 .tool-btn { min-height: 46px; }
 .nav-btn { min-width: 40px; min-height: 40px; }
 .today-btn { min-height: 40px; }

@@ -566,11 +566,11 @@ function createWindow() {
   });
 
   win = new BrowserWindow({
-    width: 520,
-    height: 720,
+    width: 1100,
+    height: 780,
     resizable: true,
-    minWidth: 380,
-    minHeight: 500,
+    minWidth: 880,
+    minHeight: 560,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
