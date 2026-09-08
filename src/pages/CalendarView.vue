@@ -254,7 +254,10 @@ function goToday() {
   const d = new Date()
   currentYear.value = d.getFullYear()
   currentMonth.value = d.getMonth()
-  selectedDate.value = null
+  // 修复：点击「今天」后应选中当天并展开详情面板（DetailPanel 以 v-if="selectedDate"
+  // 条件渲染，内含上班/休息等状态标签）。原先此处清空 selectedDate，导致面板收起、
+  // 上班/休息标签无法选择。选中语义与点击日期格子（selectDate）保持一致，不影响其它日期。
+  selectedDate.value = todayStr.value
 }
 
 // 挂载时从持久层加载数据到 Pinia store。
