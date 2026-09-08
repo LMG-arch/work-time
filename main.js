@@ -297,19 +297,27 @@ function registerIPC() {
   // 更新检查：由主进程代理 GitHub version.json 拉取，供渲染层 getLatestVersion 调用。
   // 渲染层 CSP connect-src 已收紧（不再放行 raw.githubusercontent.com），
   // 全部更新检查流量经由本 IPC 通道出网。
-  const https = require('https');
+  // 使用 Electron net 模块（Chromium 网络栈）：走系统代理与系统证书库，
+  // 兼容公司/透明代理环境，避免 Node https 模块证书校验失败。
+  const { net } = require('electron');
   const UPDATE_CHECK_URL = 'https://raw.githubusercontent.com/LMG-arch/work-time/main/version.json';
   ipcMain.handle('get-latest-version', async () => {
     try {
       const data = await new Promise((resolve, reject) => {
-        const req = https.get(UPDATE_CHECK_URL, { headers: { 'User-Agent': 'work-calendar-updater' } }, (res) => {
-          if (res.statusCode !== 200) { res.resume(); reject(new Error('HTTP ' + res.statusCode)); return; }
+        const req = net.request({
+          url: UPDATE_CHECK_URL,
+          method: 'GET',
+          headers: { 'User-Agent': 'work-calendar-updater' }
+        });
+        const timeout = setTimeout(() => { req.abort(); reject(new Error('timeout')); }, 10000);
+        req.on('response', (res) => {
+          if (res.statusCode !== 200) { clearTimeout(timeout); res.resume(); reject(new Error('HTTP ' + res.statusCode)); return; }
           let body = '';
           res.on('data', (c) => body += c);
-          res.on('end', () => resolve(body));
+          res.on('end', () => { clearTimeout(timeout); resolve(body); });
         });
-        req.on('error', reject);
-        req.setTimeout(10000, () => req.destroy(new Error('timeout')));
+        req.on('error', (e) => { clearTimeout(timeout); reject(e); });
+        req.end();
       });
       const json = JSON.parse(data);
       // 校验来源可信度：必须是指向本仓库/GitHub 官方的下载地址
