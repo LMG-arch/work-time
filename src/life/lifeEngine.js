@@ -1,5 +1,6 @@
 /* lifeEngine.js — 生活工作台状态引擎（本地优先，window.__storage 耐用存储，可挂云端 SDK）*/
 'use strict';
+import * as XLSX from 'xlsx';
 
 /* ================= Database SDK Integration ================= */
   var DB_MONEY = 'VnQXwpyhkgbQPgEE0t4Rct';
@@ -419,6 +420,9 @@
   const STORAGE_KEY = 'richangji-state-v1';
   const EXPENSE_CATEGORIES = ['吃饭','交通','购物','娱乐','房租','看病','学习','其他'];
   const INCOME_CATEGORIES = ['工资','奖金','兼职','理财','其他'];
+  // 账单 Excel 导入：表格「记账分类」→ 应用内分类映射（与导出表结构兼容，未匹配项归入“其他”）
+  const IMPORT_CATEGORY_MAP_EXPENSE = {'早午晚餐':'吃饭','水果零食':'吃饭','餐饮':'吃饭','咖啡奶茶':'吃饭','交通':'交通','公交地铁':'交通','打车租车':'交通','购物':'购物','服装':'购物','娱乐':'娱乐','医疗':'看病','水电燃气':'房租','住房':'房租','教育':'学习','培训考试':'学习','快递':'其他','通讯':'其他','生活日用':'其他','美容':'其他','转账':'其他','消费':'其他','消费还款':'其他','花呗':'其他','其他':'其他'};
+  const IMPORT_CATEGORY_MAP_INCOME = {'薪资':'工资','奖金':'奖金','收转账':'其他','红包':'其他','收红包':'其他','股票':'理财','理财':'理财','其他':'其他'};
   const CATEGORY_COLORS = ['#b65f42','#627a67','#7d5b75','#a57c45','#5f7188','#c58d69','#879a75','#8e8478'];
   const TYPE_META = {
     work:{label:'上班',icon:'i-clock',tone:'plum'},
@@ -779,6 +783,110 @@
     const html=`<html><head><meta charset="UTF-8"></head><body><table border="1"><tr>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr>${rows.map(row=>`<tr>${row.map(v=>`<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('')}</table></body></html>`;downloadBlob(html,'application/vnd.ms-excel',`${name}-${isoDate()}.xls`);toast('Excel 已导出');
   }
 
+  /* ================= 账单 Excel 导入 =================
+     目标表格结构：账单日期(datetime) | 分类筛选(枚举) | 记账分类(枚举) | 收支类型(支出|收入) | 备注(可空) | 金额(文本)
+     校验规则：表头缺失/文件损坏→失败提示；金额必须为正数；日期必须合法；收支类型仅支出/收入。
+     去重规则：同「日期+收支类型+记账分类+备注+金额」视为重复，整表已存在则中止，部分重复自动跳过。 */
+  function parseBillXlsx(file){
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onerror=()=>reject(new Error('文件读取失败，请重新选择'));
+      reader.onload=()=>{
+        try{
+          const wb=XLSX.read(new Uint8Array(reader.result),{type:'array',cellDates:false});
+          const sheetName=wb.SheetNames[0];if(!sheetName)throw new Error('表格为空，没有工作表');
+          const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:'',raw:true});
+          if(!rows.length)throw new Error('表格中没有数据行');
+          resolve(rows);
+        }catch(error){reject(error);}
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function excelDateToISO(value,rowNo){
+    // 兼容：日期对象 / Excel 序列号(1900 起算) / 'YYYY-MM-DD[ HH:mm:ss]' / 'YYYY/M/D[ H:m]' 字符串
+    if(value instanceof Date&&!isNaN(value))return isoDate(value);
+    if(typeof value==='number'&&isFinite(value)&&value>0&&value<80000){
+      const days=Math.floor(value),ms=Math.round((value-days)*86400000);
+      return isoDate(new Date(Date.UTC(1899,11,30)+days*86400000+ms));
+    }
+    const text=String(value||'').trim();
+    if(!text)return null;
+    const match=text.match(/^(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
+    if(!match)return null;
+    const d=new Date(Number(match[1]),Number(match[2])-1,Number(match[3]));
+    return isNaN(d)?null:isoDate(d);
+  }
+
+  function parseImportRow(row,rowNo){
+    const errors=[];
+    const date=excelDateToISO(row['账单日期'],rowNo);
+    if(!date)errors.push(`第 ${rowNo} 行：账单日期无效「${String(row['账单日期']??'').trim()}」`);
+    const flowText=String(row['收支类型']??'').trim();
+    const flow=flowText==='收入'?'income':flowText==='支出'?'expense':null;
+    if(!flow)errors.push(`第 ${rowNo} 行：收支类型必须是“支出”或“收入”`);
+    const amountText=String(row['金额']??'').trim().replace(/[¥,\s元]/g,'');
+    const amount=Number(amountText);
+    if(!amountText||!isFinite(amount)||amount<=0)errors.push(`第 ${rowNo} 行：金额无效「${String(row['金额']??'').trim()}」`);
+    const rawCategory=String(row['记账分类']??'').trim()||String(row['分类筛选']??'').trim();
+    const categoryMap=flow==='income'?IMPORT_CATEGORY_MAP_INCOME:IMPORT_CATEGORY_MAP_EXPENSE;
+    const category=categoryMap[rawCategory]||'其他';
+    const note=String(row['备注']??'').trim();
+    if(errors.length)return{errors};
+    return{date,flow,amount,category,note};
+  }
+
+  async function importMoneyExcel(file){
+    if(!file)return;
+    const nameExt=(file.name||'').toLowerCase();
+    if(!/\.(xlsx|xls)$/.test(nameExt))return toast('请选择 .xlsx 或 .xls 格式的账单表格');
+    try{
+      const rows=await parseBillXlsx(file);
+      let parsed=0,invalid=0,firstError='';
+      const incoming=[];
+      rows.forEach((row,index)=>{
+        const result=parseImportRow(row,index+2);
+        if(result.errors){invalid++;if(!firstError)firstError=result.errors[0];return;}
+        parsed++;incoming.push(result);
+      });
+      if(!parsed){
+        toast(invalid?`导入失败：${invalid} 行数据无效（${firstError}）`:'导入失败：没有可导入的有效数据');
+        return;
+      }
+      // 文件内部重复（同一行完全一致的去重提示，不影响导入）
+      const seen=new Set();
+      incoming.forEach(item=>{
+        const key=`${item.date}|${item.flow}|${item.category}|${item.note}|${item.amount}`;
+        if(seen.has(key))item.dupInFile=true;else seen.add(key);
+      });
+      const fresh=incoming.filter(item=>!item.dupInFile);
+      // 与已有账目去重：同「日期+收支类型+分类+备注+金额」视为重复
+      const existingKeys=new Set(state.records.filter(r=>r.type==='money'&&!r.sample).map(r=>`${r.date}|${r.data.flow}|${r.data.category}|${r.data.note||''}|${r.data.amount}`));
+      const unique=fresh.filter(item=>!existingKeys.has(`${item.date}|${item.flow}|${item.category}|${item.note}|${item.amount}`));
+      const skipped=fresh.length-unique.length;
+      if(!unique.length){
+        toast(`导入取消：${fresh.length} 条账单均已存在，未重复导入`);
+        return;
+      }
+      unique.forEach(item=>{
+        const record={id:uid(),type:'money',date:item.date,createdAt:Date.now(),sample:false,data:{flow:item.flow,amount:item.amount,category:item.category,note:item.note}};
+        state.records.push(record);pushMoney(record);
+      });
+      state.settings.recordsSinceExport=Number(state.settings.recordsSinceExport||0)+unique.length;
+      state.settings.moneySinceExport=Number(state.settings.moneySinceExport||0)+unique.length;
+      const saved=saveState();renderAll();
+      let message=`导入成功：新增 ${unique.length} 条账单`;
+      if(skipped)message+=`，跳过重复 ${skipped} 条`;
+      if(invalid)message+=`，无效 ${invalid} 行`;
+      toast(message);
+      if(!saved)toast('保存失败：数据仅存在于当前页面，请清理存储空间');
+    }catch(error){
+      console.error('[import-money]',error);
+      toast(`导入失败：${error&&error.message?error.message:'表格无法解析，请确认是有效的 Excel 账单文件'}`);
+    }
+  }
+
   function compressCover(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('封面读取失败'));reader.onload=()=>{const image=new Image();image.onerror=()=>reject(new Error('封面格式不支持'));image.onload=()=>{const maxWidth=360,maxHeight=480,ratio=Math.min(maxWidth/image.width,maxHeight/image.height,1),canvas=document.createElement('canvas');canvas.width=Math.round(image.width*ratio);canvas.height=Math.round(image.height*ratio);canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.72));};image.src=reader.result;};reader.readAsDataURL(file);});}
 
   function resetMediaCover(){pendingMediaCover='';const input=document.getElementById('mediaCoverInput'),preview=document.getElementById('mediaCoverPreview');input.value='';input.closest('.cover-upload').classList.remove('has-cover');preview.style.backgroundImage='';}
@@ -791,6 +899,7 @@
     document.getElementById('plannerForm').addEventListener('submit',e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));if(addRecord('planner',data.date,{title:data.title.trim(),time:data.time,priority:data.priority,list:data.list,note:data.note.trim(),remind:data.remind==='1',done:false}))clearDraft(e.currentTarget);});
     document.getElementById('homeForm').addEventListener('submit',e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));if(addRecord('home',isoDate(),{name:data.name.trim(),quantity:data.quantity.trim(),category:data.category,price:Number(data.price||0),priority:data.priority,note:data.note.trim(),bought:false}))clearDraft(e.currentTarget);});
     document.getElementById('mediaCoverInput').addEventListener('change',async e=>{const[file]=e.target.files;if(!file)return;if(file.size>12*1024*1024){toast('封面图片请控制在 12MB 以内');e.target.value='';return;}try{pendingMediaCover=await compressCover(file);const preview=document.getElementById('mediaCoverPreview');preview.style.backgroundImage=`url(${pendingMediaCover})`;preview.closest('.cover-upload').classList.add('has-cover');toast('封面已压缩，可以保存了');}catch(error){toast(error.message);resetMediaCover();}});
+    document.getElementById('importMoneyInput').addEventListener('change',e=>{const[file]=e.target.files;if(file)importMoneyExcel(file);e.target.value='';});
     document.getElementById('mediaForm').addEventListener('submit',e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));var newItem={id:uid(),name:data.name.trim(),type:data.type,status:data.status,rating:Number(data.rating||0),review:data.review.trim(),date:data.date,cover:pendingMediaCover,sample:false};state.mediaItems.push(newItem);pushMedia(newItem);state.settings.recordsSinceExport=Number(state.settings.recordsSinceExport||0)+1;const saved=saveState(true);renderAll();if(saved){clearDraft(e.currentTarget);resetMediaCover();toast('已加入书影音清单');}});
     document.getElementById('habitTypeSelect').addEventListener('change',e=>{const form=document.getElementById('habitSettingsForm'),isCheck=e.target.value==='check';form.elements.target.value=isCheck?'1':form.elements.target.value;form.elements.unit.value=isCheck?'次':form.elements.unit.value;document.getElementById('habitTargetFields').classList.toggle('is-check',isCheck);});
     document.getElementById('habitSettingsForm').addEventListener('submit',e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget)),isCheck=data.type==='check';state.habits.push({id:uid(),key:`custom-${uid()}`,name:data.name.trim(),type:data.type,target:isCheck?1:Math.max(.1,Number(data.target||1)),unit:isCheck?'次':data.unit.trim()||'次',tone:data.tone,entries:{},sample:false});const saved=saveState();renderAll();renderHabitManageList();if(saved){e.currentTarget.reset();document.getElementById('habitTypeSelect').dispatchEvent(new Event('change'));toast('新习惯已加入');}});
@@ -822,7 +931,7 @@
       if(type==='toggle-shopping'){const item=state.records.find(r=>r.id===id&&r.type==='home');if(item){item.data.bought=!item.data.bought;item.data.boughtDate=item.data.bought?isoDate():null;updateRemoteShopping(item);const saved=saveState();renderAll();if(saved&&item.data.bought){celebrate();toast('买到了，已移入完成');}}}
       if(type==='delete-media'){const item=state.mediaItems.find(media=>media.id===id);if(item&&confirm(LANG==='en'?`Remove “${item.name}” from the list?`:`确定从清单中删除“${item.name}”吗？`)){if(item.remoteId)deleteRemoteMedia(item.remoteId);state.mediaItems=state.mediaItems.filter(media=>media.id!==id);const saved=saveState();renderMedia();if(saved)toast('已从书影音清单移除');}}
       if(type==='open-habit-settings')openHabitSettings();if(type==='close-habit-settings')closeHabitSettings();if(type==='open-plan-settings')openPlanSettings();if(type==='close-plan-settings')closePlanSettings();if(type==='open-fitness-profile')openFitnessProfile();if(type==='close-fitness-profile')closeFitnessProfile();
-      if(type==='export-money')exportExcel('money');if(type==='export-fitness')exportExcel('fitness');if(type==='close-brand')closeBrandSettings();if(type==='reset-brand'){state.settings.brand={name:'日常集',avatar:'日',tagline:'生活有迹可循',theme:'plum'};saveState();applyBrand();openBrandSettings();toast('已恢复默认外观');}
+      if(type==='export-money')exportExcel('money');if(type==='export-fitness')exportExcel('fitness');if(type==='import-money'){const input=document.getElementById('importMoneyInput');if(input)input.click();}if(type==='close-brand')closeBrandSettings();if(type==='reset-brand'){state.settings.brand={name:'日常集',avatar:'日',tagline:'生活有迹可循',theme:'plum'};saveState();applyBrand();openBrandSettings();toast('已恢复默认外观');}
     });
     document.addEventListener('change',event=>{if(event.target.dataset.action==='habit-number')updateHabit(event.target.dataset.id,'number',event.target.value);});
     document.getElementById('budgetInput').addEventListener('change',e=>{state.settings.budget=Math.max(0,Number(e.target.value||0));const saved=saveState();renderAll();if(saved)toast('月度预算已更新');});

@@ -76,7 +76,7 @@
 
       <section class="view" data-title="记账理财" id="view-money">
         <div class="module-alert" id="moneyAlert"></div>
-        <div class="section-actions"><button class="btn ghost" data-action="export-money"><svg><use href="#i-chart"/></svg>导出 Excel</button></div>
+        <div class="section-actions"><input accept=".xlsx,.xls" id="importMoneyInput" type="file" hidden><button class="btn ghost" data-action="import-money"><svg><use href="#i-upload"/></svg>导入 Excel</button><button class="btn ghost" data-action="export-money"><svg><use href="#i-chart"/></svg>导出 Excel</button></div>
         <div class="module-layout">
           <article class="panel form-panel"><div class="panel-head"><div><p class="eyebrow">收支手账</p><h2>记一笔账</h2></div><span class="draft-status" data-draft-for="moneyForm">草稿自动保存</span></div><form data-draft="moneyForm" id="moneyForm">
             <div class="segmented"><label><input checked name="flow" type="radio" value="expense"><span>支出</span></label><label><input name="flow" type="radio" value="income"><span>收入</span></label></div>
