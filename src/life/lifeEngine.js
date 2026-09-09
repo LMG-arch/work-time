@@ -57,11 +57,8 @@ import * as XLSX from 'xlsx';
   }
 
   function setSyncState(mode, label){
-    var pill = document.getElementById('syncPill');
-    if(!pill) return;
-    pill.className = 'sync-pill' + (mode ? ' ' + mode : '');
-    var tx = document.getElementById('syncText');
-    if(tx && label) tx.textContent = label;
+    // 浮动同步标签（syncPill）已移除，此函数保留仅为兼容旧调用；状态提示由顶部 syncBanner 承担
+    void mode; void label;
   }
   function showSyncBanner(msg){
     var b = document.getElementById('syncBanner');
@@ -983,8 +980,6 @@ import * as XLSX from 'xlsx';
     document.querySelectorAll('[data-media-view]').forEach(button=>button.addEventListener('click',()=>{state.settings.mediaView=button.dataset.mediaView;saveState();renderMedia();}));
     document.getElementById('mediaStatusFilter').addEventListener('change',e=>{state.settings.mediaStatusFilter=e.target.value;saveState();renderMedia();});
     document.getElementById('mediaRatingFilter').addEventListener('change',e=>{state.settings.mediaRatingFilter=Number(e.target.value);saveState();renderMedia();});
-    var syncPill = document.getElementById('syncPill');
-    if(syncPill) syncPill.addEventListener('click', retrySync);
     var retryBtn = document.getElementById('syncRetryBtn');
     if(retryBtn) retryBtn.addEventListener('click', retrySync);
     document.getElementById('clearSamplesBtn').addEventListener('click',()=>{const recordSamples=state.records.filter(r=>r.sample).length,mediaSamples=state.mediaItems.filter(item=>item.sample).length,sampleCount=recordSamples+mediaSamples;if(!sampleCount&&!state.habits.some(h=>h.sample))return;if(!confirm(`将清空 ${sampleCount} 条示例记录和示例打卡，你自己的内容（含自建计划）会完整保留。是否继续？`))return;state.records=state.records.filter(r=>!r.sample);state.mediaItems=state.mediaItems.filter(item=>!item.sample);state.habits.forEach(h=>{if(h.sample){h.entries={};h.sample=false;}});const saved=saveState();renderAll();if(saved)toast('示例内容已清空');});

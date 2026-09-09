@@ -1,16 +1,11 @@
 {
-  "version": "3.17.24",
-  "versionCode": 61,
+  "version": "3.17.25",
+  "versionCode": 62,
   "releaseDate": "2026-09-09",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.24/work-calendar-v3.17.24.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.25/work-calendar-v3.17.25.apk",
   "changelog": [
-    "fix: 移动端工作页交互修复——「今天」按钮静默（不再误弹详情层）、竖向滚动上下往返卡死（滚动链统一交由 body）、「清空示例」按钮收为紧凑方形图标",
-    "fix: 移动端新增工作子页导航（日历/打卡/好友/统计/设置横排页签），窄屏侧边栏隐藏后设置页重新可达",
-    "fix: 清空示例不再重置自建周计划（原实现会覆盖用户自定义计划与勾选进度）",
-    "fix: 同步并发串行化（修复双同步同时读写云端的丢失更新竞态）",
-    "fix: 自动同步失败不再触发未处理的 Promise 拒绝（6 处调用方安全落地）",
-    "fix: 提醒模块裸全局引用加固（window.* 前缀 + 空值兜底，杜绝严格模式引用错误）",
-    "fix: 首次加载用户资料并发插入竞态（改幂等 upsert，双设备同时首载不再报错）"
+    "feat: 日历点击交互改为内联展开——点击日期在其所在周下方直接展开该日「标签+待办」，再次点击收起，不再弹出快速标记弹窗（长按仍可快速标记）",
+    "feat: 移除右下角浮动「离线模式/同步状态」标签及其显示逻辑（云端失败提示保留在顶部横幅，可点击重试）"
   ],
   "forceUpdate": false
 }

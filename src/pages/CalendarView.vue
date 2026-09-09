@@ -64,6 +64,13 @@ const DAY_ACTIONS = [
   { label: '清除标记', value: '', danger: true },
 ]
 
+// ── 点击日期：内联展开/收起（不再弹 ActionSheet 弹窗）──
+// expandDate：当前在日历网格内展开的日期。点击同一天 → 收起；点击其他天 → 切换。
+const expandDate = ref(null)
+function toggleExpand(dateStr) {
+  expandDate.value = expandDate.value === dateStr ? null : dateStr
+}
+
 async function onDayAction(action) {
   const ds = daySheetDate.value
   if (!ds) return
@@ -145,6 +152,28 @@ const calendarDays = computed(() => {
   }
   return days
 })
+
+// ── 内联展开面板定位：找到 expandDate 所在周的最后一个格子索引 ──
+// 面板横跨整行（grid-column:1/-1），渲染在该周下方 → 「紧邻对应日期」。
+const expandAnchor = computed(() => {
+  const ds = expandDate.value
+  if (!ds) return null
+  const idx = calendarDays.value.findIndex(cd => cd.dateStr === ds)
+  if (idx === -1) return null
+  const weekEnd = Math.min(Math.floor(idx / 7) * 7 + 6, calendarDays.value.length - 1)
+  return { idx, weekEnd, dateStr: ds }
+})
+// 展开面板内容：该日标签与待办（数据实时取自 store）
+const expandTags = computed(() => (expandDate.value ? dayData(expandDate.value).tags || [] : []))
+const expandTodos = computed(() => (expandDate.value ? todosForDate(expandDate.value) : []))
+const expandUndone = computed(() => (expandDate.value ? undoneCount(expandDate.value) : 0))
+function expandDateCN() {
+  if (!expandDate.value) return ''
+  const d = new Date(expandDate.value + 'T00:00:00')
+  const wd = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六']
+  const p = expandDate.value.split('-')
+  return `${parseInt(p[0])}年${parseInt(p[1])}月${parseInt(p[2])}日 ${wd[d.getDay()]}`
+}
 
 function dayData(dateStr) { return calendarStore.getDayData(dateStr) }
 function holidayInfo(dateStr) {
@@ -235,14 +264,13 @@ function selectDate(dateStr, isOther) {
     currentYear.value = parseInt(p[0])
     currentMonth.value = parseInt(p[1]) - 1
     selectedDate.value = null
+    expandDate.value = null
     return
   }
-  // 点击当前月日期：选中 + 打开下方详情面板 + 弹出「快速标记」选择界面
-  // （上班/休息/出差/请假/年假/病假/事假/清除标记），选择后即时保存并回显。
+  // 点击当前月日期：内联展开该日「标签+待办」（不弹弹窗）；
+  // 再次点击同一天收起。底部详情面板随选中日期联动（保持现状）。
   selectedDate.value = dateStr
-  window.__vueDetailPanel?.(dateStr)
-  daySheetDate.value = dateStr
-  daySheetOpen.value = true
+  toggleExpand(dateStr)
 }
 
 function prevMonth() {
@@ -260,9 +288,10 @@ function goToday() {
   currentYear.value = d.getFullYear()
   currentMonth.value = d.getMonth()
   // 点击「今天」静默回到当月：不选中日期、不展开详情面板、不弹任何弹层。
-  // （选中/标记入口保留在点击日期格子：弹出「快速标记」ActionSheet。）
+  // （选中/标记入口保留在点击日期格子：内联展开标签+待办。）
   selectedDate.value = null
   daySheetOpen.value = false
+  expandDate.value = null
 }
 
 // 挂载时从持久层加载数据到 Pinia store。
@@ -299,18 +328,44 @@ onMounted(async () => {
     </div>
 
     <div class="calendar-grid" :style="gridStyle">
-      <div v-for="(cd, idx) in calendarDays" :key="idx"
-        class="day-cell" data-tilt data-tilt-max="5" data-tilt-lift="0" :class="{ 'other-month': cd.isOther, today: cd.dateStr === todayStr, selected: cd.dateStr === selectedDate, 'has-note': dayData(cd.dateStr).note, 'has-tag': dayData(cd.dateStr).tags?.length > 0, 'has-todo': todosForDate(cd.dateStr).length > 0, 'is-past': !cd.isOther && cd.dateStr < todayStr }"
-        :style="dayData(cd.dateStr).color ? { background: dayData(cd.dateStr).color } : statusBg(cd.dateStr)"
-        :data-date="cd.dateStr" :data-status="dayData(cd.dateStr).status" :data-busy="cd.isOther ? 0 : busyLevel(cd.dateStr)" @click="selectDate(cd.dateStr, cd.isOther)">
-        <div class="busy-heat" aria-hidden="true"></div>
-        <span class="day-num">{{ cd.day }}</span>
-        <span class="lunar-label" :class="{ 'lunar-month': lunarForCell(cd).isFirstDay }">{{ lunarForCell(cd).text }}</span>
-        <span v-if="dayData(cd.dateStr).status && !cd.isOther" class="status-label">{{ STATUS_CHARS[dayData(cd.dateStr).status] }}</span>
-        <span v-if="todosForDate(cd.dateStr).length > 0 && !cd.isOther" class="todo-count">{{ undoneCount(cd.dateStr) || '' }}</span>
-        <span v-if="holidayInfo(cd.dateStr) && !cd.isOther" class="holiday-label" :class="{ 'is-holiday-day': holidayInfo(cd.dateStr).type === 'holiday', 'is-workday-day': holidayInfo(cd.dateStr).type === 'workday' }">{{ holidayInfo(cd.dateStr).name }}</span>
-        <div v-if="hasClockin(cd.dateStr) && !cd.isOther" class="clockin-dot"></div>
-      </div>
+      <template v-for="(cd, idx) in calendarDays" :key="'cell-'+idx">
+        <div
+          class="day-cell" data-tilt data-tilt-max="5" data-tilt-lift="0" :class="{ 'other-month': cd.isOther, today: cd.dateStr === todayStr, selected: cd.dateStr === selectedDate, expanded: cd.dateStr === expandDate, 'has-note': dayData(cd.dateStr).note, 'has-tag': dayData(cd.dateStr).tags?.length > 0, 'has-todo': todosForDate(cd.dateStr).length > 0, 'is-past': !cd.isOther && cd.dateStr < todayStr }"
+          :style="dayData(cd.dateStr).color ? { background: dayData(cd.dateStr).color } : statusBg(cd.dateStr)"
+          :data-date="cd.dateStr" :data-status="dayData(cd.dateStr).status" :data-busy="cd.isOther ? 0 : busyLevel(cd.dateStr)" @click="selectDate(cd.dateStr, cd.isOther)">
+          <div class="busy-heat" aria-hidden="true"></div>
+          <span class="day-num">{{ cd.day }}</span>
+          <span class="lunar-label" :class="{ 'lunar-month': lunarForCell(cd).isFirstDay }">{{ lunarForCell(cd).text }}</span>
+          <span v-if="dayData(cd.dateStr).status && !cd.isOther" class="status-label">{{ STATUS_CHARS[dayData(cd.dateStr).status] }}</span>
+          <span v-if="todosForDate(cd.dateStr).length > 0 && !cd.isOther" class="todo-count">{{ undoneCount(cd.dateStr) || '' }}</span>
+          <span v-if="holidayInfo(cd.dateStr) && !cd.isOther" class="holiday-label" :class="{ 'is-holiday-day': holidayInfo(cd.dateStr).type === 'holiday', 'is-workday-day': holidayInfo(cd.dateStr).type === 'workday' }">{{ holidayInfo(cd.dateStr).name }}</span>
+          <div v-if="hasClockin(cd.dateStr) && !cd.isOther" class="clockin-dot"></div>
+        </div>
+
+        <!-- 内联展开面板：紧邻所选日期所在周下方，横跨整行 -->
+        <Transition name="day-expand">
+          <div v-if="expandAnchor && idx === expandAnchor.weekEnd" class="day-expand-panel" :key="'expand-'+expandAnchor.dateStr" @click.stop>
+            <div class="day-expand-head">
+              <span class="day-expand-title">{{ expandDateCN() }}</span>
+              <button class="day-expand-close" aria-label="收起" @click="expandDate = null">&times;</button>
+            </div>
+
+            <div class="day-expand-tags">
+              <span v-if="expandTags.length === 0" class="day-expand-empty">暂无标签</span>
+              <span v-for="t in expandTags" :key="t" class="day-expand-tag">{{ t }}</span>
+            </div>
+
+            <div class="day-expand-todos">
+              <div v-if="expandTodos.length === 0" class="day-expand-empty">暂无待办</div>
+              <div v-for="t in expandTodos" :key="t.id" class="day-expand-todo" :class="{ done: t.type === 'once' ? t.done : t.weeklyDone?.[expandDate] }">
+                <span class="day-expand-todo-text">{{ t.text }}</span>
+                <span v-if="t.time" class="day-expand-todo-time">{{ t.time }}</span>
+              </div>
+              <div v-if="expandTodos.length > 0" class="day-expand-todo-foot">未完成 {{ expandUndone }} / {{ expandTodos.length }}</div>
+            </div>
+          </div>
+        </Transition>
+      </template>
     </div>
 
     <div class="busy-legend" aria-label="忙闲色阶说明">
