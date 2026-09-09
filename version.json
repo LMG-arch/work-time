@@ -1,17 +1,16 @@
 {
-  "version": "3.17.23",
-  "versionCode": 60,
+  "version": "3.17.24",
+  "versionCode": 61,
   "releaseDate": "2026-09-09",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.23/work-calendar-v3.17.23.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.24/work-calendar-v3.17.24.apk",
   "changelog": [
-    "feat: 生活工作台整合——统一外壳（记账/习惯/日程/待买/书影音/减脂/档案），上班日历 5 页作为「工作模块」并列嵌入，本地数据经耐用存储持久化",
-    "feat: 记账理财新增 Excel 账单导入——支持 xlsx/xls 解析、字段校验（日期/收支类型/金额/分类映射）、重复导入自动去重、成功/失败明确提示",
-    "fix: 点击日历日期无法弹出「上班/休息」状态标记弹层（移除 useSwipe 的 setPointerCapture，改 window 级指针监听）",
-    "fix: Electron 启动更新检查证书校验失败（改用 Electron net 模块走系统证书与代理）",
-    "fix: 主题/统计/设置/好友入口在窄窗口消失、页面无法滚动、好友动态拉空等联合异常（窗口最小宽 880 设计 + body 滚动恢复 + 好友刷新重放）",
-    "fix: 数据同步后日历/统计/待办视图不刷新（各 __refresh 回调改为真正重灌 Pinia store）",
-    "fix: 更新检查在纯 Node 环境（ELECTRON_RUN_AS_NODE）启动崩溃防护",
-    "keep: v3.17.22 通知攒批根治 + 精确闹钟 + 14 天配额窗口保留"
+    "fix: 移动端工作页交互修复——「今天」按钮静默（不再误弹详情层）、竖向滚动上下往返卡死（滚动链统一交由 body）、「清空示例」按钮收为紧凑方形图标",
+    "fix: 移动端新增工作子页导航（日历/打卡/好友/统计/设置横排页签），窄屏侧边栏隐藏后设置页重新可达",
+    "fix: 清空示例不再重置自建周计划（原实现会覆盖用户自定义计划与勾选进度）",
+    "fix: 同步并发串行化（修复双同步同时读写云端的丢失更新竞态）",
+    "fix: 自动同步失败不再触发未处理的 Promise 拒绝（6 处调用方安全落地）",
+    "fix: 提醒模块裸全局引用加固（window.* 前缀 + 空值兜底，杜绝严格模式引用错误）",
+    "fix: 首次加载用户资料并发插入竞态（改幂等 upsert，双设备同时首载不再报错）"
   ],
   "forceUpdate": false
 }
