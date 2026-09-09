@@ -1,17 +1,14 @@
 {
-  "version": "3.17.28",
-  "versionCode": 65,
+  "version": "3.17.29",
+  "versionCode": 66,
   "releaseDate": "2026-09-09",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.28/work-calendar-v3.17.28.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.29/work-calendar-v3.17.29.apk",
   "changelog": [
-    "fix: 修复暗色主题下日历区不可读——生活工作台外壳令牌断裂，工作模块白字压暖纸底对比度仅约 1:1，现已为主题令牌化并新增 dark/cosmic 深色重映射，月标题对比度提升至约 16:1",
-    "fix: 修复输入框文字无法选中——body 级 user-select:none 传染到全部输入控件，手机端记账无法改字，现已恢复 input/textarea 可选中",
-    "fix: 修复 Inter 字体声明从未加载——字体栈首项恒回退雅黑，现已移除未加载的 Inter 声明",
-    "improve: 圆角体系归并——15 种散值（2~24px）收敛为 8/10/12/16/22/999 档，组件层级语义一致",
-    "improve: 生活工作台 268 处硬编码色令牌化，暗色主题下记账流水日分组底色、列表分隔线、提示文字全部随主题适配",
-    "improve: 主按钮归一为实心强调色；eyebrow 标签字号提升至可读下限 11px；hero 大数字 64px 降为响应式 clamp(44~56px)",
-    "improve: 新增键盘焦点环 :focus-visible；移除空状态装饰圆点；合并重复的 860px 断点块",
-    "improve: dark/cosmic 主题辅助文字 --text3 提亮，玻璃卡上对比度达 WCAG AA"
+    "fix: 修复账号登录状态重启丢失——设置页常驻挂载早于会话恢复完成，恢复后无 UI 刷新，现已在会话恢复/自动登录完成后补刷设置页账号区，重启即保持在线",
+    "fix: 修复日历内联展开无法收起——点击底部详情区（待办/标签等非编辑区域）即可收起展开面板，展开/收起双向切换",
+    "improve: 日程周历支持切换周次——新增上一周/本周/下一周导航，周内日期可点选过滤当天日程，再点取消",
+    "improve: 记账/日程等 5 个卡片式输入表单统一支持展开/收起——点击卡片头部切换，折叠状态持久化，重启后保持",
+    "improve: 周历日期格可点击选中高亮，清单标题随周次动态显示（如「2026 年 9 月」）"
   ],
   "forceUpdate": false
 }

@@ -273,6 +273,14 @@ function selectDate(dateStr, isOther) {
   toggleExpand(dateStr)
 }
 
+// 点击底部详情区（待办/标签等非编辑控件区域）收起内联展开面板，
+// 使展开/收起交互一致：点日期格展开，点下方区域或面板自身即可收起。
+// 排除表单控件与待办/标签的操作元素（勾选、编辑、删除、加标签），保证其原功能不被误触发收起。
+function onDetailClick(e) {
+  if (e.target.closest('input, textarea, select, button, a, label, [contenteditable], .todo-check, .todo-edit, .todo-del, .tag-remove, .tag-add-btn, .quick-tag, .color-dot, .status-btn')) return
+  expandDate.value = null
+}
+
 function prevMonth() {
   if (currentMonth.value === 0) { currentMonth.value = 11; currentYear.value-- }
   else currentMonth.value--
@@ -344,10 +352,10 @@ onMounted(async () => {
 
         <!-- 内联展开面板：紧邻所选日期所在周下方，横跨整行 -->
         <Transition name="day-expand">
-          <div v-if="expandAnchor && idx === expandAnchor.weekEnd" class="day-expand-panel" :key="'expand-'+expandAnchor.dateStr" @click.stop>
+          <div v-if="expandAnchor && idx === expandAnchor.weekEnd" class="day-expand-panel" :key="'expand-'+expandAnchor.dateStr" @click.stop="expandDate = null">
             <div class="day-expand-head">
               <span class="day-expand-title">{{ expandDateCN() }}</span>
-              <button class="day-expand-close" aria-label="收起" @click="expandDate = null">&times;</button>
+              <button class="day-expand-close" aria-label="收起" @click.stop="expandDate = null">&times;</button>
             </div>
 
             <div class="day-expand-tags">
@@ -380,7 +388,7 @@ onMounted(async () => {
     </div>
     </div><!-- /calendar-swipe -->
 
-    <div class="detail-scroll">
+    <div class="detail-scroll" @click="onDetailClick">
       <DetailPanel :selectedDate="selectedDate" />
     </div>
 

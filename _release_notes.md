@@ -1,35 +1,45 @@
-## 修复插件异常导致闪退（第三道防线）
+## v3.17.29 — 六项交互修复（登录持久化 + 日历收起 + 周历切换 + 表单折叠）
 
-### 崩溃日志实锤
-用户提供的崩溃浮层截图显示：
-```
-Thread: CapacitorPlugins
-java.lang.RuntimeException: java.lang.reflect.InvocationTargetException
-  at com.getcapacitor.Bridge.lambda$callPluginMethod$0(Bridge.java:856)
-  → Handler.handleCallback → dispatchMessage
-```
-设备：vivo V2419A (SDK 36 / Android 16)，WebView：com.google.android.webview
+### 1. 账号登录持久化（重启不丢）
+- 凭证本就落盘持久化，根因是设置页常驻挂载时 onMounted 早于 `initSocial()` 完成会话恢复
+- 修复：会话恢复/自动登录完成后补刷设置页账号区（`__refreshSettingsData`），重启即保持在线
+- 相关文件：src/social/social.js
 
-### 根因
-`Bridge.callPluginMethod()` 在 `plugin.invoke()` 抛异常时（无论哪个插件、什么原因），**不是通知 JS 侧错误后继续运行，而是 `throw new RuntimeException(ex)` 重新抛出**（Bridge.java:856）。这个 RuntimeException 跑到 CapacitorPlugins 线程的 Handler 里没有任何捕获，直接杀进程。
+### 2. 上班日历展开/收起切换
+- 点击日期格展开内联面板（标签+待办），之前点击底部详情区（待办/标签）不会收起
+- 修复：点击底部详情区、或面板自身即可收起；再点日期格同样收起
+- 待办勾选/编辑/删除、加标签、颜色点等操作控件点击不受影响（显式排除）
+- 相关文件：src/pages/CalendarView.vue
 
-**这意味着之前修的两个问题（启动 NPE + WebView 数据腐化）虽然都生效了，但只要任何一个插件（Filesystem / LocalNotifications）在运行时抛异常，App 照样崩。** 这是一个独立的崩溃路径。
+### 3. 日程周历支持切换周次
+- 一周日历原固定显示当前 7 天，无导航
+- 新增：上一周 / 本周 / 下一周 按钮；标题随周次显示（如「2026 年 9 月」）
+- 周内日期可点击：选中后智能清单仅显示该日日程，再点取消
+- 相关文件：src/life/markup.html、src/life/lifeEngine.js、src/life/life.css
 
-### 修复
-将 Bridge.java:856 的 `throw new RuntimeException(ex)` 改为：
-- 调用 `call.errorCallback()` 通知 JS 侧
-- **不重新抛出**——让 App 继续运行
+### 4/5/6. 卡片式输入表单统一折叠
+- 记账、日程、体重、待买、书影音 5 个输入卡片默认一直展开
+- 统一支持点击卡片头部展开/收起（chevron 指示，键盘可达）
+- 折叠状态持久化（state.settings.collapsedPanels），重启后保持
+- 相关文件：src/life/lifeEngine.js、src/life/life.css、src/life/markup.html
 
-效果：**任何插件失败都不会再导致闪退**。JS 侧会收到错误回调并可以优雅降级（storage.js / reminders.js 都有 try/catch 兜底）。
+## v3.17.28 — 审美审查全量修复（taste-skill 驱动）
 
-### 累积修复清单
-| 版本 | 修复内容 | 状态 |
-|------|---------|------|
-| v3.17.16 | 启动期 WebView NPE 空值保护 | 已生效 |
-| v3.17.18 | WebView 数据目录按版本隔离 + 崩溃自恢复 | 已生效 |
-| **v3.17.19** | **Bridge 插件崩溃防护（不再 throw 杀进程）** | **本次新增** |
+### P0 主题令牌断裂（暗色主题日历区不可读）
+- life.css 外壳硬编码色全部语义令牌化（40+ 锚点：--sb-bg / --nav-* / --tint-1~11 / --hint-1~5 / --alert-*）
+- styles.css 为 `body[data-theme="dark"|"cosmic"] .life-app` 提供深色暖系重映射
+- 实测（cosmic）：月标题对比度 **1.05:1 → 16.2:1**；辅助文字 --text3 提亮后玻璃卡上 **5.06:1（WCAG AA）**
+- 暖色主题令牌保持默认值，零影响
 
-### 验证
-- 签名：apksigner v2 校验通过。
-- 反编译确认 crash shield 逻辑（errorCallback + "Plugin invoke error"）已编入 APK（9 处引用）。
-- postinstall 脚本已更新，同时维护两处补丁（NPE guard + crash shield）。
+### P1 基础修复
+- 输入框文字可选：body 级 `user-select:none` 不再传染 input/textarea/select
+- Inter 字体声明移除（从未加载，恒回退雅黑）
+- 圆角体系收敛：15 种散值 → 8/10/12/16/22/999 档
+- life.css 两个重复的 860px 断点块合并
+- 组件层硬编码色（268 处）全部令牌化，暗色下记账日分组底色/分隔线/提示文字随主题适配
+
+### P2 微调
+- eyebrow 标签 10px → 11px（可读下限）
+- 全局 `:focus-visible` 键盘焦点环
+- 主按钮三形态归一为实心强调色
+- hero 大数字 64px → clamp(44px, 6vw, 56px)

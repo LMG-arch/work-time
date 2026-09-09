@@ -534,7 +534,7 @@ import * as XLSX from 'xlsx';
         {id:uid(),name:'机器人之梦',type:'电影',status:'想看',rating:0,review:'',date:shiftDate(-2),cover:'',sample:true}
       ],
       drafts:{},
-      settings:{budget:5000,recordsSinceExport:0,moneySinceExport:0,lastExportAt:null,archiveFilter:'all',moneyFilter:'all',plannerFilter:'all',shoppingFilter:'pending',mediaView:'wall',mediaStatusFilter:'all',mediaRatingFilter:0,hiddenHabitKeys:[],brand:{name:'日常集',avatar:'日',tagline:'生活有迹可循',theme:'plum'},fitnessProfile:{height:165,target:55,startWeight:60,age:30,sex:'female',activity:1.375},weeklyPlan:DEFAULT_PLAN.map(x=>({...x}))}
+      settings:{budget:5000,recordsSinceExport:0,moneySinceExport:0,lastExportAt:null,archiveFilter:'all',moneyFilter:'all',plannerFilter:'all',shoppingFilter:'pending',mediaView:'wall',mediaStatusFilter:'all',mediaRatingFilter:0,hiddenHabitKeys:[],collapsedPanels:{},brand:{name:'日常集',avatar:'日',tagline:'生活有迹可循',theme:'plum'},fitnessProfile:{height:165,target:55,startWeight:60,age:30,sex:'female',activity:1.375},weeklyPlan:DEFAULT_PLAN.map(x=>({...x}))}
     };
   }
 
@@ -827,13 +827,22 @@ import * as XLSX from 'xlsx';
   }
 
   function groupByDate(records){return records.reduce((groups,r)=>{(groups[r.date]||=[]).push(r);return groups;},{});}
+  // 周历偏移：相对本周的周数（-1=上周，0=本周，1=下周…）；跨页保留在模块状态（随 state.settings 持久化）
+  let plannerWeekOffset=0;
+  // 周历选中日期：点击周内日期 → 仅显示该日日程；再点取消。null=显示整周
+  let plannerWeekPicked=null;
+  function plannerWeekBase(){const d=new Date();d.setDate(d.getDate()+plannerWeekOffset*7);const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d;}
+  function plannerWeekRange(){const base=plannerWeekBase();const days=Array.from({length:7},(_,i)=>shiftDate(i,base));const monthA=Number(days[0].slice(5,7)),monthB=Number(days[6].slice(5,7)),yearA=Number(days[0].slice(0,4)),yearB=Number(days[6].slice(0,4));let label;if(plannerWeekOffset===0){label=t('接下来七天');}else if(yearA===yearB&&monthA===monthB){label=`${yearA} 年 ${monthA} 月`;}else{label=`${yearA}/${monthA} – ${yearB}/${monthB}`;}return{days,label};}
   function renderPlanner(){
     const records=sortedRecords('planner'),today=isoDate(),weekEnd=shiftDate(6),filter=state.settings.plannerFilter;
+    const range=plannerWeekRange();
     document.getElementById('plannerToday').textContent=records.filter(r=>r.date===today&&!r.data.done).length;document.getElementById('plannerOverdue').textContent=records.filter(r=>r.date<today&&!r.data.done).length;document.getElementById('plannerWeek').textContent=records.filter(r=>r.date>=today&&r.date<=weekEnd&&!r.data.done).length;
-    document.getElementById('weekStrip').innerHTML=Array.from({length:7},(_,i)=>{const date=shiftDate(i),d=new Date(`${date}T00:00:00`),count=records.filter(r=>r.date===date&&!r.data.done).length,weekdays=LANG==='en'?['Sun','Mon','Tue','Wed','Thu','Fri','Sat']:['日','一','二','三','四','五','六'];return`<div class="week-day ${i===0?'today':''}"><span>${weekdays[d.getDay()]}</span><strong>${d.getDate()}</strong><small>${count?(LANG==='en'?`${count} items`:`${count} 项`):t('留白')}</small></div>`;}).join('');
+    const weekHead=document.getElementById('plannerWeekHead');if(weekHead)weekHead.textContent=range.label;
+    document.getElementById('weekStrip').innerHTML=range.days.map((date,i)=>{const d=new Date(`${date}T00:00:00`),count=records.filter(r=>r.date===date&&!r.data.done).length,weekdays=LANG==='en'?['Sun','Mon','Tue','Wed','Thu','Fri','Sat']:['日','一','二','三','四','五','六'];const isToday=date===today,isPicked=plannerWeekPicked===date;return`<button type="button" class="week-day ${isToday?'today':''} ${isPicked?'picked':''}" data-planner-day="${date}" aria-label="${date}"><span>${weekdays[d.getDay()]}</span><strong>${d.getDate()}</strong><small>${count?(LANG==='en'?`${count} items`:`${count} 项`):t('留白')}</small></button>`;}).join('');
     document.querySelectorAll('[data-planner-filter]').forEach(b=>b.classList.toggle('active',b.dataset.plannerFilter===filter));
-    const filtered=records.filter(r=>filter==='all'||(filter==='today'&&r.date===today&&!r.data.done)||(filter==='scheduled'&&r.date>=today&&!r.data.done)||(filter==='done'&&r.data.done));const groups=groupByDate(filtered);
-    document.getElementById('plannerList').innerHTML=Object.keys(groups).length?Object.entries(groups).map(([date,items],i)=>`<details class="date-group" ${i<3?'open':''}><summary><strong>${formatDateHeading(date)}</strong><span>${items.filter(x=>!x.data.done).length} 件待完成</span></summary><div class="group-body">${items.map(r=>taskRow(r,true)).join('')}</div></details>`).join(''):empty('这个智能清单里暂时没有事项');
+    const filtered=records.filter(r=>filter==='all'||(filter==='today'&&r.date===today&&!r.data.done)||(filter==='scheduled'&&r.date>=today&&!r.data.done)||(filter==='done'&&r.data.done)).filter(r=>plannerWeekPicked?r.date===plannerWeekPicked:true);const groups=groupByDate(filtered);
+    const hint=document.getElementById('plannerWeekHint');if(hint){hint.textContent=plannerWeekPicked?(LANG==='en'?`Showing ${plannerWeekPicked} · click again to show the week`:`已筛选 ${plannerWeekPicked} · 再点一次取消`):t('点击日期查看当天日程，再次点击取消');}
+    document.getElementById('plannerList').innerHTML=Object.keys(groups).length?Object.entries(groups).map(([date,items],i)=>`<details class="date-group" ${i<3?'open':''}><summary><strong>${formatDateHeading(date)}</strong><span>${items.filter(x=>!x.data.done).length} 件待完成</span></summary><div class="group-body">${items.map(r=>taskRow(r,true)).join('')}</div></details>`).join(''):empty(plannerWeekPicked?(LANG==='en'?'No items on this day':'这一天没有日程'):'这个智能清单里暂时没有事项');
   }
 
   function renderHome(){
@@ -1044,6 +1053,11 @@ import * as XLSX from 'xlsx';
     document.getElementById('budgetInput').addEventListener('change',e=>{state.settings.budget=Math.max(0,Number(e.target.value||0));const saved=saveState();renderAll();if(saved)toast('月度预算已更新');});
     document.getElementById('moneyFilter').addEventListener('change',e=>{state.settings.moneyFilter=e.target.value;saveState();renderMoney();});
     document.getElementById('plannerFilters').addEventListener('click',e=>{const b=e.target.closest('[data-planner-filter]');if(!b)return;state.settings.plannerFilter=b.dataset.plannerFilter;saveState();renderPlanner();});
+    // 周历导航：上一周 / 本周 / 下一周
+    const plannerWeekNav=document.getElementById('plannerWeekNav');
+    if(plannerWeekNav)plannerWeekNav.addEventListener('click',e=>{const b=e.target.closest('[data-planner-week]');if(!b)return;plannerWeekOffset=b.dataset.plannerWeek==='prev'?plannerWeekOffset-1:b.dataset.plannerWeek==='next'?plannerWeekOffset+1:0;plannerWeekPicked=null;saveState();renderPlanner();});
+    // 周历日期点选：点击显示当天日程，再点取消
+    document.getElementById('weekStrip').addEventListener('click',e=>{const d=e.target.closest('[data-planner-day]');if(!d)return;plannerWeekPicked=plannerWeekPicked===d.dataset.plannerDay?null:d.dataset.plannerDay;renderPlanner();});
     document.getElementById('shoppingFilters').addEventListener('click',e=>{const b=e.target.closest('[data-shopping-filter]');if(!b)return;state.settings.shoppingFilter=b.dataset.shoppingFilter;saveState();renderHome();});
     document.getElementById('archiveFilters').addEventListener('click',e=>{const b=e.target.closest('[data-filter]');if(!b)return;state.settings.archiveFilter=b.dataset.filter;saveState();renderArchive();});
     document.querySelectorAll('[data-media-view]').forEach(button=>button.addEventListener('click',()=>{state.settings.mediaView=button.dataset.mediaView;saveState();renderMedia();}));
@@ -1055,7 +1069,50 @@ import * as XLSX from 'xlsx';
     window.addEventListener('storage',e=>{if(e.key!==STORAGE_KEY||!e.newValue)return;try{state=normalizeState(JSON.parse(e.newValue));renderAll();toast('另一个页面的数据已同步');}catch{}});
   }
 
-  function init(){subscribeUpdates();setSyncState('syncing', LANG==='en' ? 'Syncing…' : '同步中…');const now=new Date(),weekdays=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];document.getElementById('todayLabel').textContent=LANG==='en'?new Intl.DateTimeFormat('en-US',{month:'long',day:'numeric',weekday:'long'}).format(now):`${now.getMonth()+1} 月 ${now.getDate()} 日 · ${weekdays[now.getDay()]}`;setDateDefaults();updateMoneyCategories();restoreDrafts();bindForms();bindEvents();renderAll();switchView(document.getElementById(`view-${location.hash.slice(1)}`)?location.hash.slice(1):'dashboard');if(!dataCorrupted)saveState();pullAllRemote(function(ok){ if(ok){ saveState(); renderAll(); } });}
+  /* ===== 卡片式输入区统一折叠（v3.17.29）=====
+     所有 .form-panel（记账/体重/日程/待买/书影音）头部注入 chevron，
+     点击 panel-head 切换展开/收起；折叠状态按面板 id 持久化到 state.settings.collapsedPanels。
+     由于 bindEvents 只执行一次而 renderAll 是纯重渲染，面板事件用 document 级委托 + 一次性初始化。 */
+  let formPanelTogglesInitialized=false;
+  function initFormPanelToggles(){
+    if(formPanelTogglesInitialized)return;
+    formPanelTogglesInitialized=true;
+    const apply=(panel,on)=>{panel.classList.toggle('collapsed',on);};
+    document.querySelectorAll('.form-panel').forEach(panel=>{
+      const head=panel.querySelector('.panel-head');
+      if(!head)return;
+      const titleWrap=head.querySelector('div');
+      let chevron=document.createElement('i');
+      chevron.className='collapse-chevron';
+      chevron.setAttribute('aria-hidden','true');
+      chevron.innerHTML=icon('i-chevron');
+      if(titleWrap)titleWrap.appendChild(chevron);
+      head.setAttribute('role','button');
+      head.setAttribute('tabindex','0');
+      head.setAttribute('aria-expanded','true');
+      const key=panel.id||head.querySelector('h2')?.textContent?.trim()||'panel';
+      const savedCollapsed=state.settings.collapsedPanels&&state.settings.collapsedPanels[key];
+      apply(panel,!!savedCollapsed);
+      head.setAttribute('aria-expanded',String(!savedCollapsed));
+      head.addEventListener('click',event=>{
+        if(event.target.closest('button,input,select,label,textarea,a'))return;
+        const on=!panel.classList.contains('collapsed');
+        apply(panel,on);
+        if(!state.settings.collapsedPanels)state.settings.collapsedPanels={};
+        state.settings.collapsedPanels[key]=on;
+        head.setAttribute('aria-expanded',String(!on));
+        saveState();
+      });
+      head.addEventListener('keydown',event=>{
+        if(event.key!=='Enter'&&event.key!==' ')return;
+        event.preventDefault();
+        head.click();
+      });
+    });
+  }
+
+
+  function init(){subscribeUpdates();setSyncState('syncing', LANG==='en' ? 'Syncing…' : '同步中…');const now=new Date(),weekdays=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];document.getElementById('todayLabel').textContent=LANG==='en'?new Intl.DateTimeFormat('en-US',{month:'long',day:'numeric',weekday:'long'}).format(now):`${now.getMonth()+1} 月 ${now.getDate()} 日 · ${weekdays[now.getDay()]}`;setDateDefaults();updateMoneyCategories();restoreDrafts();bindForms();bindEvents();initFormPanelToggles();renderAll();switchView(document.getElementById(`view-${location.hash.slice(1)}`)?location.hash.slice(1):'dashboard');if(!dataCorrupted)saveState();pullAllRemote(function(ok){ if(ok){ saveState(); renderAll(); } });}
   function initLife(){
     startI18n();
     init();

@@ -708,4 +708,14 @@ export async function initSocial() {
       if (typeof window._syncInProgress !== 'undefined') window._syncInProgress = false;
     }
   }
+
+  // 账号持久化修复（v3.17.29）：设置页常驻挂载，其 onMounted 早于本函数完成，
+  // 会话恢复/自动登录完成后补刷设置页账号区，使「已登录」状态在重启后即时呈现。
+  try {
+    if (typeof window.__refreshSettingsData === 'function') {
+      await window.__refreshSettingsData();
+    }
+  } catch (e) {
+    console.warn('[Social] Refresh settings after session restore failed:', e.message);
+  }
 }

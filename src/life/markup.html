@@ -19,6 +19,7 @@
     <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M3 6h.01M3 12h.01M3 18h.01"/></symbol>
     <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 22c4 0 7-3 7-7 0-3-2-6-5-9 0 3-2 4-3 5 0-3-1-6-3-9 0 5-3 7-3 12 0 5 3 8 7 8z"/></symbol>
     <symbol id="i-media" viewBox="0 0 24 24"><path d="M4 4h7v16H4zM13 4h7v7h-7zM13 13h7v7h-7z"/><path d="m7 8 2 2-2 2z"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   </svg>
 
   <div class="app-shell">
@@ -140,7 +141,7 @@
           </form></article>
           <div class="module-main">
             <div class="metric-row"><article class="metric"><span>今天</span><strong id="plannerToday">0</strong></article><article class="metric"><span>已逾期</span><strong id="plannerOverdue">0</strong></article><article class="metric"><span>未来 7 天</span><strong id="plannerWeek">0</strong></article></div>
-            <article class="panel week-panel"><div class="panel-head"><div><p class="eyebrow">一周日历</p><h2>接下来七天</h2></div></div><div class="week-strip" id="weekStrip"></div></article>
+            <article class="panel week-panel"><div class="panel-head"><div><p class="eyebrow">一周日历</p><h2 id="plannerWeekHead">接下来七天</h2></div><div class="panel-actions" id="plannerWeekNav"><button class="btn ghost compact" data-planner-week="prev" type="button"><svg><use href="#i-chevron"/></svg>上一周</button><button class="btn ghost compact" data-planner-week="this" type="button">本周</button><button class="btn ghost compact" data-planner-week="next" type="button">下一周<svg><use href="#i-chevron"/></svg></button></div></div><div class="week-strip" id="weekStrip"></div><div class="planner-week-hint" id="plannerWeekHint">点击日期查看当天日程，再次点击取消</div></article>
             <article class="panel"><div class="panel-head"><div><p class="eyebrow">智能清单</p><h2>我的提醒事项</h2></div><div class="filter-chips" id="plannerFilters"><button class="active" data-planner-filter="all">全部</button><button data-planner-filter="today">今天</button><button data-planner-filter="scheduled">计划内</button><button data-planner-filter="done">已完成</button></div></div><div class="date-groups" id="plannerList"></div></article>
           </div>
         </div>
