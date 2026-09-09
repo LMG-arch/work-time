@@ -33,6 +33,14 @@ const workPages = {
   settings: SettingsPage,
 }
 const workOrder = ['calendar', 'clockin', 'social', 'stats', 'settings']
+// 移动端（侧边栏隐藏时）工作子页导航：保证「设置」等在 ≤860px 仍可达
+const workNavLabels = {
+  calendar: '日历',
+  clockin: '打卡',
+  social: '好友',
+  stats: '统计',
+  settings: '设置',
+}
 const activeWork = ref('calendar')
 
 let _inited = false
@@ -40,12 +48,15 @@ let _inited = false
 // 由 lifeEngine 侧边栏「工作模块」点击回调
 function workSubActivate(sub) {
   if (workPages[sub]) activeWork.value = sub
-  // 同步侧边栏「工作模块」分组高亮：无 sub 的「上班日历」条 或 对应 sub 条
+  // 同步所有「工作模块」相关按钮高亮：侧边栏条目 + 移动端子页导航
   const navItems = document.querySelectorAll('.life-app [data-nav="work"]')
   navItems.forEach((item) => {
     const itemSub = item.getAttribute('data-work-sub')
     item.classList.toggle('active', (itemSub || 'calendar') === sub)
   })
+  // 工作区内部子页导航高亮（移动端可见）
+  const subBtns = document.querySelectorAll('.work-subnav button')
+  subBtns.forEach((btn, idx) => btn.classList.toggle('active', workOrder[idx] === sub))
 }
 
 onMounted(async () => {
@@ -71,6 +82,11 @@ onMounted(async () => {
   <!-- 上班日历「工作模块」子视图：Teleport 进生活工作台内容区 #work-embed，常驻挂载 -->
   <Teleport to="#work-embed">
     <div class="work-stage">
+      <nav class="work-subnav" aria-label="工作子页导航">
+        <button v-for="page in workOrder" :key="page" :class="{ active: activeWork === page }" @click="workSubActivate(page)">
+          {{ workNavLabels[page] }}
+        </button>
+      </nav>
       <template v-for="page in workOrder" :key="page">
         <component :is="workPages[page]" v-show="activeWork === page" />
       </template>

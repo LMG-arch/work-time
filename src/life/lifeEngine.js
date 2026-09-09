@@ -629,8 +629,49 @@ import * as XLSX from 'xlsx';
   function habitStreak(habit){let streak=0;const cursor=new Date();while(habitDone(habit,isoDate(cursor))){streak++;cursor.setDate(cursor.getDate()-1);}return streak;}
   function habitBestStreak(habit){let best=0,current=0;Object.keys(habit.entries||{}).sort().forEach((date,index,dates)=>{if(!habitDone(habit,date)){current=0;return;}const previous=dates[index-1];current=previous&&Math.round((new Date(date)-new Date(previous))/86400000)===1?current+1:1;best=Math.max(best,current);});return best;}
 
+  // 主页「今日工作」卡片：直接展示当天上班情况（状态 + 待办 + 打卡），
+  // 数据来自 window.allData / window.allTodos / window.allReminderRecords，
+  // 与时光档案的 workRecords() 同源，只读不写。
+  function renderWorkToday(){
+    const today=isoDate();
+    const day=(window.allData&&window.allData[today])||{};
+    const status=day.status||null;
+    const statusLabel=WORK_STATUS_LABELS[status]||(LANG==='en'?'Unset':'待记录');
+    const statusText=WORK_STATUS_LABELS[status]||'待记录';
+    const note=day.note||'';
+    const tags=(day.tags||[]).filter(Boolean).slice(0,3);
+    let todoTotal=0,todoDone=0;
+    const weekDay=new Date(today+'T00:00:00').getDay();
+    (window.allTodos||[]).forEach(todo=>{
+      const hit=todo.type==='once'?todo.date===today:((todo.weekdays||[]).includes(weekDay));
+      if(!hit)return;
+      todoTotal++;
+      const done=todo.type==='once'?Boolean(todo.done):Boolean(todo.weeklyDone&&todo.weeklyDone[today]);
+      if(done)todoDone++;
+    });
+    let clockinDone=0,clockinTotal=0;
+    const enabledReminders=(window.allReminders||[]).filter(r=>r&&r.enabled);
+    if(enabledReminders.length){
+      clockinTotal=enabledReminders.length;
+      const recs=(window.allReminderRecords||{})[today]||{};
+      clockinDone=enabledReminders.filter(r=>recs[r.id]&&recs[r.id].confirmed).length;
+    }
+    const title=document.getElementById('workTodayTitle');
+    if(title)title.textContent=statusLabel;
+    const body=document.getElementById('workTodayBody');
+    if(!body)return;
+    const parts=[];
+    parts.push(`<span class="work-line-item">${status?escapeHtml(statusText):(LANG==='en'?'Not recorded yet':'今天还没有标记状态')}</span>`);
+    if(note)parts.push(`<span class="work-line-item">${userHtml(note)}</span>`);
+    parts.push(`<span class="work-line-item">${todoTotal?`${LANG==='en'?'Todos':'待办'} ${todoTotal} · ${LANG==='en'?'done':'完成'} ${todoDone}`:(LANG==='en'?'No todos today':'今日暂无待办')}</span>`);
+    if(clockinTotal)parts.push(`<span class="work-line-item">${LANG==='en'?'Check-ins':'打卡'} ${clockinDone}/${clockinTotal}</span>`);
+    tags.forEach(tag=>parts.push(`<span class="work-tag-chip">${userHtml(tag)}</span>`));
+    body.innerHTML=parts.join('');
+  }
+
   function renderDashboard(){
     const today=isoDate(),month=today.slice(0,7);
+    renderWorkToday();
     const monthExpense=sum(state.records.filter(r=>r.type==='money'&&r.date.startsWith(month)&&r.data.flow==='expense'),r=>r.data.amount);
     const todayTasks=sortedRecords('planner').filter(r=>r.date===today),doneTasks=todayTasks.filter(r=>r.data.done).length;
     const completed=state.habits.filter(h=>habitDone(h)).length;
@@ -946,7 +987,7 @@ import * as XLSX from 'xlsx';
     if(syncPill) syncPill.addEventListener('click', retrySync);
     var retryBtn = document.getElementById('syncRetryBtn');
     if(retryBtn) retryBtn.addEventListener('click', retrySync);
-    document.getElementById('clearSamplesBtn').addEventListener('click',()=>{const recordSamples=state.records.filter(r=>r.sample).length,mediaSamples=state.mediaItems.filter(item=>item.sample).length,sampleCount=recordSamples+mediaSamples;if(!sampleCount&&!state.habits.some(h=>h.sample))return;if(!confirm(`将清空 ${sampleCount} 条示例记录和示例打卡，你自己的内容会保留。是否继续？`))return;state.records=state.records.filter(r=>!r.sample);state.mediaItems=state.mediaItems.filter(item=>!item.sample);state.habits.forEach(h=>{if(h.sample){h.entries={};h.sample=false;}});state.settings.weeklyPlan=DEFAULT_PLAN.map(x=>({...x}));const saved=saveState();renderAll();if(saved)toast('示例内容已清空');});
+    document.getElementById('clearSamplesBtn').addEventListener('click',()=>{const recordSamples=state.records.filter(r=>r.sample).length,mediaSamples=state.mediaItems.filter(item=>item.sample).length,sampleCount=recordSamples+mediaSamples;if(!sampleCount&&!state.habits.some(h=>h.sample))return;if(!confirm(`将清空 ${sampleCount} 条示例记录和示例打卡，你自己的内容（含自建计划）会完整保留。是否继续？`))return;state.records=state.records.filter(r=>!r.sample);state.mediaItems=state.mediaItems.filter(item=>!item.sample);state.habits.forEach(h=>{if(h.sample){h.entries={};h.sample=false;}});const saved=saveState();renderAll();if(saved)toast('示例内容已清空');});
     window.addEventListener('storage',e=>{if(e.key!==STORAGE_KEY||!e.newValue)return;try{state=normalizeState(JSON.parse(e.newValue));renderAll();toast('另一个页面的数据已同步');}catch{}});
   }
 
@@ -959,6 +1000,8 @@ import * as XLSX from 'xlsx';
     // 供上班日历侧（App.vue / renderer.js）反向调用，切到生活工作台的某个模块视图
     window.__lifeSwitchView = switchView;
     // 供 renderer.js 在上班数据（window.allData）同步/刷新后重渲染时光档案，使「上班」数据实时
-    window.__lifeRefreshArchive = renderArchive;
+    window.__lifeRefreshArchive = () => { renderArchive(); renderWorkToday(); };
+    // 上班日历标记/待办/打卡变更后，主页「今日工作」卡片即时刷新（由各 store save 后调用）
+    window.__lifeRefreshWorkToday = renderWorkToday;
   }
   export { initLife, renderAll, switchView, toast };

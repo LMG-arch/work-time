@@ -73,6 +73,8 @@ export const useCalendarStore = defineStore('calendar', () => {
         status, note, tags: tags || [], color: color || '' 
       }
     }
+    // 让生活工作台主页「今日工作」卡片即时刷新（window.allData 已由 saveDay 同步）
+    window.__lifeRefreshWorkToday?.()
   }
 
   // UI 导航交互

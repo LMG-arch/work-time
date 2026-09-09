@@ -259,10 +259,10 @@ function goToday() {
   const d = new Date()
   currentYear.value = d.getFullYear()
   currentMonth.value = d.getMonth()
-  // 修复：点击「今天」后应选中当天并展开详情面板（DetailPanel 以 v-if="selectedDate"
-  // 条件渲染，内含上班/休息等状态标签）。原先此处清空 selectedDate，导致面板收起、
-  // 上班/休息标签无法选择。选中语义与点击日期格子（selectDate）保持一致，不影响其它日期。
-  selectedDate.value = todayStr.value
+  // 点击「今天」静默回到当月：不选中日期、不展开详情面板、不弹任何弹层。
+  // （选中/标记入口保留在点击日期格子：弹出「快速标记」ActionSheet。）
+  selectedDate.value = null
+  daySheetOpen.value = false
 }
 
 // 挂载时从持久层加载数据到 Pinia store。
@@ -280,7 +280,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="calendar-view" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+  <div class="calendar-view" style="flex:1;display:flex;flex-direction:column;overflow:visible;">
     <div class="calendar-swipe" ref="swipeZone">
     <div class="calendar-header">
       <button class="nav-btn" @click="prevMonth">&lt;</button>
@@ -325,7 +325,7 @@ onMounted(async () => {
     </div>
     </div><!-- /calendar-swipe -->
 
-    <div style="flex:1;overflow-y:auto;overflow-x:hidden;">
+    <div class="detail-scroll">
       <DetailPanel :selectedDate="selectedDate" />
     </div>
 

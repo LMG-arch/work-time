@@ -58,6 +58,7 @@
       <section class="view active" data-title="今天，慢慢来" id="view-dashboard">
         <div class="dashboard-grid">
           <article class="hero-card"><div><p class="eyebrow light">今日生活指数</p><h2><span id="lifeScore">82</span><small>/ 100</small></h2><p id="heroSummary">三件要事，一点运动，留一笔清楚账。</p></div><div class="score-orbit"><span></span><i></i><b></b></div></article>
+          <article class="panel work-today-card"><div class="panel-head"><div><p class="eyebrow">今日工作</p><h2 id="workTodayTitle">待记录</h2></div><button class="text-btn" data-nav="work" data-work-sub="calendar">去日历</button></div><div class="work-today-body" id="workTodayBody"></div></article>
           <article class="panel quick-panel"><div class="panel-head"><div><p class="eyebrow">快速开始</p><h2>记下一件小事</h2></div><span class="mini-note">输入时自动保存</span></div><div class="quick-grid">
             <button class="quick-action terracotta" data-quick="money"><svg><use href="#i-wallet"/></svg><span><strong>记一笔</strong><small>支出或收入</small></span><i>+</i></button>
             <button class="quick-action plum" data-quick="planner"><svg><use href="#i-calendar"/></svg><span><strong>排日程</strong><small>待办与提醒</small></span><i>+</i></button>
@@ -188,7 +189,7 @@
     </main>
   </div>
 
-  <nav aria-label="手机导航" class="mobile-nav"><button class="active" data-nav="dashboard"><svg><use href="#i-home"/></svg><span>今天</span></button><button data-nav="money"><svg><use href="#i-wallet"/></svg><span>记账</span></button><button data-nav="planner"><svg><use href="#i-calendar"/></svg><span>日程</span></button><button data-nav="habits"><svg><use href="#i-habit"/></svg><span>习惯</span></button><button data-nav="media"><svg><use href="#i-media"/></svg><span>书影音</span></button><button data-nav="work" data-work-sub="calendar"><svg><use href="#i-clock"/></svg><span>工作</span></button></nav>
+  <nav aria-label="手机导航" class="mobile-nav"><button class="active" data-nav="dashboard"><svg><use href="#i-home"/></svg><span>主页</span></button><button data-nav="work" data-work-sub="calendar"><svg><use href="#i-clock"/></svg><span>工作</span></button><button data-nav="money"><svg><use href="#i-wallet"/></svg><span>记账</span></button><button data-nav="planner"><svg><use href="#i-calendar"/></svg><span>日程</span></button><button data-nav="habits"><svg><use href="#i-habit"/></svg><span>习惯</span></button><button data-nav="media"><svg><use href="#i-media"/></svg><span>书影音</span></button></nav>
   <div class="settings-backdrop" hidden id="habitSettings">
     <section aria-labelledby="habitSettingsTitle" aria-modal="true" class="settings-sheet" role="dialog">
       <div class="settings-head"><div><p class="eyebrow">习惯设置</p><h2 id="habitSettingsTitle">新增自己的习惯</h2></div><button aria-label="关闭" class="sheet-close" data-action="close-habit-settings">×</button></div>

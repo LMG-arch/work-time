@@ -2629,6 +2629,22 @@ body.life-mode {
   overflow-y: auto;
   overflow-x: hidden;
   height: 100vh;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+/* 移动端（≤860px）：工作页整体滚动链修复。
+   上班日历模块内禁止任何内嵌纵向滚动容器（overflow-y:auto 会形成独立
+   scroll chain，向下滑到面板内即被“锁”住、无法回到页面级滚动）；
+   统一交由 body 进行整页滚动，保证双端上下滑动流畅。 */
+@media (max-width: 860px) {
+  #work-embed .calendar-view { overflow: visible !important; }
+  #work-embed .calendar-view .detail-scroll { overflow: visible !important; flex: none !important; }
+}
+#work-embed .calendar-view .detail-scroll {
+  flex: 1;
+  overflow: visible;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
 }
 body.life-mode #app > .life-app {
   display: block;
@@ -2686,6 +2702,38 @@ body.life-mode .life-app .brand {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+}
+/* 工作子页导航：桌面端隐藏（侧边栏已提供），≤860px 显示为横排页签，
+   保证「设置」等子页在移动端可达（侧边栏被隐藏后原本无任何入口） */
+#work-embed .work-subnav {
+  display: none;
+}
+@media (max-width: 860px) {
+  #work-embed .work-subnav {
+    display: flex;
+    gap: 4px;
+    padding: 6px 2px 8px;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  #work-embed .work-subnav button {
+    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text2);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 32px;
+  }
+  #work-embed .work-subnav button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
 }
 /* 上班日历页面容器在内容区内占满可用宽度 */
 #work-embed .calendar-view,
