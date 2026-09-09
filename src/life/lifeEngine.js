@@ -123,16 +123,16 @@ import * as XLSX from 'xlsx';
         if(cb) cb(failed === 0);
       }
     }
-    dbFetchAll(DB_MONEY, function(rows, err){ if(rows && rows.length){ mergeMoney(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
-    dbFetchAll(DB_HABIT, function(rows, err){ if(rows && rows.length){ mergeHabit(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
-    dbFetchAll(DB_PLAN, function(rows, err){ if(rows && rows.length){ mergePlan(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
-    dbFetchAll(DB_FITNESS, function(rows, err){ if(rows && rows.length){ mergeFitness(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
-    dbFetchAll(DB_SHOPPING, function(rows, err){ if(rows && rows.length){ mergeShopping(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
-    dbFetchAll(DB_MEDIA, function(rows, err){ if(rows && rows.length){ mergeMedia(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
+    dbFetchAll(DB_MONEY, function(rows, err){ if(rows && rows.length){ mergeMoney(rows); oneDone(true,false); } else oneDone(false, !Array.isArray(rows), err); });
+    dbFetchAll(DB_HABIT, function(rows, err){ if(rows && rows.length){ mergeHabit(rows); oneDone(true,false); } else oneDone(false, !Array.isArray(rows), err); });
+    dbFetchAll(DB_PLAN, function(rows, err){ if(rows && rows.length){ mergePlan(rows); oneDone(true,false); } else oneDone(false, !Array.isArray(rows), err); });
+    dbFetchAll(DB_FITNESS, function(rows, err){ if(rows && rows.length){ mergeFitness(rows); oneDone(true,false); } else oneDone(false, !Array.isArray(rows), err); });
+    dbFetchAll(DB_SHOPPING, function(rows, err){ if(rows && rows.length){ mergeShopping(rows); oneDone(true,false); } else oneDone(false, !Array.isArray(rows), err); });
+    dbFetchAll(DB_MEDIA, function(rows, err){ if(rows && rows.length){ mergeMedia(rows); oneDone(true,false); } else oneDone(false, !Array.isArray(rows), err); });
   }
 
   function mergeMoney(rows){
-    if(!rows) return;
+    if(!rows || !rows.length) return;
     var remoteRecords = rows.map(function(r){
       var d = r["日期"] ? String(r["日期"]).slice(0,10) : isoDate();
       var cat = r["分类"] || "其他";
@@ -141,7 +141,24 @@ import * as XLSX from 'xlsx';
       var isIncome = note.indexOf("收入：") === 0;
       return {id:(r._id||r.record_id||uid()),type:'money',date:d,createdAt:Date.now(),sample:false,remoteId:(r._id||r.record_id),data:{flow:isIncome?'income':'expense',amount:amt,category:cat,note:isIncome?note.slice(3):note}};
     });
-    state.records = state.records.filter(function(r){return r.type!=='money';}).concat(remoteRecords);
+    // 合并策略（v3.17.27 修复数据丢失）：
+    // - 云端记录按 remoteId 匹配本地：有匹配则以云端为准（多端同步的最新值）；
+    // - 云端有、本地无 remoteId 匹配 → 其他设备新增，加入；
+    // - 本地无 remoteId（离线期间添加尚未上传）→ 无条件保留，绝不因云端覆盖而丢失。
+    // 原实现 `filter + concat(remoteRecords)` 会把这些离线新账目整体抹掉。
+    var byRemote = {};
+    remoteRecords.forEach(function(r){ byRemote[r.remoteId] = r; });
+    var localPending = state.records.filter(function(r){ return r.type==='money' && !r.remoteId; });
+    var remoteIds = new Set(remoteRecords.map(function(r){ return r.remoteId; }).filter(Boolean));
+    var localSynced = state.records.filter(function(r){
+      return r.type==='money' && r.remoteId && !remoteIds.has(r.remoteId);
+    });
+    state.records = state.records.filter(function(r){ return r.type!=='money'; })
+      .concat(localSynced)          // 云端已删除的本地记录，同步删除
+      .concat(remoteRecords)        // 云端记录（含他端新增）
+      .concat(localPending);        // 离线未上传的本地记录，保留并等待后续上传
+    // 离线记录补推云端，避免它们因云端从未收到而长期滞留本地
+    localPending.forEach(function(r){ pushMoney(r); });
   }
 
   function mergeHabit(rows){
@@ -427,6 +444,12 @@ import * as XLSX from 'xlsx';
   const IMPORT_CATEGORY_MAP_EXPENSE = {'早午晚餐':'吃饭','水果零食':'吃饭','餐饮':'吃饭','咖啡奶茶':'吃饭','交通':'交通','公交地铁':'交通','打车租车':'交通','购物':'购物','服装':'购物','娱乐':'娱乐','医疗':'看病','水电燃气':'房租','住房':'房租','教育':'学习','培训考试':'学习','快递':'其他','通讯':'其他','生活日用':'其他','美容':'其他','转账':'其他','消费':'其他','消费还款':'其他','花呗':'其他','其他':'其他'};
   const IMPORT_CATEGORY_MAP_INCOME = {'薪资':'工资','奖金':'奖金','收转账':'其他','红包':'其他','收红包':'其他','股票':'理财','理财':'理财','其他':'其他'};
   const CATEGORY_COLORS = ['#b65f42','#627a67','#7d5b75','#a57c45','#5f7188','#c58d69','#879a75','#8e8478'];
+  // 分类 → 稳定颜色：饼图/图例/明细徽章共用，保证同一分类全页同色
+  const categoryColor = function(cat){
+    const list=[...EXPENSE_CATEGORIES,...INCOME_CATEGORIES];
+    const idx=list.indexOf(cat);
+    return CATEGORY_COLORS[idx>=0?idx:list.length] || '#8e8478';
+  };
   const TYPE_META = {
     work:{label:'上班',icon:'i-clock',tone:'plum'},
     money:{label:'财务',icon:'i-wallet',tone:'terracotta'},fitness:{label:'健康',icon:'i-fitness',tone:'sage'},
@@ -616,7 +639,21 @@ import * as XLSX from 'xlsx';
     return true;
   }
   function deleteRecord(id){const target=state.records.find(r=>r.id===id);if(!target||!confirm(LANG==='en'?`Delete “${titleFor(target)}”? This cannot be undone.`:`确定删除“${titleFor(target)}”吗？删除后无法撤回。`))return;if(target.remoteId){if(target.type==='money')deleteRemoteMoney(target.remoteId);if(target.type==='planner')deleteRemotePlan(target.remoteId);if(target.type==='fitness')deleteRemoteFitness(target.remoteId);if(target.type==='home')deleteRemoteShopping(target.remoteId);}state.records=state.records.filter(r=>r.id!==id);const saved=saveState();renderAll();if(saved)toast('记录已删除');}
-  function switchView(view){const target=document.getElementById(`view-${view}`);if(!target)return;document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el===target));document.querySelectorAll('[data-nav]:not([data-work-sub])').forEach(el=>el.classList.toggle('active',el.dataset.nav===view));document.getElementById('viewTitle').textContent=target.dataset.title||'日常集';if(location.hash!==`#${view}`)history.replaceState(null,'',`#${view}`);scrollTo({top:0,behavior:'smooth'});}
+  // 生活模块切换后由外壳触发的刷新钩子（LifeWorkbench 注册）：
+  // 修复「切到记账页显示旧数据」——switchView 是纯 DOM 切换，原先不重跑渲染。
+  let _viewRefreshHook = null;
+  function setViewRefreshHook(fn){ _viewRefreshHook = typeof fn === 'function' ? fn : null; }
+  function switchView(view){
+    const target=document.getElementById(`view-${view}`);
+    if(!target)return;
+    document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el===target));
+    document.querySelectorAll('[data-nav]:not([data-work-sub])').forEach(el=>el.classList.toggle('active',el.dataset.nav===view));
+    const viewTitle = document.getElementById('viewTitle');
+    if (viewTitle) viewTitle.textContent=target.dataset.title||'日常集';
+    if(location.hash!==`#${view}`)history.replaceState(null,'',`#${view}`);
+    if (typeof _viewRefreshHook === 'function') _viewRefreshHook(view);
+    scrollTo({top:0,behavior:'smooth'});
+  }
   function formatDateHeading(value){if(value===isoDate())return t('今天');if(value===shiftDate(-1))return t('昨天');const date=new Date(`${value}T00:00:00`);return LANG==='en'?new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric'}).format(date):`${date.getMonth()+1} 月 ${date.getDate()} 日`;}
   function titleFor(record){const d=record.data||{},local=value=>record.sample?translateText(value):value;if(record.type==='work')return WORK_STATUS_LABELS[d.status]||'上班';if(record.type==='money')return d.note?local(d.note):t(d.category||'一笔收支');if(record.type==='planner')return d.title?local(d.title):t('一项日程');if(record.type==='fitness')return d.note?local(d.note):t('身体记录');if(record.type==='home')return d.name?local(d.name):t('待买物品');return t('生活记录');}
   function detailFor(record){const d=record.data||{};if(record.type==='work'){const note=d.note||'',tags=(d.tags||[]).filter(Boolean);return [note,...tags].filter(Boolean).join(' · ')||'';}if(record.type==='money')return`${t(d.category||'其他')} · ${t(d.flow==='income'?'收入':'支出')}`;if(record.type==='planner')return`${t(d.list||'生活')} · ${d.time||t('全天')} · ${t(d.done?'已完成':'待完成')}`;if(record.type==='fitness')return`${d.bodyFat?`${LANG==='en'?'Body fat':'体脂'} ${d.bodyFat}% · `:''}${d.duration||0} ${LANG==='en'?'min exercise':'分钟运动'}`;if(record.type==='home')return`${record.sample?translateText(d.quantity||'数量未填'):(d.quantity||t('数量未填'))} · ${t(d.category||'未分类')} · ${t(d.bought?'已买':'待买')}`;return'';}
@@ -625,6 +662,16 @@ import * as XLSX from 'xlsx';
   function recordTitleHtml(record){if(record.sample)return localizedHtml(titleFor(record));const raw=titleFor(record);const translated=translateText(raw);return translated!==raw?translated:userHtml(raw);}
   function empty(message){return`<div class="empty-state">${localizedHtml(message)}</div>`;}
   function taskRow(record,deletable=false){const d=record.data;const overdue=!d.done&&record.date<isoDate(),title=record.sample?(LANG==='en'&&d.titleEn?d.titleEn:localizedHtml(d.title)):userHtml(d.title),note=record.sample?localizedHtml(d.note||''):userHtml(d.note||'');return`<div class="task-row ${d.done?'done':''} ${overdue?'overdue':''}"><button class="check-btn ${d.done?'checked':''}" data-action="toggle-task" data-id="${record.id}" aria-label="${t('切换完成状态')}">${d.done?icon('i-check'):''}</button><span class="task-title">${title} <i class="list-tag">${localizedHtml(d.list||'生活')}</i><small>${note}${d.remind?` · ${t('到时提醒')}`:''}</small></span><span class="task-time">${overdue?t('已逾期'):escapeHtml(d.time||t('全天'))}</span><span class="priority-flag ${d.priority==='high'?'high':''}"></span>${deletable?`<button class="delete-btn" data-action="delete" data-id="${record.id}" aria-label="${t('删除')}">${icon('i-trash')}</button>`:''}</div>`;}
+  // 记账行（v3.17.27 展示优化）：分类徽章 + 备注主行 + 日期/流向次行 + 右对齐金额。
+  // 分类徽章颜色与消费结构饼图同源（categoryColor），全页视觉一致。
+  function moneyRow(r){
+    const d=r.data||{},isIncome=d.flow==='income';
+    const badge=`<span class="money-badge" style="background:${categoryColor(d.category)}">${escapeHtml(d.category||'其他')}</span>`;
+    const title=r.sample?localizedHtml(d.note||d.category||'一笔收支'):userHtml(d.note||d.category||'一笔收支');
+    const meta=`${escapeHtml(r.date)} · ${isIncome?t('收入'):t('支出')}`;
+    const amount=`<span class="money-amount ${isIncome?'income':'expense'}">${isIncome?'+':'−'}${money(d.amount)}</span>`;
+    return `<div class="money-row"><div class="money-main">${badge}<span class="money-text"><strong>${title}</strong><small>${meta}</small></span></div>${amount}<button class="delete-btn" data-action="delete" data-id="${r.id}" aria-label="${t('删除')}">${icon('i-trash')}</button></div>`;
+  }
   function recordRow(record){const meta=TYPE_META[record.type]||TYPE_META.home;const flowClass=record.type==='money'?record.data.flow:'';return`<div class="record-row"><span class="record-icon ${meta.tone}">${icon(meta.icon)}</span><span class="record-main"><strong>${recordTitleHtml(record)}</strong><small>${escapeHtml(formatDateHeading(record.date))} · ${recordDetailHtml(record)}</small></span><span class="record-amount ${flowClass}">${escapeHtml(valueFor(record))}</span><button class="delete-btn" data-action="delete" data-id="${record.id}" aria-label="${t('删除')}">${icon('i-trash')}</button></div>`;}
 
   function habitNameHtml(habit){const def=HABIT_DEFS.find(d=>d.key===habit.key);if(def)return escapeHtml(resolveHabitName(def));return habit.sample?localizedHtml(habit.name):userHtml(habit.name);}
@@ -703,22 +750,38 @@ import * as XLSX from 'xlsx';
     const svg=document.getElementById('moneyPie'),legend=document.getElementById('moneyLegend');
     if(!total){svg.innerHTML='<circle cx="110" cy="110" r="72" fill="#eee7df"/><text x="110" y="115" text-anchor="middle" fill="#8f8579" font-size="12">暂无支出</text>';legend.innerHTML='';return;}
     const circumference=2*Math.PI*72;let offset=0;
-    svg.innerHTML=`<circle cx="110" cy="110" r="72" fill="none" stroke="#eee7df" stroke-width="34"/>`+entries.map(([category,value],index)=>{const length=value/total*circumference;const item=`<circle cx="110" cy="110" r="72" fill="none" stroke="${CATEGORY_COLORS[index%CATEGORY_COLORS.length]}" stroke-width="34" stroke-dasharray="${length} ${circumference-length}" stroke-dashoffset="${-offset}" transform="rotate(-90 110 110)"/>`;offset+=length;return item;}).join('')+`<circle cx="110" cy="110" r="40" fill="white" fill-opacity=".85"/><text x="110" y="102" text-anchor="middle" fill="#9a9288" font-size="10" font-weight="400">${t('本月支出')}</text><text x="110" y="124" text-anchor="middle" fill="#3d3830" font-size="20" font-weight="500" letter-spacing="-0.5">${escapeHtml(money(total))}</text>`;
-    legend.innerHTML=entries.map(([category,value],index)=>`<div class="legend-item"><i style="background:${CATEGORY_COLORS[index%CATEGORY_COLORS.length]}"></i><span>${escapeHtml(category)}</span><b>${Math.round(value/total*100)}%</b></div>`).join('');
+    svg.innerHTML=`<circle cx="110" cy="110" r="72" fill="none" stroke="#eee7df" stroke-width="34"/>`+entries.map(([category,value])=>{const color=categoryColor(category),length=value/total*circumference;const item=`<circle cx="110" cy="110" r="72" fill="none" stroke="${color}" stroke-width="34" stroke-dasharray="${length} ${circumference-length}" stroke-dashoffset="${-offset}" transform="rotate(-90 110 110)"/>`;offset+=length;return item;}).join('')+`<circle cx="110" cy="110" r="40" fill="white" fill-opacity=".85"/><text x="110" y="102" text-anchor="middle" fill="#9a9288" font-size="10" font-weight="400">${t('本月支出')}</text><text x="110" y="124" text-anchor="middle" fill="#3d3830" font-size="20" font-weight="500" letter-spacing="-0.5">${escapeHtml(money(total))}</text>`;
+    legend.innerHTML=entries.map(([category,value])=>`<div class="legend-item"><i style="background:${categoryColor(category)}"></i><span>${escapeHtml(category)}</span><b>${Math.round(value/total*100)}%</b></div>`).join('');
   }
   function renderMoney(){
     const month=isoDate().slice(0,7),prev=previousMonthKey(),records=sortedRecords('money');
     const monthly=records.filter(r=>r.date.startsWith(month)),expenses=monthly.filter(r=>r.data.flow==='expense');
     const expense=sum(expenses,r=>r.data.amount),income=sum(monthly.filter(r=>r.data.flow==='income'),r=>r.data.amount),remain=income-expense;
     const prevExpense=sum(records.filter(r=>r.date.startsWith(prev)&&r.data.flow==='expense'),r=>r.data.amount);
-    document.getElementById('moneyIncome').textContent=money(income);document.getElementById('moneyExpense').textContent=money(expense);document.getElementById('moneyBalance').textContent=money(remain);
+    const incomeEl=document.getElementById('moneyIncome'),expenseEl=document.getElementById('moneyExpense'),balanceEl=document.getElementById('moneyBalance');
+    incomeEl.textContent=money(income);expenseEl.textContent=money(expense);balanceEl.textContent=money(remain);
+    // 易读性增强（v3.17.27）：红=支出，绿=收入；剩余为负红色警示
+    incomeEl.classList.toggle('metric-income',income>0);expenseEl.classList.toggle('metric-expense',expense>0);balanceEl.classList.toggle('negative',remain<0);
     if(prevExpense){const diff=expense-prevExpense,pct=Math.abs(diff/prevExpense*100).toFixed(0);document.getElementById('monthCompare').textContent=`比上月${diff>=0?'多':'少'}花了 ${money(Math.abs(diff))}`;document.getElementById('monthCompareDetail').textContent=`${diff>=0?'↑':'↓'} ${pct}% · 上月 ${money(prevExpense)}`;}else{document.getElementById('monthCompare').textContent='暂无对比';document.getElementById('monthCompareDetail').textContent='有了上月数据后，这里会显示变化';}
     const used=state.settings.budget?Math.round(expense/state.settings.budget*100):0;document.getElementById('budgetInput').value=state.settings.budget;document.getElementById('budgetBar').style.width=`${Math.min(100,used)}%`;document.getElementById('budgetUsedText').textContent=`已使用 ${used}%`;document.getElementById('budgetRemainText').textContent=`剩余 ${money(state.settings.budget-expense)}`;
-    const alert=document.getElementById('moneyAlert'),todayCount=records.filter(r=>r.date===isoDate()).length;
+    const alert=document.getElementById('moneyAlert'),todayCount=records.filter(r=>r.date===isoDate()&&r.type==='money').length;
     if(expense>state.settings.budget){alert.className='module-alert';alert.innerHTML=`<div><strong>本月支出已超预算 ${money(expense-state.settings.budget)}</strong><span>先看消费结构，再决定哪些支出可以放慢一点。</span></div>`;}else if(!todayCount){alert.className='module-alert good';alert.innerHTML='<div><strong>今天还没记账</strong><span>有空时补一笔，让月度趋势保持完整。</span></div>';}else if(state.settings.moneySinceExport>=20){alert.className='module-alert';alert.innerHTML='<div><strong>已新增 20 笔账目</strong><span>建议现在导出一次备份。</span></div>';}else alert.innerHTML='';
     const categories=[...new Set([...EXPENSE_CATEGORIES,...INCOME_CATEGORIES])];
     document.getElementById('moneyFilter').innerHTML='<option value="all">全部分类</option>'+categories.map(c=>`<option ${state.settings.moneyFilter===c?'selected':''}>${c}</option>`).join('');
-    const filtered=records.filter(r=>state.settings.moneyFilter==='all'||r.data.category===state.settings.moneyFilter);document.getElementById('moneyList').innerHTML=filtered.length?filtered.slice(0,60).map(recordRow).join(''):empty('这个分类还没有流水');
+    // 流水明细：按日期分组，组头显示日期 + 当日小计，组内用 moneyRow（分类徽章 + 备注 + 流向色金额）
+    const filtered=records.filter(r=>state.settings.moneyFilter==='all'||r.data.category===state.settings.moneyFilter).slice(0,120);
+    if(filtered.length){
+      const groups=groupByDate(filtered);
+      document.getElementById('moneyList').innerHTML=Object.keys(groups).sort((a,b)=>b.localeCompare(a)).map(date=>{
+        const items=groups[date].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+        const dayExp=sum(items.filter(r=>r.data.flow==='expense'),r=>r.data.amount);
+        const dayInc=sum(items.filter(r=>r.data.flow==='income'),r=>r.data.amount);
+        const sub=(dayInc>0?`+${money(dayInc)} `:'')+(dayExp>0?`−${money(dayExp)}`:'');
+        return `<div class="money-day"><div class="money-day-head"><strong>${escapeHtml(formatDateHeading(date))}</strong><span>${escapeHtml(date.slice(5))}</span><b>${escapeHtml(sub)}</b></div>${items.map(moneyRow).join('')}</div>`;
+      }).join('');
+    }else{
+      document.getElementById('moneyList').innerHTML=empty('这个分类还没有流水');
+    }
     renderMoneyPie(expenses);
   }
 
@@ -1005,4 +1068,4 @@ import * as XLSX from 'xlsx';
     // 上班日历标记/待办/打卡变更后，主页「今日工作」卡片即时刷新（由各 store save 后调用）
     window.__lifeRefreshWorkToday = renderWorkToday;
   }
-  export { initLife, renderAll, switchView, toast };
+  export { initLife, renderAll, switchView, toast, setViewRefreshHook };

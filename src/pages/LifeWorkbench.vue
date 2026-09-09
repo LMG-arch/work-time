@@ -13,7 +13,7 @@
 import { ref, computed, onMounted } from 'vue'
 import '../life/life.css'
 import markup from '../life/markup.html?raw'
-import { initLife } from '../life/lifeEngine.js'
+import { initLife, renderAll, setViewRefreshHook } from '../life/lifeEngine.js'
 
 // 上班日历子视图组件
 import CalendarView from './CalendarView.vue'
@@ -107,6 +107,10 @@ onMounted(async () => {
   _inited = true
   // 先等耐用存储把 FS 备份灌入缓存（安卓 WebView 清空后可恢复生活工作台数据），再初始化状态引擎
   try { await window.__storage.init() } catch (e) { /* 退化为 localStorage */ }
+  // 生活模块切换时强制重渲染：switchView 是纯 DOM 切换，原先切页不刷新数据，
+  // 导致记账数据在「记账理财 ↔ 今日总览」往返后显示旧值（延迟/不一致）。
+  // renderAll 为纯重渲染（从模块内 state 重新读，无监听器副作用），可安全重复调用。
+  setViewRefreshHook(() => { try { renderAll(); } catch (e) { console.warn('[LifeWorkbench] refresh failed:', e.message) } })
   initLife()
   // 暴露给 lifeEngine 侧边栏回调
   window.__workSubActivate = workSubActivate
