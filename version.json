@@ -1,14 +1,17 @@
 {
-  "version": "3.17.22",
-  "versionCode": 59,
-  "releaseDate": "2026-09-07",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.22/work-calendar-v3.17.22.apk",
+  "version": "3.17.23",
+  "versionCode": 60,
+  "releaseDate": "2026-09-09",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.23/work-calendar-v3.17.23.apk",
   "changelog": [
-    "fix: 通知「攒一堆、启动才一起弹」根治——根因1：cancelPendingByChannels 失效（getPending 不含 channelId 字段，恒匹配不到，旧通知从不取消、无限堆积）；改为 cancelPendingByKind 用 extra.kind + title 关键词双条件精准取消",
-    "fix: 根因2：resolveExactMode 误判权限字符串（原生返回 denied 而非 notGranted），导致精确闹钟判定失效、权限未授予时走 inexact 被 Doze 延迟合并；改为正确识别 granted/denied/notGranted",
-    "fix: 设置页精确闹钟申请 API 名错误（requestExactNotificationSetting 不存在，应为 changeExactNotificationSetting），导致无法正确授权",
-    "keep: v3.17.21 的 exact:true(setExactAndAllowWhileIdle) 精确触发 + safeSchedule 400 配额 + 14 天窗口保留",
-    "keep: v3.17.19 Bridge 插件异常 crash shield、v3.17.18 WebView 数据目录按版本隔离保留"
+    "feat: 生活工作台整合——统一外壳（记账/习惯/日程/待买/书影音/减脂/档案），上班日历 5 页作为「工作模块」并列嵌入，本地数据经耐用存储持久化",
+    "feat: 记账理财新增 Excel 账单导入——支持 xlsx/xls 解析、字段校验（日期/收支类型/金额/分类映射）、重复导入自动去重、成功/失败明确提示",
+    "fix: 点击日历日期无法弹出「上班/休息」状态标记弹层（移除 useSwipe 的 setPointerCapture，改 window 级指针监听）",
+    "fix: Electron 启动更新检查证书校验失败（改用 Electron net 模块走系统证书与代理）",
+    "fix: 主题/统计/设置/好友入口在窄窗口消失、页面无法滚动、好友动态拉空等联合异常（窗口最小宽 880 设计 + body 滚动恢复 + 好友刷新重放）",
+    "fix: 数据同步后日历/统计/待办视图不刷新（各 __refresh 回调改为真正重灌 Pinia store）",
+    "fix: 更新检查在纯 Node 环境（ELECTRON_RUN_AS_NODE）启动崩溃防护",
+    "keep: v3.17.22 通知攒批根治 + 精确闹钟 + 14 天配额窗口保留"
   ],
   "forceUpdate": false
 }
