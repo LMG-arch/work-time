@@ -1,11 +1,17 @@
 {
-  "version": "3.17.27",
-  "versionCode": 64,
+  "version": "3.17.28",
+  "versionCode": 65,
   "releaseDate": "2026-09-09",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.25/work-calendar-v3.17.25.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.28/work-calendar-v3.17.28.apk",
   "changelog": [
-    "feat: 日历点击交互改为内联展开——点击日期在其所在周下方直接展开该日「标签+待办」，再次点击收起，不再弹出快速标记弹窗（长按仍可快速标记）",
-    "feat: 移除右下角浮动「离线模式/同步状态」标签及其显示逻辑（云端失败提示保留在顶部横幅，可点击重试）"
+    "fix: 修复暗色主题下日历区不可读——生活工作台外壳令牌断裂，工作模块白字压暖纸底对比度仅约 1:1，现已为主题令牌化并新增 dark/cosmic 深色重映射，月标题对比度提升至约 16:1",
+    "fix: 修复输入框文字无法选中——body 级 user-select:none 传染到全部输入控件，手机端记账无法改字，现已恢复 input/textarea 可选中",
+    "fix: 修复 Inter 字体声明从未加载——字体栈首项恒回退雅黑，现已移除未加载的 Inter 声明",
+    "improve: 圆角体系归并——15 种散值（2~24px）收敛为 8/10/12/16/22/999 档，组件层级语义一致",
+    "improve: 生活工作台 268 处硬编码色令牌化，暗色主题下记账流水日分组底色、列表分隔线、提示文字全部随主题适配",
+    "improve: 主按钮归一为实心强调色；eyebrow 标签字号提升至可读下限 11px；hero 大数字 64px 降为响应式 clamp(44~56px)",
+    "improve: 新增键盘焦点环 :focus-visible；移除空状态装饰圆点；合并重复的 860px 断点块",
+    "improve: dark/cosmic 主题辅助文字 --text3 提亮，玻璃卡上对比度达 WCAG AA"
   ],
   "forceUpdate": false
 }

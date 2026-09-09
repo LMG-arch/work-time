@@ -19,7 +19,7 @@
 [data-theme="dark"] {
   --bg: radial-gradient(circle at 50% -20%, #1b2350 0%, #121733 50%, #0a0d1f 100%);
   --card: color-mix(in srgb, #6c7bff 10%, #141a33);
-  --text: #e6e9f5; --text2: #aab2d4; --text3: #6b7494;
+  --text: #e6e9f5; --text2: #aab2d4; --text3: #7f8ab0;
   --border: color-mix(in srgb, #6c7bff 22%, #232a4d);
   --header-bg: color-mix(in srgb, #6c7bff 6%, #121733);
   --hover: color-mix(in srgb, #6c7bff 12%, #141a33);
@@ -238,7 +238,7 @@ body[data-theme]::after {
 [data-theme="cosmic"] {
   --bg: radial-gradient(circle at 50% -10%, #16204a 0%, #0a0f24 45%, #04050d 100%);
   --card: rgba(18, 24, 48, 0.55);
-  --text: #eaf0ff; --text2: #aab4d4; --text3: #6f7aa0;
+  --text: #eaf0ff; --text2: #aab4d4; --text3: #7f8ab0;
   --border: rgba(255, 255, 255, 0.10);
   --header-bg: rgba(18, 24, 48, 0.45);
   --hover: rgba(255, 255, 255, 0.06);
@@ -373,6 +373,18 @@ body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+}
+
+/* v3.17.28 审美修复：正文禁选不传染输入控件与可编辑文本 */
+input, textarea, select {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* v3.17.28 审美修复：键盘焦点可见性（Tab 导航焦点环） */
+:focus-visible {
+  outline: 2px solid var(--accent, #5b6b8c);
+  outline-offset: 2px;
 }
 
 /* Ripple effect on buttons */
@@ -1197,10 +1209,10 @@ button:active::after {
   flex: 1.3; padding: 12px 0;
   font-size: 13px; font-weight: 600;
   border-radius: 12px;
-  background: var(--card);
+  background: var(--accent);
   border: 2px solid var(--accent);
   letter-spacing: 1px;
-  color: var(--accent);
+  color: #fff;
 }
 
 .tool-btn.primary-btn:hover {
@@ -1424,7 +1436,7 @@ button:active::after {
   line-height: 2;
 }
 .empty-tip::before {
-  content: '○';
+  content: '';
   display: block;
   font-size: 32px;
   margin-bottom: 8px;
@@ -2101,8 +2113,8 @@ body {
   box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 .tool-btn.primary-btn {
-  background: color-mix(in srgb, var(--accent) 9%, var(--card));
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 18%, transparent);
+  background: var(--accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
 /* ---- 模态 / 对话框：更柔和的入场与主题化阴影 ---- */
@@ -2126,9 +2138,7 @@ body {
   opacity: 0.85;
 }
 .empty-tip::before {
-  font-size: 36px;
-  opacity: 0.5;
-  margin-bottom: 10px;
+  display: none; /* v3.17.28：移除装饰圆点（AI 味模式） */
 }
 
 /* ---- 无障碍：尊重 prefers-reduced-motion ---- */
@@ -2842,3 +2852,66 @@ body.life-mode .life-app .brand {
   .stat-num { font-size: 22px; }
 }
 
+
+/* ============================================================
+   v3.17.28 审美修复 · P0 主题令牌断裂
+   生活工作台（.life-app）外壳原本使用固定暖纸令牌，不响应主题，
+   而工作模块文字跟随主题 → dark/cosmic 下白字压暖纸底不可读。
+   此处为暗色主题重映射 .life-app 锚点令牌，暖色主题保持不变。
+   ============================================================ */
+body[data-theme="dark"] .life-app,
+body[data-theme="cosmic"] .life-app {
+  --paper: #14121e;
+  --life-card: #211d2e;
+  --ink: #ece7f4;
+  --muted: #9a92aa;
+  --line: rgba(255, 255, 255, 0.11);
+  --plum: #c9a5c9;
+  --plum-solid: #5d3c5c;
+  --plum-soft: rgba(201, 165, 201, 0.16);
+  --terra: #e29a7a;
+  --terra-soft: rgba(226, 154, 122, 0.15);
+  --sage: #8fbf97;
+  --sage-soft: rgba(143, 191, 151, 0.15);
+  --sand: #d9b983;
+  --sand-soft: rgba(217, 185, 131, 0.15);
+  --red: #e2867d;
+  --green: #7ec48f;
+  --life-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+  --sb-bg: #1b1728;
+  --sb-border: rgba(255, 255, 255, 0.08);
+  --nav-idle: #a49cb4;
+  --nav-hover: rgba(255, 255, 255, 0.07);
+  --ink-solid: #ece7f4;
+  --tint-1: #262132;
+  --tint-2: #24302c;
+  --tint-3: #282236;
+  --tint-4: #1c1827;
+  --tint-5: #1c1827;
+  --tint-6: #262132;
+  --tint-7: #2c2740;
+  --tint-8: #262132;
+  --tint-9: #241f30;
+  --tint-10: #1f1a2c;
+  --tint-11: rgba(20, 18, 30, 0);
+  --hint: #a49cb4;
+  --hint-2: #8d859e;
+  --hint-3: #8d859e;
+  --hint-4: #8d859e;
+  --hint-5: #a49cb4;
+  --alert-border: rgba(226, 154, 122, 0.4);
+  --alert-bg: rgba(226, 154, 122, 0.12);
+  --alert-fg: #e2a98a;
+  --alert-danger-border: rgba(226, 134, 125, 0.4);
+  --alert-danger-bg: rgba(226, 134, 125, 0.12);
+  --alert-good-border: rgba(126, 196, 143, 0.35);
+  --alert-good-bg: rgba(126, 196, 143, 0.12);
+  --alert-good-fg: #8ec89c;
+}
+
+/* 生活外壳文字随主题令牌：暗色下深墨按钮白字、浅色下白字深墨 */
+body[data-theme="dark"] .life-app .btn.ink,
+body[data-theme="cosmic"] .life-app .btn.ink {
+  background: var(--ink-solid);
+  color: #14121e;
+}
