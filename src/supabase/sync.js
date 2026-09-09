@@ -124,21 +124,16 @@ async function pullCalendarData() {
 
 // Smart sync: pull cloud data, merge with local, push back
 // 排队机制：同步进行中时，后续调用等待而非丢弃
-let _syncPromise = null;
-let _syncQueued = false;
+// 并发安全：所有调用方共享同一个「队尾 Promise 链」。当同步在跑时，新调用
+// 追加到队尾；前一次同步结束后，队列任务按顺序串行执行，杜绝两个同步
+// 同时读写云端导致的丢失更新（lost update）。
+let _syncTail = Promise.resolve(); // 同步队列队尾（始终 resolved）
 async function syncCalendarData() {
-  if (_syncPromise) {
-    // 当前有同步在运行，标记排队并等待完成后重试一次
-    _syncQueued = true;
-    await _syncPromise;
-    _syncQueued = false;
-  }
-  _syncPromise = _doSyncCalendarData();
-  try {
-    return await _syncPromise;
-  } finally {
-    _syncPromise = null;
-  }
+  // 排队：把本次同步任务挂到队尾，前序任务（含正在运行的）完成后才执行
+  const run = _syncTail.then(() => _doSyncCalendarData());
+  // 队尾接管：无论 run 成功与否，队列都必须继续前进
+  _syncTail = run.catch(() => {});
+  return run;
 }
 
 async function _doSyncCalendarData() {
@@ -327,7 +322,7 @@ function autoSyncPush() {
     // 否则先前 await autoSyncPush() 的调用方将永久悬挂。
     if (_syncTimerResolve) { _syncTimerResolve({ error: null, debounced: true }); _syncTimerResolve = null; }
   }
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     _syncTimerResolve = resolve;
     _syncTimer = setTimeout(async () => {
       _syncTimer = null;
@@ -336,8 +331,11 @@ function autoSyncPush() {
         const result = await syncCalendarData();
         resolve(result);
       } catch (e) {
+        // 修复：自动同步失败不 reject（electron/api.js 等 6 处调用方直接
+        // autoSyncPush() 未挂 .catch，reject 会形成 unhandled rejection）；
+        // 改为 resolve 带 error 字段，调用方 .then 照常执行。
         console.log('[Sync] Auto-sync failed:', e.message);
-        reject(e);
+        resolve({ error: e.message });
       }
     }, 3000);
   });

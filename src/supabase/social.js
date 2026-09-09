@@ -33,10 +33,14 @@ async function getMyProfile() {
   // 不过滤 deleted_at — 清除数据后自己的 profile 可能被软删除
   const { data: profile } = await window.sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
   if (!profile) {
-    // Create default profile
+    // Create default profile（并发竞态保护：两设备同时首次加载会同时插入 →
+    // PK 冲突导致后插入者报错并返回 null。改用 upsert+ignoreDuplicates 幂等化，
+    // 冲突方静默跳过，随后统一重新读取，保证两个设备都能拿到 profile）
     const nickname = window.__storage.getRaw('social-nickname') || '用户' + user.id.slice(0, 4);
-    const { data, error } = await window.sb.from('profiles').insert({ id: user.id, nickname }).select().single();
-    if (error) { console.error('[Supabase] getMyProfile insert error:', error); return null; }
+    const { error: upsertErr } = await window.sb.from('profiles')
+      .upsert({ id: user.id, nickname }, { onConflict: 'id', ignoreDuplicates: true });
+    if (upsertErr) { console.error('[Supabase] getMyProfile upsert error:', upsertErr); return null; }
+    const { data } = await window.sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
     return data;
   }
   // Follow linked_id for multi-device support

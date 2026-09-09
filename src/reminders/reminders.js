@@ -1,8 +1,7 @@
 // reminders.js — Clock-in, reminders, notifications
 
 export async function loadReminders() {
-  allReminders = await window.calendarAPI.getReminders();
-  window.allReminders = allReminders;
+  window.allReminders = await window.calendarAPI.getReminders();
 }
 
 // 生成不重复的通知 ID（Java int 范围：-2147483648 ~ 2147483647）
@@ -16,16 +15,15 @@ export function generateNotifId() {
 }
 
 export async function loadReminderRecords() {
-  allReminderRecords = await window.calendarAPI.getAllReminderRecords();
-  window.allReminderRecords = allReminderRecords;
+  window.allReminderRecords = await window.calendarAPI.getAllReminderRecords();
 }
 
 export function getReminderRecordsForDate(dateStr) {
-  return allReminderRecords[dateStr] || {};
+  return (window.allReminderRecords || {})[dateStr] || {};
 }
 
 export function isReminderConfirmed(reminderId, dateStr) {
-  const records = allReminderRecords[dateStr];
+  const records = (window.allReminderRecords || {})[dateStr];
   return records && records[reminderId] && records[reminderId].confirmed;
 }
 
@@ -290,9 +288,9 @@ export async function diagnoseNotifications() {
 }
 
 export function getClockinStatusForDate(dateStr) {
-  const enabled = allReminders.filter(r => r.enabled);
+  const enabled = (window.allReminders || []).filter(r => r && r.enabled);
   if (enabled.length === 0) return null;
-  const records = allReminderRecords[dateStr] || {};
+  const records = (window.allReminderRecords || {})[dateStr] || {};
   const confirmed = enabled.filter(r => records[r.id] && records[r.id].confirmed);
   if (confirmed.length === 0) return null;
   return { confirmed: confirmed.length, total: enabled.length };
@@ -427,9 +425,9 @@ async function resolveExactMode(LocalNotifications) {
 }
 
 export async function scheduleReminderNotifications() {
-  if (reminderNotifTimer) clearInterval(reminderNotifTimer);
+  if (window.reminderNotifTimer) clearInterval(window.reminderNotifTimer);
 
-  const enabled = allReminders.filter(r => r.enabled);
+  const enabled = (window.allReminders || []).filter(r => r && r.enabled);
   if (enabled.length === 0) {
     // 修复：禁用全部提醒后也必须取消已调度的打卡通知，否则旧通知照常"幽灵弹出"
     await cancelPendingByKind('clockin', '打卡提醒');
@@ -558,7 +556,7 @@ export async function scheduleReminderNotifications() {
         const dateStr = dateToStr(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
 
         // 检查目标日期是否是非工作日
-        const dayData = allData[dateStr];
+        const dayData = (window.allData || {})[dateStr];
         if (dayData && nonWorkStatuses.includes(dayData.status)) continue;
 
         for (const r of enabled) {
@@ -680,7 +678,7 @@ export async function scheduleTodoReminders() {
       // 与打卡共用同一精确闹钟判定，确保待办提醒也实时、精确触发
       const useExact = await resolveExactMode(LocalNotifications);
 
-      const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
+      const todosWithRemind = (window.allTodos || []).filter(t => t && t.remind && !t.done);
       // 修复：调度前先【await】取消旧的待办通知，避免重复叠加与配额泄漏；无待办时也清除。
       // 必须 await —— 否则取消与新调度并发竞争，旧闹钟未释放就叠加新的，长期累积会突破系统上限。
       await cancelPendingByKind('todo', '待办提醒');
@@ -754,7 +752,7 @@ export async function scheduleTodoReminders() {
 
   todoRemindTimer = setInterval(() => {
     if (todoPollingPaused) return;
-    const todosWithRemind = allTodos.filter(t => t.remind && !t.done);
+    const todosWithRemind = (window.allTodos || []).filter(t => t && t.remind && !t.done);
     if (todosWithRemind.length === 0) return;
 
     const now = new Date();
