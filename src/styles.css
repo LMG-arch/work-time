@@ -2708,26 +2708,10 @@ body.life-mode #app > .life-app {
 body.life-mode .toolbar {
   display: none;
 }
-/* 主题统一（弹层）：上班日历的 ActionSheet/TodoModal/ReminderSettings 等
-   通过 Teleport 挂到 body，继承 body[data-theme]（如 cosmic 深色）变量，
-   而非 #work-embed 的纸墨变量，导致弹出层深色与暖色外壳不协调。
-   在 life-mode 下把主题变量映射到纸墨色板，优先级高于 [data-theme]。 */
-body.life-mode {
-  --bg: #f5f0e8;
-  --card: #fffdfa;
-  --text: #29251f;
-  --text2: #5f574e;
-  --text3: #9a9186;
-  --border: #ded5c8;
-  --header-bg: rgba(255, 253, 250, 0.6);
-  --hover: rgba(77, 48, 69, 0.06);
-  --selected: rgba(77, 48, 69, 0.12);
-  --accent: #4d3045;
-  --accent-soft: #e8dfe5;
-  --toolbar-bg: rgba(255, 253, 250, 0.78);
-  --toolbar-border: #ded5c8;
-  --toast-bg: #4d3045;
-}
+/* 主题修复（v3.17.26）：原先此处用 body.life-mode 无条件覆盖 --bg/--card 等变量到纸墨色板，
+   特异性（0,1,1）高于 [data-theme]（0,1,0），导致设置页切换主题完全失效（视觉无变化）。
+   删除覆盖块，让 body[data-theme] 的主题变量全局生效——含内嵌的上班日历视图与
+   Teleport 弹层；生活工作台自身使用 --paper/--life-card 等独立命名空间变量，不受影响。 */
 /* 生活工作台自带滚动，关闭 #app>div 的滚动容器约束（v-html 生成 .life-app 直属 #app） */
 body.life-mode #app > .life-app,
 body.life-mode #app > div {
@@ -2806,31 +2790,13 @@ body.life-mode .life-app .brand {
 }
 
 /* ============================================================
-   主题统一：上班日历模块继承生活工作台的纸墨暖色系
-   —— 上班日历组件依赖 --bg/--card/--text/--accent/--work/--rest…
-      等主题变量；嵌入 .life-app 后原会向上冒泡到 body[data-theme]
-      （如 cosmic 深色主题），导致浅色文字画在浅纸背景上、颜色错乱。
-      此处把上班日历所需变量映射到外壳纸墨色板，使工作模块与
-      生活外壳视觉统一，且不影响非 life-mode 下的主题切换。
+   主题修复（v3.17.26）：删除原先无条件覆盖 --bg/--card 等主题变量的纸墨色板。
+   上班日历模块改为「继承 body[data-theme] 主题变量」，切换主题后日历/打卡/
+   好友/统计/设置 5 页与 Teleport 弹层全部随主题即时变色。
+   工作模块的容器背景用 var(--bg) 填充，随主题变化；生活工作台自身
+   （--paper/--life-card 等独立命名空间）保持暖色外壳不受影响。
    ============================================================ */
 #work-embed {
-  --bg: #f5f0e8;
-  --card: #fffdfa;
-  --text: #29251f;
-  --text2: #5f574e;
-  --text3: #9a9186;
-  --border: #ded5c8;
-  --header-bg: rgba(255, 253, 250, 0.6);
-  --hover: rgba(77, 48, 69, 0.06);
-  --selected: rgba(77, 48, 69, 0.12);
-  --accent: #4d3045;
-  --accent-soft: #e8dfe5;
-  --toolbar-bg: rgba(255, 253, 250, 0.78);
-  --toolbar-border: #ded5c8;
-  --toast-bg: #4d3045;
-  --shadow-md: 0 8px 30px rgba(63, 48, 36, 0.10);
-  --shadow-lg: 0 18px 50px rgba(63, 48, 36, 0.14);
-  /* 上班日历 7 种状态色：沿用生活外壳 plum/terra/sage/sand 色板 */
   --work: #477358;
   --rest: #4d6f9e;
   --trip: #b65f42;
@@ -2838,6 +2804,8 @@ body.life-mode .life-app .brand {
   --annual: #4d8a8a;
   --sick: #b44d43;
   --personal: #a57c45;
+  background: var(--bg, transparent);
+  border-radius: 12px;
 }
 
 

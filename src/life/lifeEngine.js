@@ -28,7 +28,7 @@ import * as XLSX from 'xlsx';
         all = all.concat(result.results || []);
         if (result.hasMore && result.nextCursor) { cursor = result.nextCursor; fetchPage(); }
         else { if(cb) cb(all); }
-      }).catch(function(err){ if(cb) cb(null); });
+      }).catch(function(err){ if(cb) cb(null, (err && err.message) || '网络错误'); });
     }
     fetchPage();
   }
@@ -82,7 +82,6 @@ import * as XLSX from 'xlsx';
       }
     });
   }
-
   var _freshTimer = null;
   function subscribeUpdates(){
     if(!db || typeof db.onUpdated !== 'function') return;
@@ -101,28 +100,35 @@ import * as XLSX from 'xlsx';
   }
 
   function pullAllRemote(cb){
-    if (!ONLINE || LOCAL_ONLY) { setSyncState('online', LANG==='en' ? 'Saved locally' : '已保存到本机'); if(cb) cb(false); return; }
+    // 修复（v3.17.26）：ONLINE 为 false 意味着云端 SDK 从未接入（window.__SMART_PAGE__
+    // 无任何注入点），此时不存在「云端同步」概念——数据本来就只存本机。
+    // 原先此处回调 cb(false)，retrySync 据此展示「云端同步失败」横幅且永无消失路径。
+    // 现改为：静默返回，不显示失败横幅（横幅仅在有云端接入但读写失败时出现）。
+    if (!ONLINE || LOCAL_ONLY) { setSyncState('online', LANG==='en' ? 'Saved locally' : '已保存到本机'); if(cb) cb(true); return; }
     setSyncState('syncing', LANG==='en' ? 'Syncing…' : '同步中…');
-    var pending = 6, done = 0, changed = false, failed = 0;
-    function oneDone(c, fail){
-      done++; if(c) changed = true; if(fail) failed++;
+    var pending = 6, done = 0, changed = false, failed = 0, lastErr = '';
+    function oneDone(c, fail, errMsg){
+      done++; if(c) changed = true; if(fail){ failed++; if(errMsg) lastErr = errMsg; }
       if(done>=pending){
         if(failed>0){
           setSyncState('offline', LANG==='en' ? 'Offline' : '离线模式');
-          showSyncBanner(LANG==='en' ? 'Some data could not be loaded from the cloud. Local copy is shown. Try again.' : '部分云端数据读取失败，当前展示本机已有内容。点击重试。');
+          // 给出明确错误原因，而非笼统的「部分云端数据读取失败」
+          showSyncBanner(LANG==='en'
+            ? ('Cloud sync failed: ' + (lastErr || 'some data could not be loaded') + '. Local copy is shown. Tap retry to resync.')
+            : ('云端同步失败：' + (lastErr || '部分数据读取失败') + '。当前展示本机已有内容，点击重试。'));
         } else {
           setSyncState('online', LANG==='en' ? 'Synced' : '已同步');
           hideSyncBanner();
         }
-        if(cb) cb(changed);
+        if(cb) cb(failed === 0);
       }
     }
-    dbFetchAll(DB_MONEY, function(rows){ if(rows && rows.length){ mergeMoney(rows); oneDone(true,false); } else oneDone(false, !rows); });
-    dbFetchAll(DB_HABIT, function(rows){ if(rows && rows.length){ mergeHabit(rows); oneDone(true,false); } else oneDone(false, !rows); });
-    dbFetchAll(DB_PLAN, function(rows){ if(rows && rows.length){ mergePlan(rows); oneDone(true,false); } else oneDone(false, !rows); });
-    dbFetchAll(DB_FITNESS, function(rows){ if(rows && rows.length){ mergeFitness(rows); oneDone(true,false); } else oneDone(false, !rows); });
-    dbFetchAll(DB_SHOPPING, function(rows){ if(rows && rows.length){ mergeShopping(rows); oneDone(true,false); } else oneDone(false, !rows); });
-    dbFetchAll(DB_MEDIA, function(rows){ if(rows && rows.length){ mergeMedia(rows); oneDone(true,false); } else oneDone(false, !rows); });
+    dbFetchAll(DB_MONEY, function(rows, err){ if(rows && rows.length){ mergeMoney(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
+    dbFetchAll(DB_HABIT, function(rows, err){ if(rows && rows.length){ mergeHabit(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
+    dbFetchAll(DB_PLAN, function(rows, err){ if(rows && rows.length){ mergePlan(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
+    dbFetchAll(DB_FITNESS, function(rows, err){ if(rows && rows.length){ mergeFitness(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
+    dbFetchAll(DB_SHOPPING, function(rows, err){ if(rows && rows.length){ mergeShopping(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
+    dbFetchAll(DB_MEDIA, function(rows, err){ if(rows && rows.length){ mergeMedia(rows); oneDone(true,false); } else oneDone(false, !rows, err); });
   }
 
   function mergeMoney(rows){

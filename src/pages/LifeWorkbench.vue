@@ -10,7 +10,7 @@
 //   再回调 window.__workSubActivate(sub)，本组件据此显示对应的上班日历页面。
 // - 上班日历 5 页常驻挂载（v-show 切换、永不卸载），保留各自 onMounted 一次性初始化，
 //   避免 document 级监听重复绑定、视图状态丢失。
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import '../life/life.css'
 import markup from '../life/markup.html?raw'
 import { initLife } from '../life/lifeEngine.js'
@@ -43,10 +43,53 @@ const workNavLabels = {
 }
 const activeWork = ref('calendar')
 
+// ── 导航栏设置（v3.17.26）：上班日历 5 个子页的显隐开关 ──
+// 存储键与 SettingsPage 一致（calendar-nav-items），支持跨端同步的单一真值。
+const NAV_ITEMS_KEY = 'calendar-nav-items'
+// 子页 id → 与经典 toolbar 按钮 id 的映射（home=日历、clockin=打卡…）
+const WORK_NAV_MAP = {
+  calendar: 'home',
+  clockin: 'clockin',
+  social: 'social',
+  stats: 'stats',
+  settings: 'settings',
+}
+// 已启用的子页列表；日历与设置是「固定项」不允许隐藏
+const enabledWorkPages = ref(loadNavEnabled())
+function loadNavEnabled() {
+  try {
+    const val = window.__storage?.get(NAV_ITEMS_KEY)
+    if (Array.isArray(val)) return val
+  } catch (e) { console.warn('[LifeWorkbench] load nav items failed:', e.message) }
+  return workOrder.slice() // 默认全部启用
+}
+// 判定子页是否启用：SettingsPage 存的是经典 id（home=日历），
+// 需经 WORK_NAV_MAP 映射后再比对；日历/设置为固定项恒启用
+function isPageEnabled(page) {
+  if (page === 'calendar' || page === 'settings') return true
+  const legacy = WORK_NAV_MAP[page] || page
+  return enabledWorkPages.value.includes(legacy)
+}
+// 始终保留固定项（日历/设置），并按默认顺序输出可见子页
+const visibleWorkOrder = computed(() => workOrder.filter(p => isPageEnabled(p)))
+function applyWorkNavVisibility(items) {
+  enabledWorkPages.value = Array.isArray(items) ? items.slice() : loadNavEnabled()
+  // 侧边栏「工作模块」条目显隐（生活工作台 markup 中的静态 DOM）
+  workOrder.forEach(page => {
+    const show = isPageEnabled(page)
+    document.querySelectorAll(`.life-app [data-nav="work"][data-work-sub="${page}"]`).forEach(el => {
+      el.style.display = show ? '' : 'none'
+    })
+  })
+}
+window.__applyWorkNavVisibility = applyWorkNavVisibility
+
 let _inited = false
 
 // 由 lifeEngine 侧边栏「工作模块」点击回调
 function workSubActivate(sub) {
+  // 被导航设置隐藏的子页不可激活（日历/设置固定项除外）
+  if (!isPageEnabled(sub)) return
   if (workPages[sub]) activeWork.value = sub
   // 同步所有「工作模块」相关按钮高亮：侧边栏条目 + 移动端子页导航
   const navItems = document.querySelectorAll('.life-app [data-nav="work"]')
@@ -54,9 +97,9 @@ function workSubActivate(sub) {
     const itemSub = item.getAttribute('data-work-sub')
     item.classList.toggle('active', (itemSub || 'calendar') === sub)
   })
-  // 工作区内部子页导航高亮（移动端可见）
+  // 工作区内部子页导航高亮（移动端可见；按 visibleWorkOrder 顺序对齐）
   const subBtns = document.querySelectorAll('.work-subnav button')
-  subBtns.forEach((btn, idx) => btn.classList.toggle('active', workOrder[idx] === sub))
+  subBtns.forEach((btn, idx) => btn.classList.toggle('active', visibleWorkOrder.value[idx] === sub))
 }
 
 onMounted(async () => {
@@ -73,6 +116,8 @@ onMounted(async () => {
     delete window.__pendingActivate
     if (typeof window.__vueActivate === 'function') window.__vueActivate(pending)
   }
+  // 导航栏设置初始化：按已存配置隐藏侧边栏工作条目（含固定项保护）
+  applyWorkNavVisibility(enabledWorkPages.value)
 })
 </script>
 
@@ -83,7 +128,7 @@ onMounted(async () => {
   <Teleport to="#work-embed">
     <div class="work-stage">
       <nav class="work-subnav" aria-label="工作子页导航">
-        <button v-for="page in workOrder" :key="page" :class="{ active: activeWork === page }" @click="workSubActivate(page)">
+        <button v-for="page in visibleWorkOrder" :key="page" :class="{ active: activeWork === page }" @click="workSubActivate(page)">
           {{ workNavLabels[page] }}
         </button>
       </nav>

@@ -493,10 +493,15 @@ function getNavItems() {
 function saveNavItems(items) {
   window.__storage.set(NAV_ITEMS_KEY, items)
   navEnabled.value = items
+  // 经典 toolbar（非 life-mode 兜底路径）
   allNavItems.forEach(item => {
     const btn = document.getElementById(item.id + '-btn')
     if (btn) btn.style.display = items.includes(item.id) ? '' : 'none'
   })
+  // 统一外壳：侧边栏「工作模块」条目 + 移动端工作子页导航即时显隐
+  // （v3.17.26 修复：此前仅操作经典 toolbar，而 life-mode 下 toolbar 被隐藏，
+  //   导致导航栏设置开关后界面上无任何变化——功能看似失效。）
+  window.__applyWorkNavVisibility?.(items)
 }
 function toggleNavItem(itemId) {
   let items = [...navEnabled.value]
