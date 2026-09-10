@@ -12,11 +12,7 @@ const calendarStore = useCalendarStore()
 const props = defineProps({
   selectedDate: { type: String, default: null }
 })
-// marked：用户在面板内完成一次「选择/标记」动作（状态/颜色/加标签/存备注）后通知父级，
-// 由 CalendarView 收起内联展开面板，避免面板持续展开遮挡日历内容（v3.17.31）。
-const emit = defineEmits(['marked'])
 
-const internalDate = ref(null)
 const dayData = ref({})
 
 // Support both prop-driven (Vue CalendarView) and bridge-driven (traditional view)
@@ -35,13 +31,12 @@ function updateData() {
   dayData.value = calendarStore.getDayData(selectedDate.value)
 }
 
-// 选择完成后的统一出口：刷新面板数据 + 折叠本面板的折叠区 + 通知父级收起展开层。
-// 折叠区（出勤状态/备注）随之收起，用户下次点击日期格重新展开，交互闭环。
+// 选择完成后的统一出口：刷新面板数据 + 折叠本面板的折叠区。
+// 面板本身的展开/收起由父级 selectedDate 驱动（点同一天收起），此处不再通知父级。
 function onMarked() {
   updateData()
   statusOpen.value = false
   noteOpen.value = false
-  emit('marked')
 }
 
 function openAddTodo() { window.__openTodoModal?.() }

@@ -1,12 +1,11 @@
 {
-  "version": "3.17.31",
-  "versionCode": 68,
+  "version": "3.17.32",
+  "versionCode": 69,
   "releaseDate": "2026-09-10",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.31/work-calendar-v3.17.31.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.32/work-calendar-v3.17.32.apk",
   "changelog": [
-    "improve: 日历详情面板完成选择后自动收起——点击出勤状态/标记颜色/标签后，内联展开面板与折叠区自动收起，不再遮挡日历",
-    "improve: 消费结构图例移除消费占比，仅保留分类色点与名称；饼图中心与轨道颜色跟随主题（暗色下不再是白底圆）",
-    "fix: 主题一致性修复——打卡页成长苗颜色随主题变化（cosmic 呈紫蓝系、green 呈绿色系）；记账收入/支出/对比/目标卡片与流水分隔线改用主题令牌，暗色下不再刺眼"
+    "improve: 日历点击交互重构——点击某天直接展开下方详情区，再次点击同一天收起（支持展开/收起切换），不再弹出独立小窗口",
+    "improve: 点击详情区空白处也可收起面板；面板内完成标记后面板保持展开便于连续操作"
   ],
   "forceUpdate": false
 }
