@@ -1,3 +1,22 @@
+## v3.17.30 — 详情面板「出勤状态/备注」默认折叠
+
+### 需求
+- 用户反馈详情面板下半部分信息密度过高：出勤状态按钮组与备注编辑区始终完整展开
+- 要求：默认收起、仅显示标题+摘要，点击展开/再点收起；上半部分（日期头/颜色/标签/待办）保持原样
+
+### 实现
+- DetailPanel.vue：新增 `statusOpen`/`noteOpen`（默认 false=收起），`statusSummary`/`noteSummary` 计算属性
+  - 出勤状态 → `.detail-fold`（标题「出勤状态」+ 摘要「未标记/上班/休息…」+ chevron），内嵌 StatusButtons
+  - 备注 → 同构 `.detail-fold`（标题「备注」+ 摘要「空/内容截断」），内嵌 NoteEditor
+  - 颜色/标签区不包裹，保持原布局
+- styles.css：`.detail-fold` 样式（边框圆角卡、head flex 行、摘要右对齐省略、按状态着色 7 态、chevron 旋转 90°）
+- CalendarView.vue：`onDetailClick` 排除 `.detail-fold`，fold 头部点击不触发日历展开面板收起
+
+### 验证（agent-browser @5214）
+- 初始两折均收起（body display:none，摘要「未标记」「空」）
+- 展开出勤状态显示 7 个按钮；点「上班」→ 摘要变「上班」且落库 `allData['2026-09-10']`
+- 备注折叠展开 textarea+保存按钮正常；待办/标签/颜色/宫格区不受影响；无布局错位
+
 ## v3.17.29 — 六项交互修复（登录持久化 + 日历收起 + 周历切换 + 表单折叠）
 
 ### 1. 账号登录持久化（重启不丢）

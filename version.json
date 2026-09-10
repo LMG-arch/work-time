@@ -1,14 +1,11 @@
 {
-  "version": "3.17.29",
-  "versionCode": 66,
+  "version": "3.17.30",
+  "versionCode": 67,
   "releaseDate": "2026-09-09",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.29/work-calendar-v3.17.29.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.30/work-calendar-v3.17.30.apk",
   "changelog": [
-    "fix: 修复账号登录状态重启丢失——设置页常驻挂载早于会话恢复完成，恢复后无 UI 刷新，现已在会话恢复/自动登录完成后补刷设置页账号区，重启即保持在线",
-    "fix: 修复日历内联展开无法收起——点击底部详情区（待办/标签等非编辑区域）即可收起展开面板，展开/收起双向切换",
-    "improve: 日程周历支持切换周次——新增上一周/本周/下一周导航，周内日期可点选过滤当天日程，再点取消",
-    "improve: 记账/日程等 5 个卡片式输入表单统一支持展开/收起——点击卡片头部切换，折叠状态持久化，重启后保持",
-    "improve: 周历日期格可点击选中高亮，清单标题随周次动态显示（如「2026 年 9 月」）"
+    "improve: 日历详情面板「出勤状态」「备注」默认收起——仅显示标题与当前摘要（如 未标记/上班/空），点击展开完整内容，再点收起，箭头随状态旋转",
+    "improve: 摘要实时跟随数据变化，出勤摘要按状态着色（上班/休息/出差等 7 态），收起展开均不挤动上方布局"
   ],
   "forceUpdate": false
 }

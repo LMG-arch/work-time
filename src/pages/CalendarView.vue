@@ -276,8 +276,9 @@ function selectDate(dateStr, isOther) {
 // 点击底部详情区（待办/标签等非编辑控件区域）收起内联展开面板，
 // 使展开/收起交互一致：点日期格展开，点下方区域或面板自身即可收起。
 // 排除表单控件与待办/标签的操作元素（勾选、编辑、删除、加标签），保证其原功能不被误触发收起。
+// .detail-fold-head（出勤状态/备注折叠头）也是 button，点击只切换折叠不收起面板。
 function onDetailClick(e) {
-  if (e.target.closest('input, textarea, select, button, a, label, [contenteditable], .todo-check, .todo-edit, .todo-del, .tag-remove, .tag-add-btn, .quick-tag, .color-dot, .status-btn')) return
+  if (e.target.closest('input, textarea, select, button, a, label, [contenteditable], .todo-check, .todo-edit, .todo-del, .tag-remove, .tag-add-btn, .quick-tag, .color-dot, .status-btn, .detail-fold')) return
   expandDate.value = null
 }
 

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useCalendarStore } from '../stores/calendarStore.js'
 import StatusButtons from './StatusButtons.vue'
 import ColorPicker from './ColorPicker.vue'
@@ -47,15 +47,62 @@ watch(() => props.selectedDate, (newVal) => {
 }, { immediate: true })
 
 watch(selectedDate, updateData)
+
+// ===== 出勤状态 / 备注折叠（v3.17.30）=====
+// 默认收起仅显示标题+摘要；点击标题行展开/收起。折叠偏好跨日期保留，切换日期不跳动。
+const statusOpen = ref(false)
+const noteOpen = ref(false)
+
+const STATUS_LABELS = { work: '上班', rest: '休息', trip: '出差', leave: '请假', annual: '年假', sick: '病假', personal: '事假' }
+const statusSummary = computed(() => {
+  const s = dayData.value?.status
+  return s ? (STATUS_LABELS[s] || s) : '未标记'
+})
+const noteSummary = computed(() => {
+  const n = (dayData.value?.note || '').trim()
+  if (!n) return '空'
+  return n.length > 14 ? n.slice(0, 14) + '…' : n
+})
+
+function toggleStatusSection() {
+  statusOpen.value = !statusOpen.value
+}
+function toggleNoteSection() {
+  noteOpen.value = !noteOpen.value
+}
 </script>
 
 <template>
   <div v-if="selectedDate">
     <div id="detail-date" class="detail-date">{{ formatDateCN(selectedDate) }}</div>
-    <StatusButtons :selectedDate="selectedDate" :currentStatus="dayData?.status" @update="updateData" />
+
+    <!-- 出勤状态：默认收起，标题行显示当前状态摘要 -->
+    <div class="detail-fold" :class="{ open: statusOpen }">
+      <button type="button" class="detail-fold-head" :aria-expanded="statusOpen" @click="toggleStatusSection">
+        <span class="detail-fold-title">出勤状态</span>
+        <span class="detail-fold-summary" :class="'st-' + (dayData?.status || 'none')">{{ statusSummary }}</span>
+        <span class="detail-fold-chevron" aria-hidden="true">›</span>
+      </button>
+      <div class="detail-fold-body" v-show="statusOpen">
+        <StatusButtons :selectedDate="selectedDate" :currentStatus="dayData?.status" @update="updateData" />
+      </div>
+    </div>
+
     <ColorPicker :selectedDate="selectedDate" :currentColor="dayData?.color || ''" @update="updateData" />
     <TagEditor :selectedDate="selectedDate" :tags="dayData?.tags || []" @update="updateData" />
-    <NoteEditor :selectedDate="selectedDate" :note="dayData?.note || ''" @update="updateData" />
+
+    <!-- 备注：默认收起，标题行显示备注摘要 -->
+    <div class="detail-fold" :class="{ open: noteOpen }">
+      <button type="button" class="detail-fold-head" :aria-expanded="noteOpen" @click="toggleNoteSection">
+        <span class="detail-fold-title">备注</span>
+        <span class="detail-fold-summary">{{ noteSummary }}</span>
+        <span class="detail-fold-chevron" aria-hidden="true">›</span>
+      </button>
+      <div class="detail-fold-body" v-show="noteOpen">
+        <NoteEditor :selectedDate="selectedDate" :note="dayData?.note || ''" @update="updateData" />
+      </div>
+    </div>
+
     <div class="todo-section">
       <div class="todo-header-row">
         <span class="todo-title">待办</span>

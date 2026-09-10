@@ -2915,3 +2915,47 @@ body[data-theme="cosmic"] .life-app .btn.ink {
   background: var(--ink-solid);
   color: #14121e;
 }
+
+/* ===== 详情面板折叠区（v3.17.30）：出勤状态 / 备注默认收起 ===== */
+.detail-fold {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  background: var(--card);
+  overflow: hidden;
+}
+.detail-fold-head {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 9px 12px;
+  border: none; background: transparent;
+  cursor: pointer; text-align: left;
+  font-family: inherit;
+}
+.detail-fold-head:active { background: var(--hover); }
+.detail-fold-title {
+  font-size: 13px; font-weight: 600; color: var(--text2);
+  flex-shrink: 0;
+}
+.detail-fold-summary {
+  flex: 1; min-width: 0;
+  font-size: 12px; color: var(--text3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-align: right;
+}
+.detail-fold-summary.st-work { color: var(--work); font-weight: 600; }
+.detail-fold-summary.st-rest { color: var(--rest); font-weight: 600; }
+.detail-fold-summary.st-trip { color: var(--trip); font-weight: 600; }
+.detail-fold-summary.st-leave { color: var(--leave); font-weight: 600; }
+.detail-fold-summary.st-annual { color: var(--annual); font-weight: 600; }
+.detail-fold-summary.st-sick { color: var(--sick); font-weight: 600; }
+.detail-fold-summary.st-personal { color: var(--personal); font-weight: 600; }
+.detail-fold-chevron {
+  flex-shrink: 0; font-size: 16px; line-height: 1;
+  color: var(--text3);
+  transition: transform 0.2s ease;
+  transform: rotate(0deg); /* 收起：右箭头 */
+}
+.detail-fold.open .detail-fold-chevron { transform: rotate(90deg); /* 展开：下箭头 */ }
+.detail-fold-body { padding: 2px 12px 10px; }
+.detail-fold-body .status-row { margin-bottom: 0; }
+.detail-fold-body .note-section { margin-bottom: 0; }
