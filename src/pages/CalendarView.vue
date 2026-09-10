@@ -390,7 +390,8 @@ onMounted(async () => {
     </div><!-- /calendar-swipe -->
 
     <div class="detail-scroll" @click="onDetailClick">
-      <DetailPanel :selectedDate="selectedDate" />
+      <!-- marked：用户在详情面板完成状态/颜色/标签/备注选择后收起内联展开面板（v3.17.31） -->
+      <DetailPanel :selectedDate="selectedDate" @marked="expandDate = null" />
     </div>
 
     <ActionSheet

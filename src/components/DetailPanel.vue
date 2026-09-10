@@ -12,6 +12,9 @@ const calendarStore = useCalendarStore()
 const props = defineProps({
   selectedDate: { type: String, default: null }
 })
+// marked：用户在面板内完成一次「选择/标记」动作（状态/颜色/加标签/存备注）后通知父级，
+// 由 CalendarView 收起内联展开面板，避免面板持续展开遮挡日历内容（v3.17.31）。
+const emit = defineEmits(['marked'])
 
 const internalDate = ref(null)
 const dayData = ref({})
@@ -30,6 +33,15 @@ function formatDateCN(dateStr) {
 function updateData() {
   if (!selectedDate.value) { dayData.value = {}; return }
   dayData.value = calendarStore.getDayData(selectedDate.value)
+}
+
+// 选择完成后的统一出口：刷新面板数据 + 折叠本面板的折叠区 + 通知父级收起展开层。
+// 折叠区（出勤状态/备注）随之收起，用户下次点击日期格重新展开，交互闭环。
+function onMarked() {
+  updateData()
+  statusOpen.value = false
+  noteOpen.value = false
+  emit('marked')
 }
 
 function openAddTodo() { window.__openTodoModal?.() }
@@ -84,12 +96,12 @@ function toggleNoteSection() {
         <span class="detail-fold-chevron" aria-hidden="true">›</span>
       </button>
       <div class="detail-fold-body" v-show="statusOpen">
-        <StatusButtons :selectedDate="selectedDate" :currentStatus="dayData?.status" @update="updateData" />
+        <StatusButtons :selectedDate="selectedDate" :currentStatus="dayData?.status" @update="onMarked" />
       </div>
     </div>
 
-    <ColorPicker :selectedDate="selectedDate" :currentColor="dayData?.color || ''" @update="updateData" />
-    <TagEditor :selectedDate="selectedDate" :tags="dayData?.tags || []" @update="updateData" />
+    <ColorPicker :selectedDate="selectedDate" :currentColor="dayData?.color || ''" @update="onMarked" />
+    <TagEditor :selectedDate="selectedDate" :tags="dayData?.tags || []" @update="onMarked" />
 
     <!-- 备注：默认收起，标题行显示备注摘要 -->
     <div class="detail-fold" :class="{ open: noteOpen }">
@@ -99,7 +111,7 @@ function toggleNoteSection() {
         <span class="detail-fold-chevron" aria-hidden="true">›</span>
       </button>
       <div class="detail-fold-body" v-show="noteOpen">
-        <NoteEditor :selectedDate="selectedDate" :note="dayData?.note || ''" @update="updateData" />
+        <NoteEditor :selectedDate="selectedDate" :note="dayData?.note || ''" @update="onMarked" />
       </div>
     </div>
 

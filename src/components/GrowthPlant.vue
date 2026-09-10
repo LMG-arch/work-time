@@ -105,19 +105,22 @@ const caption = computed(() => LEVELS[stage.value])
   gap: 2px;
   user-select: none;
 }
+/* 主题一致性（v3.17.31）：植被色相锚定 var(--accent)，
+   cosmic/dark 下呈紫蓝系、green 下呈绿色系，随主题整体氛围变化。
+   明度用固定基准色混合保证任意主题下可读。 */
 .plant-svg {
   width: 132px;
   height: 165px;
   overflow: visible;
 }
 .plant-pot .pot {
-  fill: color-mix(in srgb, var(--accent) 32%, #8d6e63);
+  fill: color-mix(in srgb, var(--accent) 45%, #6d5a66);
 }
 .plant-pot .pot-rim {
-  fill: color-mix(in srgb, var(--accent) 42%, #a1887f);
+  fill: color-mix(in srgb, var(--accent) 55%, #7d6a76);
 }
 .plant-pot .soil {
-  fill: #4e342e;
+  fill: color-mix(in srgb, var(--accent) 18%, #4e342e);
 }
 .foliage {
   transform-box: view-box;
@@ -125,12 +128,12 @@ const caption = computed(() => LEVELS[stage.value])
   animation: plant-grow 0.7s cubic-bezier(0.16, 1, 0.3, 1) both,
              plant-sway 6s ease-in-out 0.7s infinite;
 }
-.stem, .branch { fill: none; stroke: color-mix(in srgb, #6d4c41, var(--accent) 18%); stroke-width: 3.4; stroke-linecap: round; }
-.trunk { fill: color-mix(in srgb, #6d4c41, var(--accent) 18%); }
-.leaf, .leaf-blob { fill: color-mix(in srgb, #2faa4f, var(--accent) 22%); }
-.canopy { fill: color-mix(in srgb, #2faa4f, var(--accent) 18%); }
-.seed { fill: color-mix(in srgb, #8d6e63, var(--accent) 25%); }
-.blossom { fill: color-mix(in srgb, var(--accent) 55%, #ff80ab); }
+.stem, .branch { fill: none; stroke: color-mix(in srgb, #6d5a66, var(--accent) 42%); stroke-width: 3.4; stroke-linecap: round; }
+.trunk { fill: color-mix(in srgb, #6d5a66, var(--accent) 42%); }
+.leaf, .leaf-blob { fill: color-mix(in srgb, var(--accent) 52%, #3f5a48); }
+.canopy { fill: color-mix(in srgb, var(--accent) 46%, #46604f); }
+.seed { fill: color-mix(in srgb, var(--accent) 40%, #6d5a66); }
+.blossom { fill: color-mix(in srgb, var(--accent) 72%, #ffd9ec); }
 
 .plant-caption { display: flex; align-items: baseline; gap: 4px; margin-top: -4px; }
 .plant-count { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }

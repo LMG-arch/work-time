@@ -1,3 +1,25 @@
+## v3.17.31 — 圈画三项修复（选择自动收起 + 占比移除 + 主题一致性）
+
+### 1. 日历面板：完成选择后自动收起（用户圈画 1）
+- 点击日期格展开内联面板后，在详情区完成任一选择（出勤状态/标记颜色/添加标签/保存备注）→ 面板自动收起、折叠区折回
+- 实现：DetailPanel 新增 `marked` 事件（onMarked 统一出口：updateData + 折叠 statusOpen/noteOpen + emit）；CalendarView 监听 `@marked="expandDate = null"`
+- 数据先落库后收起（saveDayData 完成才触发），无丢失风险
+
+### 2. 消费结构：移除占比 + 饼图暗色适配（用户圈画 2）
+- 图例仅保留分类色点 + 名称，删除百分比 `<b>` 元素
+- renderMoneyPie 中心圆 fill=white / 轨道 #eee7df / 文字 #9a9288/#3d3830 硬编码 → 从 .life-app 读取 --life-card/--tint-6/--muted/--ink 令牌（注意令牌定义在 .life-app 作用域而非 :root）
+- 暗色主题下饼图中心不再是白底圆，与面板融合
+
+### 3. 主题一致性（用户圈画 3：打卡页 cosmic 下颜色不跟随）
+- GrowthPlant.vue：叶/冠 #2faa4f、干盆 #6d4c41/#8d6e63、花 #ff80ab 固定色 → 全部改为 color-mix 锚定 var(--accent)；cosmic 紫蓝系、green 绿色系、default 蓝灰系
+- life.css：metric.income #e0ece3 → var(--tint-2)、metric.expense #f1ddd6 → var(--tint-4)、compare-card/target-progress #f0e9df → var(--tint-9)、record-row 边框 #eee7df → var(--line)
+- styles.css：water-progress-fill 固定蓝渐变 → var(--accent) 混合；reminder-card.confirmed / history-record.confirmed 的 rgba(76,175,80,*) → color-mix var(--work)
+
+### 验证（agent-browser cosmic + green + default）
+- 状态选「上班」→ 落库 status:work + 面板收起 + 折叠折回 ✓；颜色/快捷标签同 ✓
+- 饼图 cosmic：hole #211d2e / track #262132 / 文字随主题 ✓；图例无百分比 ✓
+- 成长苗 cosmic 紫蓝 / green 绿色 / default 蓝灰 ✓；浅色主题下植物仍为绿色系可读 ✓
+
 ## v3.17.30 — 详情面板「出勤状态/备注」默认折叠
 
 ### 需求

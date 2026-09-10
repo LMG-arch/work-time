@@ -1534,7 +1534,7 @@ button:active::after {
 }
 
 .water-progress-fill {
-  height: 100%; background: linear-gradient(90deg, #42A5F5, #00BCD4);
+  height: 100%; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #00BCD4));
   border-radius: 3px; transition: width 0.3s ease;
 }
 
@@ -1599,7 +1599,7 @@ button:active::after {
 
 .reminder-card.confirmed {
   border-color: var(--work);
-  background: rgba(76, 175, 80, 0.04);
+  background: color-mix(in srgb, var(--work) 6%, transparent);
 }
 
 .reminder-card .reminder-time {
@@ -1679,9 +1679,9 @@ button:active::after {
 }
 
 .history-record.confirmed {
-  background: rgba(76, 175, 80, 0.1);
+  background: color-mix(in srgb, var(--work) 12%, transparent);
   color: var(--work);
-  border-color: rgba(76, 175, 80, 0.3);
+  border-color: color-mix(in srgb, var(--work) 35%, transparent);
 }
 
 .history-record.unconfirmed {

@@ -748,10 +748,18 @@ import * as XLSX from 'xlsx';
     const byCategory={};expenses.forEach(r=>byCategory[r.data.category]=(byCategory[r.data.category]||0)+Number(r.data.amount||0));
     const entries=Object.entries(byCategory).sort((a,b)=>b[1]-a[1]),total=sum(entries,e=>e[1]);
     const svg=document.getElementById('moneyPie'),legend=document.getElementById('moneyLegend');
-    if(!total){svg.innerHTML='<circle cx="110" cy="110" r="72" fill="#eee7df"/><text x="110" y="115" text-anchor="middle" fill="#8f8579" font-size="12">暂无支出</text>';legend.innerHTML='';return;}
+    // 主题适配（v3.17.31）：轨道/中心圆/文字颜色全部取自主题令牌，暗色下不再出现白底圆与浅色轨道
+    // 注意：令牌定义在 .life-app 作用域上（非 :root），必须从 .life-app 元素取
+    const lifeEl=document.querySelector('.life-app');
+    const cs=lifeEl?getComputedStyle(lifeEl):getComputedStyle(document.documentElement);
+    const token=(name,fallback)=>cs.getPropertyValue(name).trim()||fallback;
+    const trackColor=token('--tint-6','#eee7df'),holeColor=token('--life-card','#ffffff');
+    const labelText=token('--muted','#9a9288'),valueText=token('--ink','#3d3830');
+    if(!total){svg.innerHTML=`<circle cx="110" cy="110" r="72" fill="${trackColor}"/><text x="110" y="115" text-anchor="middle" fill="${labelText}" font-size="12">${t('暂无支出')}</text>`;legend.innerHTML='';return;}
     const circumference=2*Math.PI*72;let offset=0;
-    svg.innerHTML=`<circle cx="110" cy="110" r="72" fill="none" stroke="#eee7df" stroke-width="34"/>`+entries.map(([category,value])=>{const color=categoryColor(category),length=value/total*circumference;const item=`<circle cx="110" cy="110" r="72" fill="none" stroke="${color}" stroke-width="34" stroke-dasharray="${length} ${circumference-length}" stroke-dashoffset="${-offset}" transform="rotate(-90 110 110)"/>`;offset+=length;return item;}).join('')+`<circle cx="110" cy="110" r="40" fill="white" fill-opacity=".85"/><text x="110" y="102" text-anchor="middle" fill="#9a9288" font-size="10" font-weight="400">${t('本月支出')}</text><text x="110" y="124" text-anchor="middle" fill="#3d3830" font-size="20" font-weight="500" letter-spacing="-0.5">${escapeHtml(money(total))}</text>`;
-    legend.innerHTML=entries.map(([category,value])=>`<div class="legend-item"><i style="background:${categoryColor(category)}"></i><span>${escapeHtml(category)}</span><b>${Math.round(value/total*100)}%</b></div>`).join('');
+    svg.innerHTML=`<circle cx="110" cy="110" r="72" fill="none" stroke="${trackColor}" stroke-width="34"/>`+entries.map(([category,value])=>{const color=categoryColor(category),length=value/total*circumference;const item=`<circle cx="110" cy="110" r="72" fill="none" stroke="${color}" stroke-width="34" stroke-dasharray="${length} ${circumference-length}" stroke-dashoffset="${-offset}" transform="rotate(-90 110 110)"/>`;offset+=length;return item;}).join('')+`<circle cx="110" cy="110" r="40" fill="${holeColor}" fill-opacity=".92"/><text x="110" y="102" text-anchor="middle" fill="${labelText}" font-size="10" font-weight="400">${t('本月支出')}</text><text x="110" y="124" text-anchor="middle" fill="${valueText}" font-size="20" font-weight="500" letter-spacing="-0.5">${escapeHtml(money(total))}</text>`;
+    // 消费占比移除（v3.17.31）：图例仅保留分类色点 + 名称，不再显示百分比
+    legend.innerHTML=entries.map(([category])=>`<div class="legend-item"><i style="background:${categoryColor(category)}"></i><span>${escapeHtml(category)}</span></div>`).join('');
   }
   function renderMoney(){
     const month=isoDate().slice(0,7),prev=previousMonthKey(),records=sortedRecords('money');
