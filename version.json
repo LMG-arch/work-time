@@ -1,11 +1,12 @@
 {
-  "version": "3.17.33",
-  "versionCode": 70,
+  "version": "3.17.34",
+  "versionCode": 71,
   "releaseDate": "2026-09-10",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.33/work-calendar-v3.17.33.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.34/work-calendar-v3.17.34.apk",
   "changelog": [
-    "fix: 主题颜色统一——修复社交页/好友/我的/待办/提醒/设置等页面引用未定义 CSS 变量（--text1/--text-secondary/--bg-card/--success/--warning）导致深色与彩色主题下文字看不清、配色与全局脱节的问题，全部映射到主题令牌随主题联动",
-    "fix: 清理硬编码颜色——危险红/强调紫/灰阶文字统一替换为 var(--danger)/var(--accent)/var(--text2/--text3)，权限状态徽章配色跟随主题"
+    "fix: 记账理财·消费结构——饼图下方新增横向堆叠占比条（与预算进度条同风格），各消费分类占比一目了然；无支出时自动隐藏不占位",
+    "fix: 恢复图例分类百分比显示（v3.17.31 移除后仅剩分类名）",
+    "fix: 修复考勤图例伪元素全局命中 .legend-item 导致生活工作台图例色点/名称/百分比错位换行的问题（作用域收窄到 .ratio-legend）"
   ],
   "forceUpdate": false
 }

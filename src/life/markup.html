@@ -91,7 +91,7 @@
             <article class="panel compare-card"><div><p class="eyebrow">月度对比</p><h2 id="monthCompare">暂无对比</h2></div><span id="monthCompareDetail">有了上月数据后，这里会显示变化</span></article>
             <article class="panel budget-panel"><div class="panel-head"><div><p class="eyebrow">月度预算</p><h2>花得明白，不必紧绷</h2></div><label class="inline-budget">预算 ¥<input id="budgetInput" min="0" step="100" type="number"></label></div><div class="large-progress"><span id="budgetBar"></span></div><div class="progress-label"><span id="budgetUsedText">已使用 0%</span><span id="budgetRemainText">剩余 ¥0</span></div></article>
             <div class="split-grid">
-              <article class="panel"><div class="panel-head"><div><p class="eyebrow">消费结构</p><h2>钱花在了哪里</h2></div></div><div class="pie-wrap"><svg aria-label="消费结构饼图" id="moneyPie" viewBox="0 0 220 220"></svg><div class="chart-legend" id="moneyLegend"></div></div></article>
+              <article class="panel"><div class="panel-head"><div><p class="eyebrow">消费结构</p><h2>钱花在了哪里</h2></div></div><div class="pie-wrap"><svg aria-label="消费结构饼图" id="moneyPie" viewBox="0 0 220 220"></svg><div class="chart-legend" id="moneyLegend"></div></div><div class="money-share" id="moneyShare" hidden><div class="money-share-track" id="moneyShareBar" aria-label="消费分类占比条"></div></div></article>
               <article class="panel"><div class="panel-head"><div><p class="eyebrow">流水</p><h2>最近账目</h2></div><select class="compact-select" id="moneyFilter"><option value="all">全部分类</option></select></div><div class="record-list" id="moneyList"></div></article>
             </div>
           </div>

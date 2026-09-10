@@ -1330,19 +1330,22 @@ button:active::after {
   gap: 16px; font-size: 12px; color: var(--text2);
 }
 
-.legend-item::before {
+/* v3.17.34 作用域收窄：伪元素原本全局命中 .legend-item，在生活工作台（grid 布局）中
+   会插入一个匿名 grid 项目占据第 1 列，导致图例色点/名称/百分比错位换行。
+   考勤统计的伪元素色点是设计需要，限定到 .ratio-legend 内不受影响。 */
+.ratio-legend .legend-item::before {
   content: ''; display: inline-block;
   width: 8px; height: 8px; border-radius: 50%;
   margin-right: 4px; vertical-align: middle;
 }
 
-.legend-item.work::before { background: var(--work); }
-.legend-item.rest::before { background: var(--rest); }
-.legend-item.trip::before { background: var(--trip); }
-.legend-item.leave::before { background: var(--leave); }
-.legend-item.annual::before { background: var(--annual); }
-.legend-item.sick::before { background: var(--sick); }
-.legend-item.personal::before { background: var(--personal); }
+.ratio-legend .legend-item.work::before { background: var(--work); }
+.ratio-legend .legend-item.rest::before { background: var(--rest); }
+.ratio-legend .legend-item.trip::before { background: var(--trip); }
+.ratio-legend .legend-item.leave::before { background: var(--leave); }
+.ratio-legend .legend-item.annual::before { background: var(--annual); }
+.ratio-legend .legend-item.sick::before { background: var(--sick); }
+.ratio-legend .legend-item.personal::before { background: var(--personal); }
 
 /* Records list */
 .records-title {
