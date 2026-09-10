@@ -686,6 +686,13 @@ MIT
 
 ## 更新日志
 
+### v3.17.33 (2026-09-10) — 主题颜色统一
+- **根因修复跨主题配色脱节**：社交页/好友/我的/待办/提醒/设置等页面引用了从未定义的 CSS 变量（`--text1`/`--text-secondary`/`--bg-card`/`--success`/`--warning`），回退到硬编码浅色值，深色/彩色主题下文字不可读、颜色与全局不搭
+- `styles.css` 新增 `body` 层别名映射（`--text1`→`--text`、`--text-secondary`→`--text3`、`--bg-card`→`--card`、`--success`→`--work`、`--warning`→`--trip`），全部随 15 套主题联动；别名必须挂 body 层——var() 在定义处解析，放 `:root` 取不到 body 上的主题令牌
+- 硬编码颜色清理：`#e53935` → `var(--danger)`（SocialPage/FriendsTab/TodoItem/ActionSheet/social.css/index.html/renderer.js/styles.css）；权限状态徽章 ok/bad/warn → `var(--work)`/`var(--danger)`/`var(--trip)`（SettingsPage + settings.js）；accent 兜底紫 `#9d8cff` 清理、头像渐变改 `color-mix(var(--accent))`；灰阶 `#333/#666/#999/#ccc` → `var(--text/--text2/--text3)`
+- 多主题实测（default/dark/cosmic）：社交三 Tab、好友输入框、设置页文字卡片颜色全部随主题正确联动
+- **版本**：3.17.32 → 3.17.33（versionCode 69 → 70）
+
 ### v3.17.32 (2026-09-10) — 日历点击展开/收起底部详情区
 - **点击日期 → 底部详情面板展开/收起切换**：点击某天直接展开下方详情面板（出勤状态/颜色/标签/备注/待办），再次点击同一天收起；点击其他天切换内容。**移除了原内联 day-expand-panel 独立小窗口**（含其全部模板/逻辑/样式：expandAnchor、expandTags、expandTodos、expandUndone、expandDateCN）
 - 点击详情区空白处同样收起面板；新增 `detail-slide` 过渡动画（上滑淡入/淡出）
