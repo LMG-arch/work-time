@@ -733,7 +733,7 @@ onUnmounted(() => {
         <div v-for="p in perms" :key="p.key" class="perm-item perm-clickable" @click="requestPerm(p.key)">
           <div>
             <div style="font-size:13px;font-weight:500;">{{ p.name }}</div>
-            <div style="font-size:11px;color:var(--text-secondary);">{{ p.desc }}</div>
+            <div style="font-size:11px;color:var(--text3);">{{ p.desc }}</div>
           </div>
           <span
             class="perm-status"
@@ -791,7 +791,7 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 .settings-input:focus {
-  border-color: var(--accent, #333);
+  border-color: var(--accent);
 }
 .settings-btn-row {
   display: flex;
@@ -810,8 +810,8 @@ onUnmounted(() => {
   transition: all 0.15s;
 }
 .settings-action-btn:hover {
-  border-color: var(--accent, #333);
-  color: var(--accent, #333);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .settings-action-btn:disabled {
   opacity: 0.5;
@@ -821,8 +821,8 @@ onUnmounted(() => {
   width: 100%;
 }
 .settings-action-btn.toggle-active {
-  border-color: var(--accent, #333);
-  color: var(--accent, #333);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .theme-grid {
   display: grid;
@@ -843,7 +843,7 @@ onUnmounted(() => {
   transition: border-color 0.15s;
 }
 .theme-opt.active {
-  border-color: var(--accent, #333);
+  border-color: var(--accent);
 }
 .theme-dot {
   width: 24px;
@@ -872,7 +872,7 @@ onUnmounted(() => {
   transition: background 0.2s;
 }
 .nav-item-toggle.on {
-  background: var(--accent, #333);
+  background: var(--accent);
 }
 .nav-item-toggle::after {
   content: '';
@@ -919,19 +919,19 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 .perm-status.ok {
-  background: #4caf50;
+  background: var(--work);
   color: #fff;
 }
 .perm-status.bad {
-  background: #e53935;
+  background: var(--danger);
   color: #fff;
 }
 .perm-status.warn {
-  background: #ff9800;
+  background: var(--trip);
   color: #fff;
 }
 .settings-scroll a {
-  color: var(--accent, #333);
+  color: var(--accent);
   text-decoration: underline;
 }
 </style>

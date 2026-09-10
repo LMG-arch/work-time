@@ -114,7 +114,7 @@ function pick(action) {
 }
 
 .action-sheet-item.danger {
-  color: #e53935;
+  color: var(--danger);
   font-weight: 600;
 }
 

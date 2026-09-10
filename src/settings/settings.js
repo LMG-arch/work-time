@@ -89,7 +89,7 @@ export async function checkAndroidPermissions() {
     item.innerHTML = `
       <div>
         <div style="font-size:13px;font-weight:500;">${p.name}</div>
-        <div style="font-size:11px;color:var(--text-secondary);">${p.desc}</div>
+        <div style="font-size:11px;color:var(--text3);">${p.desc}</div>
       </div>
       <span class="perm-status" data-key="${p.key}" style="font-size:12px;padding:2px 8px;border-radius:4px;">检查中...</span>
     `;
@@ -184,15 +184,15 @@ export function updatePermStatus(key, granted) {
   if (!el) return;
   if (granted === null) {
     el.textContent = '建议开启';
-    el.style.background = 'var(--warning, #ff9800)';
+    el.style.background = 'var(--trip)';
     el.style.color = '#fff';
   } else if (granted) {
     el.textContent = '✓ 已开启';
-    el.style.background = 'var(--success, #4caf50)';
+    el.style.background = 'var(--work)';
     el.style.color = '#fff';
   } else {
     el.textContent = '未开启';
-    el.style.background = 'var(--danger, #e53935)';
+    el.style.background = 'var(--danger)';
     el.style.color = '#fff';
   }
 }

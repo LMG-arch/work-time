@@ -84,5 +84,5 @@ window.__refreshReminderList = () => reminderStore.refreshFromWindow()
 </template>
 
 <style scoped>
-.rest-day-skip { text-align:center; padding:20px; color:var(--text-secondary,#888); font-size:14px; }
+.rest-day-skip { text-align:center; padding:20px; color:var(--text3); font-size:14px; }
 </style>

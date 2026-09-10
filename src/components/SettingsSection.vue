@@ -50,7 +50,7 @@ watch(open, (v) => {
 .settings-group-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-secondary, #666);
+  color: var(--text3);
   margin-bottom: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;

@@ -90,22 +90,22 @@ async function copyId() {
 .profile-card { display: flex; flex-direction: column; align-items: center; padding: 24px 16px 18px; gap: 8px; }
 
 .profile-avatar-wrap { margin-bottom: 2px; }
-.profile-avatar-img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent, #9d8cff); }
-.avatar-placeholder.large { width: 72px; height: 72px; border-radius: 50%; background: var(--accent, #9d8cff); color: #fff; font-size: 30px; font-weight: 600; display: flex; align-items: center; justify-content: center; border: 3px solid var(--accent, #9d8cff); opacity: .85; }
+.profile-avatar-img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); }
+.avatar-placeholder.large { width: 72px; height: 72px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 30px; font-weight: 600; display: flex; align-items: center; justify-content: center; border: 3px solid var(--accent); opacity: .85; }
 
-.profile-name { font-size: 17px; font-weight: 600; color: var(--text1, #333); }
-.profile-id { font-size: 12px; color: var(--text3, #999); margin-top: 2px; }
+.profile-name { font-size: 17px; font-weight: 600; color: var(--text); }
+.profile-id { font-size: 12px; color: var(--text3); margin-top: 2px; }
 
-.copy-btn { font-size: 13px; padding: 5px 16px; border-radius: 7px; border: 1px solid var(--border, #ddd); background: transparent; color: var(--text2, #666); cursor: pointer; transition: all .15s; margin-top: 4px; }
-.copy-btn:hover { border-color: var(--accent, #9d8cff); color: var(--accent, #9d8cff); }
+.copy-btn { font-size: 13px; padding: 5px 16px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; transition: all .15s; margin-top: 4px; }
+.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 .edit-section { padding: 0 14px; margin-top: 6px; }
-.section-title { font-size: 13px; font-weight: 600; color: var(--text2, #666); margin-bottom: 8px; }
+.section-title { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 8px; }
 .edit-row { display: flex; gap: 6px; }
-.edit-input { flex: 1; font-size: 14px; padding: 8px 10px; border: 1px solid var(--border, #ddd); border-radius: 7px; outline: none; background: transparent; color: var(--text1, #333); box-sizing: border-box; box-sizing: border-box; }
-.edit-input:focus { border-color: var(--accent, #9d8cff); }
-.save-btn { font-size: 13px; padding: 8px 16px; border-radius: 7px; border: none; background: var(--accent, #9d8cff); color: #fff; cursor: pointer; font-weight: 500; white-space: nowrap; }
+.edit-input { flex: 1; font-size: 14px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; outline: none; background: transparent; color: var(--text); box-sizing: border-box; }
+.edit-input:focus { border-color: var(--accent); }
+.save-btn { font-size: 13px; padding: 8px 16px; border-radius: 7px; border: none; background: var(--accent); color: #fff; cursor: pointer; font-weight: 500; white-space: nowrap; }
 .save-btn:disabled { opacity: .55; cursor: not-allowed; }
 
-.social-state { text-align: center; padding: 24px 10px; font-size: 13px; color: var(--text3, #999); }
+.social-state { text-align: center; padding: 24px 10px; font-size: 13px; color: var(--text3); }
 </style>

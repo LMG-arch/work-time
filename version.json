@@ -1,11 +1,11 @@
 {
-  "version": "3.17.32",
-  "versionCode": 69,
+  "version": "3.17.33",
+  "versionCode": 70,
   "releaseDate": "2026-09-10",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.32/work-calendar-v3.17.32.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.33/work-calendar-v3.17.33.apk",
   "changelog": [
-    "improve: 日历点击交互重构——点击某天直接展开下方详情区，再次点击同一天收起（支持展开/收起切换），不再弹出独立小窗口",
-    "improve: 点击详情区空白处也可收起面板；面板内完成标记后面板保持展开便于连续操作"
+    "fix: 主题颜色统一——修复社交页/好友/我的/待办/提醒/设置等页面引用未定义 CSS 变量（--text1/--text-secondary/--bg-card/--success/--warning）导致深色与彩色主题下文字看不清、配色与全局脱节的问题，全部映射到主题令牌随主题联动",
+    "fix: 清理硬编码颜色——危险红/强调紫/灰阶文字统一替换为 var(--danger)/var(--accent)/var(--text2/--text3)，权限状态徽章配色跟随主题"
   ],
   "forceUpdate": false
 }

@@ -307,7 +307,7 @@ export function setupEventListeners() {
       authStatus.textContent = '注册中...';
       try {
         const result = await window.registerAccount(username, password);
-        if (result.error) { authStatus.textContent = result.error; authStatus.style.color = '#e53935'; }
+        if (result.error) { authStatus.textContent = result.error; authStatus.style.color = 'var(--danger)'; }
         else { await getMyProfile(); authStatus.textContent = '注册成功！'; authStatus.style.color = ''; regUsername.value = ''; regPassword.value = ''; updateAccountUI(); }
       } finally { regBtn.disabled = false; }
     });
@@ -319,7 +319,7 @@ export function setupEventListeners() {
       authStatus.textContent = '登录中...';
       try {
         const result = await window.loginAccount(username, password);
-        if (result.error) { authStatus.textContent = result.error; authStatus.style.color = '#e53935'; }
+        if (result.error) { authStatus.textContent = result.error; authStatus.style.color = 'var(--danger)'; }
         else {
           authStatus.textContent = '登录成功！'; authStatus.style.color = '';
           regUsername.value = ''; regPassword.value = '';

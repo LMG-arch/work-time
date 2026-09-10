@@ -679,7 +679,7 @@ button:active::after {
 
 .color-dot[data-color=""] {
   background: var(--card);
-  background-image: linear-gradient(45deg, transparent 40%, #e53935 40%, #e53935 60%, transparent 60%);
+  background-image: linear-gradient(45deg, transparent 40%, var(--danger) 40%, var(--danger) 60%, transparent 60%);
 }
 
 /* Holiday labels */
@@ -688,7 +688,7 @@ button:active::after {
 .holiday-label {
   position: absolute; bottom: 2px; left: 50%;
   transform: translateX(-50%);
-  font-size: 8px; color: #e53935; font-weight: 600;
+  font-size: 8px; color: var(--danger); font-weight: 600;
   white-space: nowrap; pointer-events: none;
   max-width: 100%; overflow: hidden; text-overflow: ellipsis;
   padding: 0 2px;
@@ -706,7 +706,7 @@ button:active::after {
   font-size: 13px; font-weight: 500;
 }
 
-.hs-item.holiday-day { color: #e53935; }
+.hs-item.holiday-day { color: var(--danger); }
 .hs-item.workday-day { color: #FF9800; }
 
 .record-holiday {
@@ -714,7 +714,7 @@ button:active::after {
   border-radius: 8px; margin-left: 4px;
 }
 
-.record-holiday.holiday { background: rgba(229,57,53,0.1); color: #e53935; }
+.record-holiday.holiday { background: var(--danger-soft); color: var(--danger); }
 .record-holiday.workday { background: rgba(255,152,0,0.1); color: #FF9800; }
 .record-holiday.fixed { background: rgba(33,150,243,0.1); color: #2196F3; }
 
@@ -743,7 +743,7 @@ button:active::after {
   transition: color 0.15s;
 }
 
-.tag-remove:hover { color: #e53935; }
+.tag-remove:hover { color: var(--danger); }
 
 .tag-input-row {
   display: flex; gap: 6px; margin-bottom: 6px;
@@ -910,7 +910,7 @@ button:active::after {
   line-height: 1; transition: color 0.15s;
 }
 
-.todo-del:hover { color: #e53935; }
+.todo-del:hover { color: var(--danger); }
 
 .todo-empty {
   text-align: center; font-size: 12px; color: var(--text3);
@@ -1090,7 +1090,7 @@ button:active::after {
   line-height: 1; transition: color 0.15s;
 }
 
-.todo-view-del:hover { color: #e53935; }
+.todo-view-del:hover { color: var(--danger); }
 
 .note-section { display: flex; gap: 8px; align-items: flex-end; }
 
@@ -2121,7 +2121,7 @@ body {
 .social-header-actions { display: flex; gap: 8px; }
 
 .friend-req-badge {
-  background: #e53935; color: #fff;
+  background: var(--danger); color: #fff;
   padding: 2px 6px; border-radius: 10px; font-size: 11px; cursor: pointer;
   transition: filter 0.15s ease;
 }
@@ -2194,6 +2194,20 @@ body {
   --danger: #e5484d;
   --danger-soft: color-mix(in srgb, var(--danger) 12%, transparent);
   --info: #2f80ed;
+}
+
+/* ── 旧组件变量别名（2026-09-10 主题统一修复）──
+   社交/待办/设置等旧组件引用了从未定义的名字（--text1/--text-secondary/--bg-card/
+   --success/--warning），导致回退到硬编码浅色值，深色/彩色主题下文字不可读。
+   统一映射到主题令牌，随主题联动。
+   必须挂在 body（= data-theme 所在层）：var() 在定义处解析，
+   放 :root 会因取不到 body 层的 --text/--text3 等令牌而解析为空。 */
+body {
+  --text1: var(--text);
+  --text-secondary: var(--text3);
+  --bg-card: var(--card);
+  --success: var(--work);
+  --warning: var(--trip);
 }
 
 .settings-action-btn.btn-danger-ghost {

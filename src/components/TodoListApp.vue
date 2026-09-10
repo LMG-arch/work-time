@@ -52,5 +52,5 @@ function onRefresh() {
 </template>
 
 <style scoped>
-.todo-empty { text-align:center; color:var(--text-secondary,#999); padding:16px 0; font-size:13px; }
+.todo-empty { text-align:center; color:var(--text3); padding:16px 0; font-size:13px; }
 </style>

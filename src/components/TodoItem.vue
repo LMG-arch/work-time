@@ -132,10 +132,10 @@ function onTodoAction(a) {
     <div class="todo-item-inner" :style="innerStyle">
       <span class="todo-check" @click="toggleDone">{{ done ? '✓' : '' }}</span>
       <div class="todo-view-info" v-if="showDate">
-        <span class="todo-view-text">{{ todo.text }}<template v-if="remindLabel"><span style="font-size:11px;color:var(--text-secondary);">{{ remindLabel }}</span></template></span>
+        <span class="todo-view-text">{{ todo.text }}<template v-if="remindLabel"><span style="font-size:11px;color:var(--text3);">{{ remindLabel }}</span></template></span>
         <span class="todo-view-date">{{ dateDisplay }}</span>
       </div>
-      <span class="todo-text" v-else>{{ todo.text }}<template v-if="remindLabel"><span style="font-size:11px;color:var(--text-secondary);">{{ remindLabel }}</span></template></span>
+      <span class="todo-text" v-else>{{ todo.text }}<template v-if="remindLabel"><span style="font-size:11px;color:var(--text3);">{{ remindLabel }}</span></template></span>
       <span class="todo-edit" title="编辑" @click="openEdit">✎</span>
       <span class="todo-del" @click="deleteTodo">×</span>
     </div>
@@ -165,7 +165,7 @@ function onTodoAction(a) {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  background: #e53935;
+  background: var(--danger);
   color: #fff;
 }
 .swipe-del-icon { font-size: 18px; line-height: 1; }
@@ -175,21 +175,21 @@ function onTodoAction(a) {
   align-items: center;
   gap: 6px;
   padding: 6px 0;
-  border-bottom: 1px solid var(--border, #e0e0e0);
+  border-bottom: 1px solid var(--border);
   font-size: 13px;
-  background: var(--card, #fff);
+  background: var(--card);
   will-change: transform;
 }
 .todo-text { flex: 1; }
-.todo-check { width: 24px; height: 24px; border: 1px solid var(--border, #ccc); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; color: var(--accent); flex-shrink: 0; }
+.todo-check { width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; color: var(--accent); flex-shrink: 0; }
 .todo-check:hover { border-color: var(--accent); }
-.todo-edit { cursor: pointer; font-size: 14px; color: var(--text-secondary, #999); padding: 2px 4px; }
+.todo-edit { cursor: pointer; font-size: 14px; color: var(--text3); padding: 2px 4px; }
 .todo-edit:hover { color: var(--accent); }
-.todo-del { cursor: pointer; font-size: 18px; color: #ccc; padding: 2px 4px; min-width: 24px; text-align: center; }
-.todo-del:hover { color: #e53935; }
-.done .todo-text { text-decoration: line-through; color: var(--text-secondary, #bbb); }
-.done .todo-check { background: var(--accent, #333); border-color: var(--accent, #333); color: #fff; }
+.todo-del { cursor: pointer; font-size: 18px; color: var(--text3); padding: 2px 4px; min-width: 24px; text-align: center; }
+.todo-del:hover { color: var(--danger); }
+.done .todo-text { text-decoration: line-through; color: var(--text3); }
+.done .todo-check { background: var(--accent); border-color: var(--accent); color: #fff; }
 .todo-view-info { flex: 1; display: flex; flex-direction: column; }
 .todo-view-text { font-size: 13px; }
-.todo-view-date { font-size: 11px; color: var(--text-secondary, #999); margin-top: 2px; }
+.todo-view-date { font-size: 11px; color: var(--text3); margin-top: 2px; }
 </style>

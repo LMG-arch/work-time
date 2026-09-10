@@ -81,9 +81,9 @@ function openAdd() { window.__openTodoModal?.() }
 </template>
 
 <style scoped>
-.todo-filter-bar { display:flex; gap:0; margin-bottom:12px; background:var(--border,#e0e0e0); border-radius:8px; overflow:hidden; }
-.todo-filter-tab { flex:1; text-align:center; padding:6px 0; font-size:12px; cursor:pointer; color:var(--text-secondary,#666); transition:all 0.15s; }
-.todo-filter-tab.active { background:var(--accent,#333); color:#fff; font-weight:500; }
-.empty-tip { text-align:center; color:var(--text-secondary,#999); padding:24px 0; font-size:13px; }
-.todo-group-title { font-size:12px; font-weight:600; color:var(--text-secondary,#666); padding:8px 0 4px; text-transform:uppercase; letter-spacing:1px; }
+.todo-filter-bar { display:flex; gap:0; margin-bottom:12px; background:var(--border); border-radius:8px; overflow:hidden; }
+.todo-filter-tab { flex:1; text-align:center; padding:6px 0; font-size:12px; cursor:pointer; color:var(--text2); transition:all 0.15s; }
+.todo-filter-tab.active { background:var(--accent); color:#fff; font-weight:500; }
+.empty-tip { text-align:center; color:var(--text3); padding:24px 0; font-size:13px; }
+.todo-group-title { font-size:12px; font-weight:600; color:var(--text3); padding:8px 0 4px; text-transform:uppercase; letter-spacing:1px; }
 </style>
