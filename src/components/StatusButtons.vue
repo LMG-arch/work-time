@@ -14,7 +14,6 @@ async function setStatus(status) {
   const dayData = calendarStore.getDayData(props.selectedDate)
   const newStatus = (dayData.status === status) ? '' : status
   await calendarStore.saveDayData(props.selectedDate, newStatus, dayData.note || '', dayData.tags || [], dayData.color || '')
-  window.renderCalendar?.()
   window.__refreshCalendarGrid?.()
   emit('update')
 }

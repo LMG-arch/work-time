@@ -175,11 +175,7 @@ if (typeof window !== 'undefined') {
   window.loadReminderRecords = reminders.loadReminderRecords
   window.getReminderRecordsForDate = reminders.getReminderRecordsForDate
   window.isReminderConfirmed = reminders.isReminderConfirmed
-  window.renderClockinView = reminders.renderClockinView
-  window.getWaterCount = reminders.getWaterCount
-  window.setWaterCount = reminders.setWaterCount
-  window.renderWaterTracker = reminders.renderWaterTracker
-  window.sendTestNotification = reminders.sendTestNotification
+          window.sendTestNotification = reminders.sendTestNotification
   window.diagnoseNotifications = reminders.diagnoseNotifications
   window.getClockinStatusForDate = reminders.getClockinStatusForDate
   window.scheduleReminderNotifications = reminders.scheduleReminderNotifications

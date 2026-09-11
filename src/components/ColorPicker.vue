@@ -20,7 +20,6 @@ async function setColor(color) {
   const d = calendarStore.getDayData(props.selectedDate)
   await calendarStore.saveDayData(props.selectedDate, d.status || '', d.note || '', d.tags || [], color)
   emit('update')
-  window.renderCalendar?.()
   window.__refreshCalendarGrid?.()
 }
 </script>

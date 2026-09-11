@@ -87,7 +87,6 @@ export async function refreshAllData() {
       if (selectedDate) window.__refreshTodoList?.(selectedDate);
     }
     if (currentView === 'clockin') {
-      renderClockinView();
       window.__refreshReminderList?.();
       window.__refreshReminderHistory?.();
     }
@@ -171,7 +170,7 @@ export function setupEventListeners() {
     closeDetailPanel();
     await window.loadAllData();
     if (currentView === 'stats') window.__refreshStats?.();
-    else renderClockinView();
+    else { window.__refreshReminderList?.(); window.__refreshReminderHistory?.(); }
     updateMonthLabel();
   });
 
@@ -638,7 +637,6 @@ async function initApp() {
         allReminderRecords[data.date][data.reminderId] = { confirmed: true, at: new Date().toISOString() };
         window.allReminderRecords = allReminderRecords;
         if (currentView === 'clockin') {
-          renderClockinView();
           window.__refreshReminderList?.();
           window.__refreshReminderHistory?.();
         }

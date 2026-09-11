@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>上班日历 · 两区域融合与全项目一致性审查报告</title>
+<style>
+  :root{--bg:#f5f0e8;--card:#fffdfa;--ink:#29251f;--muted:#746d63;--line:#ded5c8;--accent:#b65f42;--ok:#477358;--warn:#a57c45;--bad:#b44d43;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 24px 80px}
+  h1{font:700 26px/1.35 "Songti SC",serif;margin:0 0 6px}
+  h2{font:700 20px/1.4 "Songti SC",serif;margin:38px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+  h3{font:700 16px/1.5 inherit;margin:22px 0 8px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:26px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:14px 0;box-shadow:0 6px 20px rgba(63,48,36,.05)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:color-mix(in srgb,var(--accent) 8%,var(--card));font-weight:700;white-space:nowrap}
+  code{background:color-mix(in srgb,var(--ink) 7%,var(--card));padding:1px 5px;border-radius:4px;font:12.5px ui-monospace,Consolas,monospace}
+  .tag{display:inline-block;padding:1px 9px;border-radius:999px;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap}
+  .p0{background:var(--bad)}.p1{background:var(--warn)}.p2{background:var(--muted)}.done{background:var(--ok)}
+  ul,ol{padding-left:22px;margin:8px 0}
+  li{margin:5px 0}
+  .kv{display:grid;grid-template-columns:190px 1fr;gap:6px 14px;font-size:13.5px}
+  .kv b{color:var(--muted);font-weight:600}
+  .note{background:color-mix(in srgb,var(--warn) 10%,var(--card));border-left:3px solid var(--warn);padding:10px 14px;border-radius:8px;font-size:13.5px;margin:12px 0}
+  .ok{background:color-mix(in srgb,var(--ok) 10%,var(--card));border-left:3px solid var(--ok);padding:10px 14px;border-radius:8px;font-size:13.5px;margin:12px 0}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>上班日历 · 两区域融合与全项目一致性审查报告</h1>
+<div class="sub">版本 v3.17.37 · 2026-09-11 · 范围：<code>D:\ai\上班日历</code> 全量源码（src/**、index.html、构建脚本）</div>
+
+<h2>一、结论摘要</h2>
+<div class="card">
+  <h3 style="margin-top:0">「两个区域」的界定</h3>
+  <div class="kv">
+    <b>区域 A · 工作模块</b><span>上班日历 5 页（日历/打卡/好友/统计/设置）：<code>src/pages/*.vue</code> + <code>src/components/*</code> + 经典脚本 <code>src/utils.js</code>、<code>src/renderer.js</code>、<code>src/calendar/calendar.js</code>、<code>src/reminders/reminders.js</code>、<code>src/social/social.js</code>、<code>src/settings/settings.js</code>、<code>src/todos/todos.js</code>（经 <code>src/shims.js</code> 挂 <code>window.*</code>）</span>
+    <b>区域 B · 生活工作台</b><span>8 大生活模块：<code>src/life/markup.html</code> + <code>src/life/lifeEngine.js</code> + <code>src/life/life.css</code>，由 <code>LifeWorkbench.vue</code> 以 <code>v-html</code> 注入，工作模块 5 页 Teleport 进 <code>#work-embed</code></span>
+    <b>融合前的关系</b><span>两区域对<b>同类能力各有一套实现</b>：提示、主题令牌、喝水数据、日历渲染、导航入口。表现为「同一功能两套代码、两套数据、两套外观」</span>
+  </div>
+  <div class="ok"><b>本轮已完成 5 项实质融合</b>（详见第三节），两区域现已共用<b>同一套提示、同一套主题令牌、同一份数据源</b>，且不再互相反向调用对方的渲染器。</div>
+  <div class="note"><b>仍需调整 12 项</b>：其中 <span class="tag p0">P0</span> 3 项（死壳 DOM 与无保护 DOM 写入，属本次崩溃同类风险）、<span class="tag p1">P1</span> 5 项（一致性/双写）、<span class="tag p2">P2</span> 4 项（清理）。见第四节与第五节。</div>
+</div>
+
+<h2>二、融合前的重复面（取证）</h2>
+<table>
+  <thead><tr><th>能力</th><th>区域 A 实现</th><th>区域 B 实现</th><th>差异性质</th></tr></thead>
+  <tbody>
+    <tr><td>提示 toast</td><td><code>utils.js:16</code> <code>showToast()</code>，自建元素；样式 <code>styles.css:1432</code>（<code>--toast-bg</code> 随主题，bottom 70px，1800ms）</td><td><code>lifeEngine.js:614</code> <code>toast()</code>，宿主 <code>#toast</code>；样式 <code>life.css:384</code>（固定深色 <code>var(--ink)</code>，bottom 28px，2400ms）</td><td><b>真不一致</b>：两套实现、两个宿主、配色/位置/时长均不同；v3.17.36 崩溃即由此产生</td></tr>
+    <tr><td>主题令牌</td><td><code>styles.css:3-292</code> 15 套 <code>[data-theme]</code>：<code>--bg/--card/--text/--text2/--text3/--border/--hover/--accent/--work/--trip/--danger</code></td><td><code>life.css:2</code> <code>.life-app</code> 固定暖纸调色板：<code>--paper/--life-card/--ink/--muted/--tint-1..11/--plum/--terra/--sage/--sand</code></td><td><b>真不一致</b>：仅 dark/cosmic 在 <code>styles.css:2831</code> 被重映射，其余 13 套主题下区域 B 不随主题变化</td></tr>
+    <tr><td>喝水记录</td><td><code>reminders.js</code> 渲染 <code>#water-tracker</code> 并读写 <code>water-records</code></td><td><code>reminderStore.js:61-79</code> 同逻辑读写同键；模板只留空容器（<code>ClockinPage.vue:76/83</code>）</td><td><b>真不一致</b>：Vue 页面依赖经典脚本填充自己的 DOM，且同一存储键两个写入者</td></tr>
+    <tr><td>日历渲染</td><td><code>calendar.js:29</code> <code>renderCalendar()</code> 写 <code>#calendar-grid</code>（经典，已隐藏）</td><td><code>CalendarView.vue</code> 自渲染 <code>.calendar-view .calendar-grid</code></td><td><b>真不一致</b>：9 个 Vue 组件反向调用经典渲染器，重复渲染死 DOM</td></tr>
+    <tr><td>外壳 DOM</td><td><code>index.html:121-338</code> 经典 <code>.app</code>（218 行，<code>display:none</code>，<code>switchView</code> 已无路径可达）</td><td>Vue <code>#app</code> → <code>LifeWorkbench</code> 统一外壳</td><td><b>真不一致（遗留死代码）</b>：日历/详情/设置/好友均有双重 DOM 实现</td></tr>
+    <tr><td>存储真值</td><td><code>calendar-theme</code>（<code>settings.js:40</code>）、<code>calendar-nav-items</code>（<code>renderer.js:457</code>）</td><td><code>calendar-theme</code>（<code>appStore.js:39</code>）、<code>calendar-nav-items</code>（<code>LifeWorkbench.vue:48</code>、<code>SettingsPage.vue:479</code>）</td><td><b>真不一致（双写）</b>：同键多写入者</td></tr>
+  </tbody>
+</table>
+
+<h2>三、本轮已完成的融合</h2>
+<table>
+  <thead><tr><th>#</th><th>融合项</th><th>融合前</th><th>融合后</th><th>验证</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>提示机制合并为一套</td><td>两套实现 + 两个宿主（<code>#toast</code> / <code>#legacy-toast</code>）；配色/位置/时长各异</td><td>唯一实现 + 唯一宿主 <code>#toast</code>；<code>utils.showToast</code> 委托 <code>window.__lifeToast</code>，未就绪时按同一行为兜底；统一样式（<code>styles.css</code> 全局 <code>.toast</code>，<code>--toast-bg</code> 随主题，bottom 92px，2400ms）</td><td>实测 <code>showToast()</code> 渲染于 <code>#toast</code>、<code>#legacy-toast</code> 不再产生、bg=主题色 <code>rgb(46,125,50)</code>、两区域同一样式；<code>ripple.js</code> 的成功涟漪包装不受影响</td></tr>
+    <tr><td>2</td><td>主题令牌打通</td><td>区域 B 固定暖纸色；仅 dark/cosmic 被覆盖</td><td><code>.life-app</code> 全量令牌改为从主题令牌派生（<code>--paper:var(--bg)</code>、<code>--life-card:var(--card)</code>、<code>--ink:var(--text)</code>、<code>--tint-*</code> 由 <code>--text/--card/--hover/--work/--trip</code> 混合），15 套主题全部生效；dark/cosmic 保留更精细对比度覆盖</td><td>探针：green 主题下区域 A <code>--accent=#2e9e4f</code> 与区域 B <code>--plum=#2e9e4f</code> 完全一致；cosmic 下 <code>--paper=#14121e</code> 无回归；截图确认生活区随主题变绿</td></tr>
+    <tr><td>3</td><td>喝水记录收口到 Vue</td><td>Vue 页面留空容器，经典 <code>renderClockinView/renderWaterTracker</code> 注入并直写 <code>window.__storage</code></td><td><code>ClockinPage.vue</code> 自行响应式渲染（8 杯进度、−/+、点击杯位），数据唯一来源 <code>reminderStore</code>；删除经典 4 个函数 + <code>shims.js</code> 4 处桥接</td><td>实测：8 杯渲染、点 + 后「1/8 杯」且 <code>water-records</code> 落库为 1、0 错误</td></tr>
+    <tr><td>4</td><td>停止反向调用经典渲染器</td><td>9 处 Vue 组件调用 <code>window.renderCalendar?.()</code>（写已隐藏的经典 DOM）</td><td>全部移除，统一走 Vue 自身 <code>__refreshCalendarGrid?.()</code></td><td>实测：日历页 35 格正常渲染；标记「上班」后 store 落 <code>status:'work'</code>、格子 <code>data-status=work</code>、显示「班」；0 错误</td></tr>
+    <tr><td>5</td><td>失效调用清理</td><td>删除经典函数后遗留 5 处 <code>renderClockinView()</code> 调用（会抛 ReferenceError）</td><td>改为调用 Vue 刷新钩子 <code>__refreshReminderList/__refreshReminderHistory</code>（<code>renderer.js</code> ×3、<code>reminders.js</code>、<code>calendar.js</code>）</td><td>全局检索 <code>renderClockinView</code> 仅剩 1 处历史注释；构建通过、冒烟 0 错误</td></tr>
+  </tbody>
+</table>
+
+<h2>四、全项目审查发现</h2>
+
+<h3><span class="tag p0">P0</span> 必须优先调整（与本次崩溃同类风险）</h3>
+<table>
+  <thead><tr><th>#</th><th>问题</th><th>证据</th><th>影响</th><th>建议调整</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>P0-1</td>
+      <td>经典 <code>.app</code> 死壳仍在 DOM 中（218 行），其专属渲染函数与事件绑定仍被加载执行</td>
+      <td><code>index.html:121-338</code>；<code>renderer.js:34</code>（VUE_PAGES 已覆盖全部页，<code>.app</code> 分支不可达）；<code>renderer.js:563</code> <code>setupEventListeners()</code> 仍绑定其按钮</td>
+      <td>每次启动解析/绑定无用 DOM；存在无保护写入崩溃风险；调试时 <code>querySelector</code> 常命中隐藏节点（本次冒烟即误点经典状态按钮）</td>
+      <td>分三步删除：① 先给 <code>setupEventListeners</code> 等绑定加元素存在守卫并解耦 <code>window.renderCalendar/loadTheme</code> 依赖；② 删除 <code>index.html:121-338</code>；③ 清理 <code>calendar.js</code>/<code>social.js</code>/<code>settings.js</code>/<code>todos.js</code> 中仅服务该壳的函数</td>
+    </tr>
+    <tr>
+      <td>P0-2</td>
+      <td>lifeEngine 大量无空值守卫的 DOM 直写（约 98 处），仅 <code>#toast/#confetti</code> 已加固</td>
+      <td><code>lifeEngine.js:603/608/734-745</code> 等（<code>document.getElementById('x').textContent=…</code>）</td>
+      <td>一旦 markup 未就绪/被替换，即抛 <code>Cannot set properties of null</code> 并弹致命浮层（v3.17.32→v3.17.35 两轮崩溃均属此类）</td>
+      <td>引入统一写入助手（<code>setText/setHtml(id,v)</code> 内部判空）+ 关键渲染函数包 <code>try/catch</code>；或分批加守卫并加 <code>initWhenReady</code> 门控（已就位）</td>
+    </tr>
+    <tr>
+      <td>P0-3</td>
+      <td>经典层与 Vue 层仍存在双向耦合，阻碍死壳下线</td>
+      <td>Vue 侧：<code>renderer.js:546</code> <code>window.loadTheme()</code>、<code>renderer.js:593</code> <code>window.renderCalendar()</code>、<code>todos.js:47</code>；经典侧读 <code>window.allData/allTodos/currentView</code>（<code>calendar.js:3</code> 注释列明）</td>
+      <td>直接删经典层会断链（<code>shims.js:717</code> 明确校验 <code>loadTheme/renderCalendar/loadAllData</code> 存在）</td>
+      <td>先将 Vue 启动路径改为纯 store 驱动（主题走 <code>appStore</code>、日历走 store），再把 <code>shims.js</code> 收窄为「仅导出仍被引用的少量 API」</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3><span class="tag p1">P1</span> 一致性调整</h3>
+<table>
+  <thead><tr><th>#</th><th>问题</th><th>证据</th><th>建议调整</th></tr></thead>
+  <tbody>
+    <tr><td>P1-1</td><td>双日历网格并存：DOM 中 70 个 <code>.day-cell</code>，其中 35 个属隐藏经典网格</td><td>浏览器实测 <code>all=70 / inView=35 / invisible=35</code>；<code>index.html</code> 经典 <code>#calendar-grid</code></td><td>随 P0-1 一并删除；删除前禁止用裸 <code>document.querySelector('.day-cell')</code> 做自动化操作</td></tr>
+    <tr><td>P1-2</td><td><code>calendar-theme</code> 双写入者</td><td><code>settings.js:40</code> 与 <code>appStore.js:39</code></td><td>删除经典 <code>setTheme</code>/<code>loadTheme</code>（<code>settings.js:38-46</code>）与 <code>shims.js:190-191</code>，主题唯一真值收敛到 <code>appStore</code></td></tr>
+    <tr><td>P1-3</td><td><code>calendar-nav-items</code> 三处写入者</td><td><code>renderer.js:457-475</code>、<code>LifeWorkbench.vue:48</code>、<code>SettingsPage.vue:479</code></td><td>删除 <code>renderer.js</code> 的导航设置 IIFE（其按钮全在死壳内）</td></tr>
+    <tr><td>P1-4</td><td><code>lifeEngine</code> 存储读写 API 不配对</td><td>写 <code>window.__storage.set(KEY,state)</code>（<code>:601</code>）读 <code>getRaw(KEY)</code>（<code>:590</code>）</td><td>统一为 <code>.set/.get</code>（读取保持 <code>getRaw</code> 兼容回退，避免既有数据丢失）</td></tr>
+    <tr><td>P1-5</td><td>图表配色不随主题</td><td><code>lifeEngine.js:446</code> <code>CATEGORY_COLORS</code> 固定 8 色，饼图/占比条直接使用</td><td>属有意设计（保证分类色稳定可辨），建议保留并在文档标注；如需主题协调，改为 <code>color-mix</code> 与 <code>--accent</code> 混合的派生色</td></tr>
+  </tbody>
+</table>
+
+<h3><span class="tag p2">P2</span> 清理与规范</h3>
+<table>
+  <thead><tr><th>#</th><th>问题</th><th>证据</th><th>建议调整</th></tr></thead>
+  <tbody>
+    <tr><td>P2-1</td><td>经典层无保护 DOM 写入点（死壳内元素缺失即崩）</td><td><code>calendar.js:165</code>(<code>detail-date</code>)、<code>:181</code>(<code>note-input</code>)；<code>social.js:78/139/554/557/614/619/620</code>；<code>reminders.js</code> 内 <code>clockin-today-label</code> 等</td><td>随经典层整体下线（P0-1）；下线前保持不动</td></tr>
+    <tr><td>P2-2</td><td>残留死函数与注释</td><td><code>calendar.js</code> <code>updateMonthLabel</code>（仅写死壳）、<code>social.js</code> 全部 DOM 函数、<code>todos.js:103</code> 空壳、<code>calendar.js:3</code> 注释仍列 <code>renderClockinView</code></td><td>P0-1 之后统一清理</td></tr>
+    <tr><td>P2-3</td><td><code>reminders.js</code> 使用裸 <code>showToast(...)</code> 依赖全局垫片</td><td><code>reminders.js:418</code></td><td>改为显式 <code>window.showToast?.()</code>，或在经典层下线时一并移除</td></tr>
+    <tr><td>P2-4</td><td>样式双份遗留：<code>.water-*</code> 与 toast 增强块</td><td><code>styles.css:1480-1529</code>（现由 Vue 使用，保留）、<code>styles.css:1915</code> toast 增强</td><td>保留 <code>.water-*</code>（Vue 复用同一 <code>styles.css</code>）；toast 增强块与新统一规则合并</td></tr>
+  </tbody>
+</table>
+
+<h2>五、需要调整的部分 · 建议顺序</h2>
+<ol>
+  <li><b>阶段 1（低风险，可立即做）</b>：P1-2 / P1-3 / P1-4 / P2-3 —— 存储与 API 收敛、删死壳内的导航写入 IIFE。验证：主题切换、导航显隐、生活工作台数据往返。</li>
+  <li><b>阶段 2（中风险）</b>：P0-2 —— lifeEngine 统一写入助手 + 关键渲染函数异常隔离。验证：断网/空数据/切页往返 + 强制移除宿主元素不崩。</li>
+  <li><b>阶段 3（较高风险，需专项）</b>：P0-1 + P0-3 + P1-1 + P2-1 + P2-2 —— 经典层下线：先解耦 Vue 对 <code>window.renderCalendar/loadTheme/loadAllData</code> 的依赖，再删 <code>index.html:121-338</code>，最后清理经典脚本与 <code>shims.js</code> 收窄。验证：日历/打卡/好友/统计/设置 5 页全流程 + 通知调度 + 数据持久化 + 三主题截图回归。</li>
+</ol>
+<div class="note"><b>风险提示</b>：阶段 3 必须整体推进、分步验证。经典层虽不可见，但其脚本仍在初始化并写入 <code>window.allData</code> 等共享状态，直接删除将引发断链（<code>shims.js:717</code> 的 API 断言即为此设）。</div>
+
+<h2>六、本轮验证记录</h2>
+<div class="card">
+  <ul>
+    <li><b>构建</b>：<code>vite build</code> ✓（14.4s）；<code>capacitor sync android</code> ✓</li>
+    <li><b>提示统一</b>：<code>window.showToast('工作模块提示')</code> → 宿主 <code>#toast</code>、无 <code>#legacy-toast</code>、<code>bottom:92px / radius:20px / z-index:1200</code>、背景 = 主题 <code>--toast-bg</code></li>
+    <li><b>主题融合</b>：green 主题 → 区域 A <code>--accent #2e9e4f</code> = 区域 B <code>--plum #2e9e4f</code>、<code>--life-card</code> = <code>--card</code>；cosmic 无回归</li>
+    <li><b>喝水模块</b>：8 杯渲染、点 + → 1/8 杯、<code>water-records[今天]=1</code>、0 错误</li>
+    <li><b>日历回归</b>：35 格渲染、标记「上班」→ <code>status:'work'</code>、<code>data-status=work</code>、显示「班」、0 错误</li>
+    <li><b>错误监控</b>：全流程 <code>window.onerror</code> 捕获 0 条；无致命浮层</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>

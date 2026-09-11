@@ -613,7 +613,7 @@ import * as XLSX from 'xlsx';
   function pulseSaved(){const el=document.querySelector('.save-state');if(!el)return;el.animate?.([{opacity:.5},{opacity:1}],{duration:350});}
   // v3.17.35 空值加固：安卓 WebView 在「进程恢复 / 页面重挂载 / 数据恢复」等场景下，生活工作台 markup 可能尚未就绪或被整体替换，此时 #toast / #confetti 取不到；原实现直接 el.textContent 会抛 "Cannot set properties of null" 并弹出致命错误浮层。现改为：宿主缺失时动态创建（提示仍可见），彻底消除该崩溃。
   function ensureOverlayHost(id,className,fallbackStyle){let el=document.getElementById(id);if(el)return el;try{el=document.createElement('div');el.id=id;el.className=className;if(id==='toast'){el.setAttribute('role','status');el.setAttribute('aria-live','polite');}else{el.setAttribute('aria-hidden','true');}const host=document.querySelector('.life-app')||document.body;if(!host)return null;if(host===document.body&&fallbackStyle)el.style.cssText=fallbackStyle;host.appendChild(el);}catch(e){console.warn('[life] overlay host create failed:',e&&e.message);return null;}return el;}
-  function toast(message){const text=translateText(message),el=ensureOverlayHost('toast','toast','position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:999px;background:#29251f;color:#fff;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;transition:opacity .25s');if(!el){console.warn('[life] toast skipped:',text);return;}el.textContent=text;el.classList.add('show');if(el.style.cssText)el.style.opacity='1';clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.classList.remove('show');if(el.style.cssText)el.style.opacity='0';},2400);}
+  function toast(message){const text=translateText(message),el=ensureOverlayHost('toast','toast');if(!el){console.warn('[life] toast skipped:',text);return;}el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2400);}
   function celebrate(){const box=ensureOverlayHost('confetti','confetti','position:fixed;inset:0;pointer-events:none;z-index:9998');if(!box)return;box.innerHTML=Array.from({length:16},(_,i)=>`<i style="--x:${45+Math.random()*10}%;--dx:${(Math.random()-.5)*240}px;--dy:${-70-Math.random()*170}px;--c:${['#b65f42','#627a67','#a57c45','#7d5b75'][i%4]}"></i>`).join('');setTimeout(()=>{box.innerHTML='';},900);}
 
   function sortedRecords(type,ascending=false){return state.records.filter(r=>!type||r.type===type).sort((a,b)=>(ascending?1:-1)*(a.date.localeCompare(b.date)||(a.createdAt||0)-(b.createdAt||0)));}
@@ -1149,6 +1149,9 @@ import * as XLSX from 'xlsx';
     setTimeout(()=>initWhenReady(attempt+1),120);
   }
   if (typeof window !== 'undefined') {
+    // v3.17.37 融合：对外暴露统一提示入口，工作模块（src/utils.js 的 showToast）委托到此处，
+    // 两区域共用同一实现、同一宿主 #toast、同一套样式与时长。
+    window.__lifeToast = toast;
     // 供上班日历侧（App.vue / renderer.js）反向调用，切到生活工作台的某个模块视图
     window.__lifeSwitchView = switchView;
     // 供 renderer.js 在上班数据（window.allData）同步/刷新后重渲染时光档案，使「上班」数据实时

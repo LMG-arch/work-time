@@ -71,7 +71,6 @@ async function onDayAction(action) {
   if (!ds) return
   const d = calendarStore.getDayData(ds)
   await calendarStore.saveDayData(ds, action.value || '', d.note || '', d.tags || [], d.color || '')
-  window.renderCalendar?.()
   window.__refreshCalendarGrid?.()
   daySheetOpen.value = false
 }

@@ -31,15 +31,6 @@ export function isReminderConfirmed(reminderId, dateStr) {
 
 // 合并后：仅处理非 Vue 部分（today-label, water-tracker），
 // 其余由 Vue 组件 ReminderList / ReminderHistory 接管
-export function renderClockinView() {
-  updateMonthLabel();
-  const todayStr = getTodayStr();
-  const label = document.getElementById('clockin-today-label');
-  if (label) label.textContent = formatDateCN(todayStr);
-  renderWaterTracker();
-  window.__refreshReminderList?.();
-  window.__refreshReminderHistory?.();
-}
 
 // 初始化重新调度监听器 (顶层注册，防重)
 if (!window._notifRescheduleRegistered) {
@@ -54,78 +45,10 @@ if (!window._notifRescheduleRegistered) {
   document.addEventListener('visibilitychange', window._notifVisibilityHandler);
 }
 
-// 喝水记录
-export function getWaterCount(dateStr) {
-  try {
-    const records = window.__storage.get('water-records');
-    if (records) return records[dateStr] || 0;
-  } catch (e) { console.warn('[Water] Failed to parse records:', e.message); }
-  return 0;
-}
 
-export function setWaterCount(dateStr, count) {
-  let records = {};
-  try {
-    const existing = window.__storage.get('water-records');
-    if (existing) records = existing;
-  } catch (e) { console.warn('[Water] Failed to parse records:', e.message); }
-  records[dateStr] = Math.max(0, count);
-  // 只保留最近30天的记录
-  const keys = Object.keys(records).sort();
-  while (keys.length > 30) { delete records[keys.shift()]; }
-  window.__storage.set('water-records', records);
-}
 
-export function renderWaterTracker() {
-  const container = document.getElementById('water-tracker');
-  if (!container) return;
-  const todayStr = getTodayStr();
-  const count = getWaterCount(todayStr);
-  const goal = 8; // 目标8杯
-  const progress = Math.min(count / goal, 1);
 
-  let cupsHtml = '';
-  for (let i = 0; i < goal; i++) {
-    cupsHtml += `<span class="water-cup${i < count ? ' filled' : ''}" data-idx="${i}">💧</span>`;
-  }
 
-  container.innerHTML = `
-    <div class="water-header">
-      <span class="water-title">💧 喝水记录</span>
-      <span class="water-count">${count}/${goal} 杯</span>
-    </div>
-    <div class="water-progress-bar">
-      <div class="water-progress-fill" style="width:${progress * 100}%"></div>
-    </div>
-    <div class="water-cups">${cupsHtml}</div>
-    <div class="water-actions">
-      <button class="water-btn water-minus" ${count <= 0 ? 'disabled' : ''}>−</button>
-      <button class="water-btn water-plus" ${count >= goal ? 'disabled' : ''}>+</button>
-    </div>
-    ${count >= goal ? '<div class="water-goal-reached">🎉 今日喝水目标已达成！</div>' : ''}
-  `;
-
-  container.querySelector('.water-minus').addEventListener('click', () => {
-    setWaterCount(todayStr, count - 1);
-    renderWaterTracker();
-  });
-  container.querySelector('.water-plus').addEventListener('click', () => {
-    setWaterCount(todayStr, count + 1);
-    renderWaterTracker();
-  });
-  container.querySelectorAll('.water-cup').forEach(cup => {
-    cup.addEventListener('click', () => {
-      const idx = parseInt(cup.dataset.idx);
-      // 点击已填充的杯子取消到最后一个，点击空杯子填充到该位置
-      if (idx < count) {
-        setWaterCount(todayStr, idx);
-      } else {
-        setWaterCount(todayStr, idx + 1);
-      }
-      renderWaterTracker();
-    });
-  });
-}
 
 export async function sendTestNotification() {
   const isCapacitor = isCapacitorPlatform();
@@ -491,7 +414,7 @@ export async function scheduleReminderNotifications() {
             if (!allReminderRecords[extra.date]) allReminderRecords[extra.date] = {};
             allReminderRecords[extra.date][extra.reminderId] = { confirmed: true, at: new Date().toISOString() };
             showToast('打卡成功 ✓');
-            if (typeof currentView !== 'undefined' && currentView === 'clockin') renderClockinView();
+            if (typeof currentView !== 'undefined' && currentView === 'clockin') { window.__refreshReminderList?.(); window.__refreshReminderHistory?.(); }
             if (typeof renderCalendar === 'function') renderCalendar();
           }
         });

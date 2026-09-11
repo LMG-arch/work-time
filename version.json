@@ -1,12 +1,14 @@
 {
-  "version": "3.17.36",
-  "versionCode": 73,
+  "version": "3.17.37",
+  "versionCode": 74,
   "releaseDate": "2026-09-11",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.36/work-calendar-v3.17.36.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.37/work-calendar-v3.17.37.apk",
   "changelog": [
-    "fix: 根治删除记录崩溃——工作模块的 showToast 用 querySelector('.toast') 清理旧提示，会误删生活工作台的 #toast 宿主，导致其后 life 侧提示抛 Cannot set properties of null；现只清理自建的 #legacy-toast",
-    "fix: 提示宿主缺失自动重建（toast/confetti），不会再弹出致命错误浮层",
-    "fix: 交互事件异常隔离 + 生活工作台界面就绪检查（有限重试）"
+    "融合: 提示机制统一为一套——工作模块与生活工作台共用同一实现、同一宿主 #toast、同一主题化样式与时长（原先两套实现、两个宿主、位置/时长/配色均不同）",
+    "融合: 主题令牌打通——生活工作台不再使用固定暖色调色板，改为锚定主题令牌派生，15 套主题下两个区域同色系同步联动（原先仅 dark/cosmic 生效）",
+    "融合: 喝水记录收口到 Vue（reminderStore 为唯一写入者），删除经典 reminders.js 的重复实现与 4 处 window.* 桥接",
+    "融合: 移除 Vue 组件对经典渲染器 renderCalendar 的 9 处反向调用（原先重复渲染已隐藏的经典 DOM），改为各组件自身的刷新钩子",
+    "修复: 清理因上述收口而失效的 5 处 renderClockinView 残留调用（避免 ReferenceError）"
   ],
   "forceUpdate": false
 }

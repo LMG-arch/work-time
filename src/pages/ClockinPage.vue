@@ -34,6 +34,20 @@ const streak = computed(() => {
   return s
 })
 
+// v3.17.37 融合：喝水记录原由经典 reminders.js 渲染（Vue 模板只留空容器 #water-tracker，
+// 数据经 window.__storage 的另一套读写）。现完整收口到 Vue：数据唯一来源 reminderStore，
+// 渲染与交互全在本组件，经典实现与其 window.* 桥接一并删除。
+const WATER_GOAL = 8
+const waterToday = fmtDate(new Date())
+const waterCount = computed(() => {
+  void reminderStore.waterCount // 依赖 store 响应式计数，更新后自动重算
+  const n = Number(reminderStore.getWaterCount(waterToday))
+  return Number.isFinite(n) ? Math.max(0, Math.min(WATER_GOAL, n)) : 0
+})
+const waterProgress = computed(() => (waterCount.value / WATER_GOAL) * 100)
+const waterCups = computed(() => Array.from({ length: WATER_GOAL }, (_, i) => i < waterCount.value))
+function setWater(n) { reminderStore.setWaterCount(waterToday, Math.max(0, Math.min(WATER_GOAL, n))) }
+function onWaterCup(idx) { setWater(idx < waterCount.value ? idx : idx + 1) }
 // 里程碑庆祝：连续打卡跨过 7 / 30 / 100 天时，触发 Phase 4 花瓣庆祝（premium 守卫在 signature 内部）。
 // 同时给成长苗卡片一个轻量脉冲（非 premium 也可见），形成「数据可视化 → 招牌瞬间」闭环。
 const MILESTONES = [7, 30, 100]
@@ -60,8 +74,6 @@ watch(streak, (n) => {
 })
 
 onMounted(async () => {
-  // 触发旧 JS 更新非 Vue 部分（today-label, water-tracker）
-  window.renderClockinView?.()
   try {
     await reminderStore.loadReminders()
     await reminderStore.loadRecords()
@@ -80,7 +92,24 @@ onMounted(async () => {
       <GrowthPlant :streak="streak" />
     </div>
     <ReminderList />
-    <div id="water-tracker" class="water-tracker"></div>
+    <!-- v3.17.37 融合：喝水记录改为 Vue 自渲染（数据源 reminderStore，唯一写入者） -->
+    <div class="water-tracker">
+      <div class="water-header">
+        <span class="water-title">💧 喝水记录</span>
+        <span class="water-count">{{ waterCount }}/{{ WATER_GOAL }} 杯</span>
+      </div>
+      <div class="water-progress-bar">
+        <div class="water-progress-fill" :style="{ width: waterProgress + '%' }"></div>
+      </div>
+      <div class="water-cups">
+        <span v-for="(filled, i) in waterCups" :key="i" class="water-cup" :class="{ filled }" @click="onWaterCup(i)">💧</span>
+      </div>
+      <div class="water-actions">
+        <button class="water-btn water-minus" :disabled="waterCount <= 0" @click="setWater(waterCount - 1)">−</button>
+        <button class="water-btn water-plus" :disabled="waterCount >= WATER_GOAL" @click="setWater(waterCount + 1)">+</button>
+      </div>
+      <div v-if="waterCount >= WATER_GOAL" class="water-goal-reached">🎉 今日喝水目标已达成！</div>
+    </div>
     <div class="clockin-history-section">
       <div class="clockin-history-title">打卡记录</div>
       <ReminderHistory />

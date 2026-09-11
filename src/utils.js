@@ -14,20 +14,24 @@ export function sanitizeUrl(url) {
 }
 
 export function showToast(msg) {
-  // v3.17.36 修复：原实现用 document.querySelector('.toast') 清理上一条提示，会误删
-  // 生活工作台的 #toast 宿主（其 class 同为 "toast"，见 life/markup.html），
-  // 且自建元素不带 id —— 宿主被删后再调用 lifeEngine 的 toast() 就会因
-  // getElementById('toast') 为 null 抛出 "Cannot set properties of null (setting 'textContent')"。
-  // 现改为只清理本模块自建的 #legacy-toast，绝不触碰其他 toast 宿主。
-  const existing = document.getElementById('legacy-toast');
-  if (existing) existing.remove();
-  const toast = document.createElement('div');
-  toast.id = 'legacy-toast';
-  toast.className = 'toast';
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add('show'));
-  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 1800);
+  // v3.17.37 融合：工作模块与生活工作台共用同一套提示实现、同一宿主 #toast、同一任务样式与时长。
+  // 生活工作台引擎就绪后统一委托给它（window.__lifeToast）；未就绪时按同一行为本地兜底，
+  // 绝不删除他人宿主（历史 bug：旧实现用 querySelector('.toast') 误删 life 的 #toast 导致崩溃）。
+  const unified = typeof window !== 'undefined' ? window.__lifeToast : null;
+  if (typeof unified === 'function') { unified(msg); return; }
+  let host = document.getElementById('toast');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toast';
+    host.className = 'toast';
+    host.setAttribute('role', 'status');
+    host.setAttribute('aria-live', 'polite');
+    document.body.appendChild(host);
+  }
+  host.textContent = msg;
+  host.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => host.classList.remove('show'), 2400);
 }
 
 export function getTodayStr() {

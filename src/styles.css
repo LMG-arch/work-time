@@ -1429,16 +1429,18 @@ button:active::after {
 }
 
 /* Toast */
+/* v3.17.37 融合：全局唯一 toast 样式（工作模块与生活工作台共用同一宿主 #toast）
+   —— 颜色取主题令牌 --toast-bg（15 套主题各不同），位置抬到移动底栏之上，两区域表现完全一致 */
 .toast {
-  position: fixed; bottom: 70px; left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: var(--toast-bg); color: #fff;
-  padding: 10px 24px; border-radius: 24px;
+  position: fixed; bottom: calc(92px + env(safe-area-inset-bottom)); left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--toast-bg, #2b3140); color: #fff;
+  padding: 11px 20px; border-radius: 20px;
   font-size: 13px; opacity: 0;
-  transition: opacity 0.3s, transform 0.3s;
-  pointer-events: none; z-index: 999;
-  max-width: 300px; text-align: center; word-break: break-all;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: opacity 0.28s, transform 0.28s;
+  pointer-events: none; z-index: 1200;
+  max-width: min(340px, calc(100vw - 40px)); text-align: center; word-break: break-all;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
   font-weight: 500;
 }
 

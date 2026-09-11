@@ -23,7 +23,6 @@ async function saveTags(newTags) {
   const d = calendarStore.getDayData(props.selectedDate)
   await calendarStore.saveDayData(props.selectedDate, d.status || '', d.note || '', newTags, d.color || '')
   emit('update')
-  window.renderCalendar?.()
   window.__refreshCalendarGrid?.()
 }
 </script>

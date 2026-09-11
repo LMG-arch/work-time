@@ -153,7 +153,6 @@ async function confirm() {
     window.__refreshTodoList(calendarStore.selectedDate)
   }
   window.__refreshTodoView?.()
-  if (typeof window.renderCalendar === 'function') window.renderCalendar()
   window.__refreshCalendarGrid?.()
 }
 </script>

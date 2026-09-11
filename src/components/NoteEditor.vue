@@ -14,7 +14,6 @@ async function saveNote() {
   const d = calendarStore.getDayData(props.selectedDate)
   await calendarStore.saveDayData(props.selectedDate, d.status || '', noteText.value, d.tags || [], d.color || '')
   emit('update')
-  window.renderCalendar?.()
   window.__refreshCalendarGrid?.()
   window.showToast?.('备注已保存')
 }

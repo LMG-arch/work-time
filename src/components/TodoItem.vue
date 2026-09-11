@@ -88,7 +88,6 @@ async function toggleDone() {
   }
   emit('refresh')
   await todoStore.loadTodos()
-  if (typeof window.renderCalendar === 'function') window.renderCalendar()
   window.__refreshCalendarGrid?.()
 }
 
@@ -100,7 +99,6 @@ async function deleteTodo(skipConfirm) {
     if (result && result.success) {
       emit('refresh')
       await todoStore.loadTodos()
-      if (typeof window.renderCalendar === 'function') window.renderCalendar()
       window.__refreshCalendarGrid?.()
       if (typeof window.showToast === 'function') window.showToast('已删除待办')
     }

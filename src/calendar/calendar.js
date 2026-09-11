@@ -237,7 +237,7 @@ async function changeMonth(delta) {
     renderCalendar();
     window.__refreshCalendarGrid?.();
   }
-  else if (currentView === 'clockin') renderClockinView();
+  else if (currentView === 'clockin') { window.__refreshReminderList?.(); window.__refreshReminderHistory?.(); }
   // social/settings: only update label, don't re-render
   updateMonthLabel();
 }
