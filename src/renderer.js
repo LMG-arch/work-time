@@ -1,10 +1,15 @@
-// renderer.js — 主入口：全局状态初始化、事件监听、应用启动
+// renderer.js — 启动引导（v3.17.42 重构阶段 4b 精简版）
 //
-// 全局状态与常量已统一迁移至 src/shared.js（以 window.* 暴露，供各 ES 模块按裸名访问）。
-// 各业务模块（calendar/todos/stats/social/reminders/settings/updater）均已迁移为 ES 模块，
-// 由 src/shims.js 统一导入并挂回 window.*，本文件按裸名 / window.* 调用它们。
+// v3.17.42 起经典层（.app 死壳 / .toolbar / setupEventListeners 的 60 处 DOM 绑定）
+// 已全部下线，本文件只保留三类职责：
+//   1. 启动引导：数据加载 → 通知调度 → 社交初始化 → 生命周期事件监听
+//   2. 过渡期桥：syncToWindow（日历年月/选中日期推送给 Vue，保留现名避免打断消费方）
+//   3. 原生事件：onReminderConfirmed / onDataChanged（Electron 主进程 → 渲染层）
 //
-// 本文件本身也已是 ES 模块（经 vue-main.js → shims.js 导入），不再作为经典 <script> 加载。
+// 数据刷新唯一入口 = src/lib/dataService.js（refreshAllData/refreshCalendarData）。
+// UI 渲染唯一外壳 = Vue（App.vue → LifeWorkbench 统一外壳）。
+
+// ===== 过渡期桥 =====
 
 // 同步桥接：通知 Vue 日历组件当前年月与选中日期
 export function syncToWindow() {
@@ -13,512 +18,25 @@ export function syncToWindow() {
   }
 }
 
-// ===== View Router =====
-
-// 底部导航滑动指示块：定位到当前激活的 .tool-btn
-function moveToolbarIndicator() {
-  const bar = document.querySelector('.toolbar');
-  if (!bar) return;
-  const indicator = bar.querySelector('.toolbar-indicator');
-  const active = bar.querySelector('.tool-btn.active');
-  if (!indicator || !active) return;
-  const w = Math.max(18, active.offsetWidth * 0.5);
-  indicator.style.width = w + 'px';
-  indicator.style.transform = `translateX(${active.offsetLeft + (active.offsetWidth - w) / 2}px)`;
-}
-
-export function switchView(view) {
-  currentView = view;
-
-  // Vue 管理的页面：隐藏传统 .app，显示 #app
-  const VUE_PAGES = ['calendar', 'clockin', 'settings', 'social', 'stats', 'life']
-  if (VUE_PAGES.includes(view)) {
-    const tradApp = document.querySelector('.app');
-    if (tradApp) tradApp.style.display = 'none';
-    const appEl = document.getElementById('app');
-    if (appEl) appEl.style.display = '';
-    window.__vueActivate?.(view);
-    // 修复：先 activate 再 sync。原顺序相反，切向日历时 CalendarView 尚未挂载，
-    // __calendarSyncDate 会打到已卸载旧实例的死闭包上导致同步丢失。
-    // setTimeout(0) 让 Vue 完成挂载后再推送当前年月/选中日期。
-    setTimeout(() => syncToWindow(), 0);
-    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-    const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn', life: 'life-btn' };
-    const activeBtn = document.getElementById(activeMap[view]);
-    if (activeBtn) activeBtn.classList.add('active');
-    moveToolbarIndicator();
-    return;
-  }
-
-  // 非 Vue 页面：隐藏 #app，显示传统 .app
-  syncToWindow();
-  const appEl = document.getElementById('app');
-  if (appEl) appEl.style.display = 'none';
-  window.__vueDeactivate?.();
-  const tradApp = document.querySelector('.app');
-  if (tradApp) tradApp.style.display = '';
-
-  document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
-  document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-  const activeMap = { calendar: 'home-btn', stats: 'stats-btn', clockin: 'clockin-btn', settings: 'settings-btn', social: 'social-btn', life: 'life-btn' };
-  const activeBtn = document.getElementById(activeMap[view]);
-  if (activeBtn) activeBtn.classList.add('active');
-  moveToolbarIndicator();
-}
-
-// Refresh all data from storage and re-render current view
-export async function refreshAllData() {
-  try {
-    allData = await window.calendarAPI.getAllData();
-    window.allData = allData;
-    allTodos = await window.calendarAPI.getTodos();
-    window.allTodos = allTodos;
-    allReminders = await window.calendarAPI.getReminders();
-    window.allReminders = allReminders;
-    allReminderRecords = await window.calendarAPI.getAllReminderRecords();
-    window.allReminderRecords = allReminderRecords;
-    // 上班数据刷新后重渲染生活工作台时光档案的「上班」展示
-    try { window.__lifeRefreshArchive?.(); } catch (e) {}
-    // 仅在非 Vue 日历视图时调用传统 DOM 渲染
-    if (currentView !== 'calendar' && currentView !== 'stats' && currentView !== 'settings' && currentView !== 'social') window.renderCalendar();
-    // 通知 Vue 组件刷新
-    if (currentView === 'calendar') {
-      window.__refreshCalendarGrid?.();
-      if (selectedDate) window.__refreshTodoList?.(selectedDate);
-    }
-    if (currentView === 'clockin') {
-      window.__refreshReminderList?.();
-      window.__refreshReminderHistory?.();
-    }
-    if (currentView === 'stats') window.__refreshStats?.();
-  } catch (e) {
-    console.error('[refreshAllData] Failed:', e.message);
-  }
-}
-
-// ===== Account UI =====
-
-export async function updateAccountUI() {
-  const loggedOut = document.getElementById('account-logged-out');
-  const loggedIn = document.getElementById('account-logged-in');
-  const savedUsername = getSavedUsername();
-  const user = await getCurrentUser();
-  if (user && savedUsername) {
-    loggedOut.style.display = 'none';
-    loggedIn.style.display = '';
-    const profile = await getMyProfile();
-    const nickname = profile ? profile.nickname : savedUsername;
-    const displayId = profile ? profile.display_id : '-';
-    const avatarEl = document.getElementById('account-avatar');
-    if (profile && profile.avatar) {
-      const safeAvatarUrl = typeof sanitizeUrl === 'function' ? sanitizeUrl(profile.avatar) : profile.avatar;
-      avatarEl.innerHTML = `<img src="${escapeHtml(safeAvatarUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-      avatarEl.classList.remove('avatar-placeholder');
-    } else {
-      avatarEl.textContent = nickname[0];
-      avatarEl.classList.add('avatar-placeholder');
-    }
-    document.getElementById('account-nickname').textContent = nickname;
-    document.getElementById('account-id').textContent = `ID: ${displayId} | ${savedUsername}`;
-  } else {
-    loggedOut.style.display = '';
-    loggedIn.style.display = 'none';
-    document.getElementById('reg-username').value = '';
-    document.getElementById('reg-password').value = '';
-    document.getElementById('auth-status').textContent = '';
-  }
-}
-
-// ===== Event Listeners =====
-
-export function setupEventListeners() {
-  // Touch swipe for month navigation (calendar view)
-  let touchStartX = 0, touchStartY = 0;
-  document.addEventListener('touchstart', (e) => {
-    if (currentView !== 'calendar') return;
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, { passive: true });
-  document.addEventListener('touchend', (e) => {
-    if (currentView !== 'calendar') return;
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      // 当 Vue 日历视图激活时，使用 Vue 的导航方法
-      if (window.__calendarPrevMonth && window.__calendarNextMonth) {
-        if (dx > 0) window.__calendarPrevMonth();
-        else window.__calendarNextMonth();
-      } else {
-        if (dx > 0) changeMonth(-1); else changeMonth(1);
-      }
-    }
-  }, { passive: true });
-
-  document.getElementById('prev-month').addEventListener('click', () => changeMonth(-1));
-  document.getElementById('next-month').addEventListener('click', () => changeMonth(1));
-
-  document.getElementById('today-btn').addEventListener('click', async () => {
-    if (currentView === 'calendar') {
-      window.__calendarGoToday?.();
-      closeDetailPanel();
-      await window.loadAllData();
-      return;
-    }
-    const today = new Date();
-    currentYear = today.getFullYear();
-    currentMonth = today.getMonth();
-    closeDetailPanel();
-    await window.loadAllData();
-    if (currentView === 'stats') window.__refreshStats?.();
-    else { window.__refreshReminderList?.(); window.__refreshReminderHistory?.(); }
-    updateMonthLabel();
-  });
-
-  // Toolbar navigation
-  document.getElementById('home-btn').addEventListener('click', () => switchView('calendar'));
-  document.getElementById('stats-btn').addEventListener('click', () => switchView('stats'));
-  document.getElementById('clockin-btn').addEventListener('click', () => switchView('clockin'));
-  document.getElementById('settings-btn').addEventListener('click', () => switchView('settings'));
-  document.getElementById('social-btn').addEventListener('click', () => switchView('social'));
-  const lifeBtn = document.getElementById('life-btn');
-  if (lifeBtn) lifeBtn.addEventListener('click', () => switchView('life'));
-
-  // Data export/import
-  document.getElementById('export-btn').addEventListener('click', async () => {
-    await window.calendarAPI.exportData();
-    showToast('数据已导出');
-  });
-  document.getElementById('import-btn').addEventListener('click', async () => {
-    const result = await window.calendarAPI.importData();
-    if (result.success) {
-      await window.loadAllData(); await window.loadTodos(); await window.loadReminders(); await window.loadReminderRecords();
-      window.renderCalendar();
-      showToast('数据已导入');
-    } else if (result.error) {
-      showToast('导入失败: ' + result.error);
-    }
-  });
-
-  // Supabase config
-  document.getElementById('supabase-save-btn').addEventListener('click', () => {
-    const url = document.getElementById('supabase-url-input').value.trim();
-    const key = document.getElementById('supabase-key-input').value.trim();
-    if (!url || !key) { showToast('请填写完整配置'); return; }
-    window.saveSupabaseConfig(url, key);
-    sb = window.initSupabase();
-    showToast('配置已保存');
-  });
-
-  document.getElementById('supabase-test-btn').addEventListener('click', async () => {
-    const url = document.getElementById('supabase-url-input').value.trim();
-    const key = document.getElementById('supabase-key-input').value.trim();
-    if (!url || !key) { showToast('请填写完整配置'); return; }
-
-    const results = [];
-    function log(ok, msg) { results.push((ok ? '✓ ' : '✗ ') + msg); }
-
-    log(true, '配置格式检查通过');
-    try { window.saveSupabaseConfig(url, key); sb = window.initSupabase(); log(true, '客户端初始化成功'); }
-    catch (e) { log(false, '客户端初始化失败: ' + e.message); showDiag(results.join('\n')); return; }
-
-    try {
-      const { error } = await sb.auth.getSession();
-      if (error) log(false, '获取会话失败: ' + error.message);
-      else log(true, '会话接口正常');
-    } catch (e) { log(false, '会话异常: ' + e.message); }
-
-    try {
-      const { data: authData, error: authErr } = await sb.auth.signInAnonymously();
-      if (authErr) log(false, '匿名登录失败: ' + authErr.message);
-      else {
-        log(true, '匿名登录成功: ' + authData.user.id.slice(0, 8) + '...');
-        try {
-          const { data: prof } = await sb.from('profiles').select('display_id').eq('id', authData.user.id).maybeSingle();
-          if (prof && prof.display_id) log(true, '你的数字ID: ' + prof.display_id);
-        } catch (e) { console.debug('[Test] Profile query failed:', e.message); }
-      }
-    } catch (e) { log(false, '匿名登录异常: ' + e.message); }
-
-    try {
-      const { data, error } = await sb.from('profiles').select('id').limit(1);
-      if (error) {
-        if (error.code === '42P01') { log(false, 'profiles 表不存在'); log(false, '→ 请到 Supabase SQL Editor 执行 supabase-setup.sql'); }
-        else log(false, '查询 profiles 失败: ' + error.message + ' (code: ' + error.code + ')');
-      } else log(true, 'profiles 表可访问 (共 ' + (data ? data.length : 0) + ' 条)');
-    } catch (e) { log(false, '查询异常: ' + e.message); }
-
-    try {
-      const { error } = await sb.from('posts').select('id').limit(1);
-      if (error) log(false, 'posts 表不可用: ' + error.message);
-      else log(true, 'posts 表可访问');
-    } catch (e) { log(false, 'posts 表异常: ' + e.message); }
-
-    showDiag(results.join('\n'));
-  });
-
-  // 管理员回收站功能已由 SettingsPage.vue 处理
-  // Called after initSocial() so Supabase client is ready
-
-  // Clock-in settings：齿轮按钮的点击已在 ClockinPage.vue 内用 @click 绑定
-  // （经典 renderer 在页面未挂载时绑不到该按钮，故改由 Vue 组件接管）。
-  // 提醒设置弹窗由 Vue ReminderSettings 组件处理。
-
-  // Auto-launch toggle
-  const autoLaunchBtn = document.getElementById('auto-launch-btn');
-  autoLaunchBtn.addEventListener('click', async () => {
-    const current = await window.calendarAPI.getAutoLaunch();
-    await window.calendarAPI.setAutoLaunch(!current);
-    updateAutoLaunchBtn();
-    showToast(current ? '已关闭开机自启' : '已开启开机自启');
-  });
-
-  // Check update button
-  const checkUpdateBtn = document.getElementById('check-update-btn');
-  if (checkUpdateBtn) {
-    checkUpdateBtn.addEventListener('click', () => {
-      if (typeof manualCheckUpdate === 'function') manualCheckUpdate();
-    });
-  }
-
-  // ===== Account Registration / Login =====
-  (async () => {
-    await window.__storage.init(); // 关键修复：先等 FS 耐用存储把 supabase-config 等灌入缓存，
-                                  // 否则启动竞态下会读到被清空的 WebView localStorage，误判「未配置服务」
-    const loggedOut = document.getElementById('account-logged-out');
-    const loggedIn = document.getElementById('account-logged-in');
-    const regUsername = document.getElementById('reg-username');
-    const regPassword = document.getElementById('reg-password');
-    const regBtn = document.getElementById('reg-btn');
-    const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const authStatus = document.getElementById('auth-status');
-
-    const config = window.getSupabaseConfig();
-    if (!config.url || !config.key) return;
-    if (!sb) sb = window.initSupabase();
-
-    updateAccountUI();
-
-    regBtn.addEventListener('click', async () => {
-      const username = regUsername.value.trim();
-      const password = regPassword.value;
-      regBtn.disabled = true;
-      authStatus.textContent = '注册中...';
-      try {
-        const result = await window.registerAccount(username, password);
-        if (result.error) { authStatus.textContent = result.error; authStatus.style.color = 'var(--danger)'; }
-        else { await getMyProfile(); authStatus.textContent = '注册成功！'; authStatus.style.color = ''; regUsername.value = ''; regPassword.value = ''; updateAccountUI(); }
-      } finally { regBtn.disabled = false; }
-    });
-
-    loginBtn.addEventListener('click', async () => {
-      const username = regUsername.value.trim();
-      const password = regPassword.value;
-      loginBtn.disabled = true;
-      authStatus.textContent = '登录中...';
-      try {
-        const result = await window.loginAccount(username, password);
-        if (result.error) { authStatus.textContent = result.error; authStatus.style.color = 'var(--danger)'; }
-        else {
-          authStatus.textContent = '登录成功！'; authStatus.style.color = '';
-          regUsername.value = ''; regPassword.value = '';
-          updateAccountUI();
-          try {
-            await syncCalendarData();
-            await refreshAllData();
-          } catch (e) { console.log('[Login] Sync after login failed:', e.message); }
-        }
-      } finally { loginBtn.disabled = false; }
-    });
-
-    logoutBtn.addEventListener('click', async () => {
-      if (!confirm('确定退出登录？')) return;
-      logoutBtn.disabled = true;
-      await window.logoutAccount();
-      updateAccountUI();
-      // Force re-enable inputs and buttons (Electron may lose focus after signOut)
-      regBtn.disabled = false;
-      loginBtn.disabled = false;
-      regUsername.disabled = false;
-      regPassword.disabled = false;
-      regUsername.value = '';
-      regPassword.value = '';
-      authStatus.textContent = '';
-      showToast('已退出登录');
-      logoutBtn.disabled = false;
-    });
-
-    // Avatar upload
-    document.getElementById('avatar-upload-input').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { showToast('图片不能超过5MB'); e.target.value = ''; return; }
-      showToast('正在上传头像...');
-      const result = await uploadAvatar(file);
-      if (result.error) { showToast('上传失败: ' + result.error); }
-      else {
-        const avatarEl = document.getElementById('account-avatar');
-        avatarEl.innerHTML = `<img src="${escapeHtml(result.url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-        showToast('头像已更新 ✓');
-      }
-      e.target.value = '';
-    });
-  })();
-
-  // ===== Data Sync Settings =====
-  (async () => {
-    await window.__storage.init(); // 同上：确保启动读取配置前 FS 备份已灌入缓存
-    const syncToggleBtn = document.getElementById('sync-toggle-btn');
-    const syncNowBtn = document.getElementById('sync-now-btn');
-
-    const config = window.getSupabaseConfig();
-    if (!config.url || !config.key) { syncToggleBtn.disabled = true; syncNowBtn.disabled = true; syncToggleBtn.textContent = '需先配置服务'; return; }
-    if (!sb) sb = window.initSupabase();
-
-    function updateSyncToggleBtn() {
-      const enabled = window.isSyncEnabled();
-      syncToggleBtn.textContent = enabled ? '自动同步：开启' : '自动同步：关闭';
-      syncToggleBtn.style.borderColor = enabled ? 'var(--accent)' : '';
-      syncToggleBtn.style.color = enabled ? 'var(--accent)' : '';
-    }
-    updateSyncToggleBtn();
-
-    syncToggleBtn.addEventListener('click', async () => {
-      const next = !window.isSyncEnabled();
-      setSyncEnabled(next);
-      updateSyncToggleBtn();
-      showToast(next ? '已开启自动同步' : '已关闭自动同步');
-      if (next) {
-        const r = await syncCalendarData();
-        if (r.error) showToast('同步失败: ' + r.error);
-        else {
-          showToast('同步完成 ✓');
-          await refreshAllData();
-        }
-      }
-    });
-
-    syncNowBtn.addEventListener('click', async () => {
-      syncNowBtn.disabled = true; syncNowBtn.textContent = '同步中...';
-      try {
-        const result = await syncCalendarData();
-        if (result.error) showToast('同步失败: ' + result.error);
-        else {
-          showToast('同步完成 ✓');
-          await refreshAllData();
-        }
-      } finally { syncNowBtn.disabled = false; syncNowBtn.textContent = '立即同步'; }
-    });
-
-    // One-way sync buttons
-    const pushBtn = document.getElementById('push-to-cloud-btn');
-    const pullBtn = document.getElementById('pull-from-cloud-btn');
-
-    if (pushBtn) {
-      pushBtn.addEventListener('click', async () => {
-        if (!confirm('上传本地数据将覆盖云端数据，确定继续？')) return;
-        pushBtn.disabled = true; pushBtn.textContent = '上传中...';
-        try {
-          const result = await pushToCloud();
-          if (result.error) showToast('上传失败: ' + result.error);
-          else showToast('本地数据已上传到云端 ✓');
-        } finally { pushBtn.disabled = false; pushBtn.textContent = '↑ 上传本地数据'; }
-      });
-    }
-
-    if (pullBtn) {
-      pullBtn.addEventListener('click', async () => {
-        if (!confirm('下载云端数据将覆盖本地数据，确定继续？')) return;
-        pullBtn.disabled = true; pullBtn.textContent = '下载中...';
-        try {
-          const result = await pullFromCloud();
-          if (result.error) showToast('下载失败: ' + result.error);
-          else {
-            showToast('云端数据已下载到本地 ✓');
-            await refreshAllData();
-          }
-        } finally { pullBtn.disabled = false; pullBtn.textContent = '↓ 下载云端数据'; }
-      });
-    }
-  })();
-
-  // ===== Collapsible Theme Section =====
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    const grid = document.getElementById('settings-theme-grid');
-    const arrow = document.querySelector('#theme-toggle .collapse-arrow');
-    const isOpen = grid.style.display !== 'none';
-    grid.style.display = isOpen ? 'none' : '';
-    arrow.classList.toggle('open', !isOpen);
-  });
-
-  // v3.17.38 导航设置收敛：经典导航设置 IIFE 已删除（唯一真值 = calendar-nav-items，
-  // 由 LifeWorkbench.vue / SettingsPage.vue 管理；原 IIFE 的目标按钮位于经典死壳内）。
-
-  // Close modals on backdrop click
-  document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
-  });
-
-  // Status buttons 和备注保存由 Vue DetailPanel 处理
-
-  // Todo add button
-  document.getElementById('todo-add-btn').addEventListener('click', () => window.__openTodoModal?.());
-
-  // Post modal 由 SocialPage.vue 处理
-
-  // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    // 修复：←/→ 仅在日历页响应。原先其它页面也会调遗留 changeMonth，
-    // 静默污染 window.currentYear/Month，回到日历页后行为不可预期。
-    if (e.key === 'ArrowLeft' && currentView === 'calendar') window.__calendarPrevMonth?.();
-    if (e.key === 'ArrowRight' && currentView === 'calendar') window.__calendarNextMonth?.();
-    if (e.key === 't' && !e.ctrlKey && !e.metaKey) { window.__openTodoModal?.(); e.preventDefault(); }
-    if (e.key === 'Escape') {
-      closeDetailPanel();
-      closeTodoModal();
-      window.__closeReminderSettings?.();
-    }
-  });
-}
-
-// ===== Admin Controls =====
-
 // ===== Init =====
 
 async function initApp() {
   window.__bootLog && window.__bootLog('DOMContentLoaded fired');
 
-  // v3.17.38 主题由 appStore 在创建时应用（键 calendar-theme 单一真值），此处不再调用经典 loadTheme
-
-
-  const today = new Date();
-  currentYear = today.getFullYear();
-  currentMonth = today.getMonth();
+  // v3.17.38 主题由 appStore 在创建时应用（键 calendar-theme 单一真值）
 
   // ===== UI 引导（同步、不依赖 IPC）=====
-  // 关键修复：上一轮 Electron 真机「只剩导航栏」的根因是——数据 IPC（window.calendarAPI.*）
-  // 一旦卡住/未就绪，下方 await Promise.all 永不返回，导致末尾的 switchView('calendar')
-  // 永远不执行，#app 始终 display:none。这里把「接线导航栏 + 激活 Vue 层」提前到数据加载之前，
-  // 即使 IPC 卡住，UI 也照常显示。
-  try {
-    setupEventListeners();
-    window.__bootLog && window.__bootLog('event listeners wired');
-  } catch (e) {
-    console.error('[Init] setupEventListeners failed:', e.message);
-    window.__bootLog && window.__bootLog('setupEventListeners ERROR: ' + e.message);
-  }
+  // 导航与激活完全由 Vue 统一外壳负责（App.vue onMounted 即挂 life-mode）。
+  // 即使数据 IPC 卡住，Vue 层也已照常显示——此处只需把数据灌进来。
   try {
     if (typeof window.__vueActivate === 'function') {
-      switchView('calendar');
-      window.__bootLog && window.__bootLog('switchView(calendar) done, #app display=' + (document.getElementById('app') ? getComputedStyle(document.getElementById('app')).display : 'N/A'));
+      window.__vueActivate('calendar');
+      window.__bootLog && window.__bootLog('vueActivate(calendar) done');
     } else {
-      console.warn('[Init] Vue 层尚未就绪，回退到传统渲染');
-      window.renderCalendar();
+      console.warn('[Init] __vueActivate 未就绪（Vue 外壳未挂载）');
     }
   } catch (e) {
-    console.error('[Init] 激活 Vue 层失败，回退传统渲染:', e.message);
-    window.renderCalendar();
+    console.error('[Init] 激活 Vue 层失败:', e.message);
   }
 
   window.__bootLog && window.__bootLog('loading data via IPC (calendarAPI exists=' + !!window.calendarAPI + ')...');
@@ -532,18 +50,17 @@ async function initApp() {
     window.__bootLog && window.__bootLog('data loading ERROR: ' + e.message);
   }
 
+  // 数据灌入后通知 Vue 各视图重渲染（纯重渲染，无副作用）
   try {
-    window.renderCalendar();
+    window.__refreshCalendarGrid?.();
+    window.__refreshReminderList?.();
+    window.__refreshReminderHistory?.();
+    window.__refreshTodoView?.();
+    window.__refreshStats?.();
+    window.__refreshSocialFeed?.();
+    window.__refreshFriendRequests?.();
   } catch (e) {
-    console.error('[Init] renderCalendar failed:', e.message);
-  }
-
-  // Setup interactive components (deferred from module load)
-  try {
-    // setupColorPicker/setupTagInputs/setupTodoModal 由 Vue 组件替代
-    // setupPostImagePicker 由 SocialPage.vue 处理
-  } catch (e) {
-    console.error('[Init] Interactive components setup failed:', e.message);
+    console.error('[Init] Vue refresh hooks failed:', e.message);
   }
 
   try {
@@ -560,7 +77,7 @@ async function initApp() {
     console.error('[Init] initSocial failed:', e.message);
   }
 
-  // 关键修复：SocialPage 常驻挂载，其 onMounted 早于 initSocial 完成，
+  // 关键修复（v3.17.28 起）：SocialPage 常驻挂载，其 onMounted 早于 initSocial 完成，
   // 导致首屏 loadPosts 时 window.sb 尚未就绪而拉空且无重试。
   // 这里在 Supabase 客户端就绪后重放好友动态与好友申请刷新。
   try {
@@ -570,20 +87,13 @@ async function initApp() {
     console.error('[Init] social refresh replay failed:', e.message);
   }
 
-  // setupAdminControls 已由 SettingsPage.vue 处理
-
   // Listen for reminder confirmations from Electron main process
   try {
     if (window.calendarAPI?.onReminderConfirmed) {
       window.calendarAPI.onReminderConfirmed(async (data) => {
-        if (!allReminderRecords[data.date]) allReminderRecords[data.date] = {};
-        allReminderRecords[data.date][data.reminderId] = { confirmed: true, at: new Date().toISOString() };
-        window.allReminderRecords = allReminderRecords;
-        if (currentView === 'clockin') {
-          window.__refreshReminderList?.();
-          window.__refreshReminderHistory?.();
-        }
-        window.renderCalendar();
+        if (!window.allReminderRecords[data.date]) window.allReminderRecords[data.date] = {};
+        window.allReminderRecords[data.date][data.reminderId] = { confirmed: true, at: new Date().toISOString() };
+        try { window.__refreshReminderList?.(); window.__refreshReminderHistory?.(); } catch (e) {}
         window.__refreshCalendarGrid?.();
         showToast('打卡成功 ✓');
       });
@@ -598,7 +108,10 @@ async function initApp() {
       window.calendarAPI.onDataChanged(() => {
         if (typeof autoSyncPush === 'function') {
           autoSyncPush().then(() => {
-            refreshAllData();
+            // 数据回灌统一走 dataService（store → 纯重渲染）
+            import('./lib/dataService.js').then(m => m.refreshAllData()).catch(e => {
+              console.error('[onDataChanged] refresh failed:', e.message);
+            });
           }).catch(e => {
             console.error('[onDataChanged] Sync failed:', e.message);
           });
@@ -609,29 +122,11 @@ async function initApp() {
     console.error('[Init] onDataChanged setup failed:', e.message);
   }
 
-  // Hide auto-launch on mobile
-  try {
-    if (window.Capacitor || !navigator.userAgent.includes('Electron')) {
-      const autoBtn = document.getElementById('auto-launch-btn');
-      if (autoBtn) autoBtn.parentElement.style.display = 'none';
-    }
-  } catch (e) {
-    console.error('[Init] Auto-launch hide failed:', e.message);
-  }
-
   // 启动时自动检查更新
   try {
     if (typeof autoCheckUpdate === 'function') autoCheckUpdate();
   } catch (e) {
     console.error('[Init] autoCheckUpdate failed:', e.message);
-  }
-
-  // 导航指示块：首屏布局稳定后定位，并随窗口尺寸变化重定位
-  try {
-    requestAnimationFrame(moveToolbarIndicator);
-    window.addEventListener('resize', moveToolbarIndicator);
-  } catch (e) {
-    console.error('[Init] 导航指示块初始化失败:', e.message);
   }
 }
 
@@ -655,7 +150,7 @@ function scheduleInit() {
 
   // 防御 3：等 window.* 全局函数填充完毕
   function whenGlobalsReady() {
-    const required = ['loadTheme', 'getSupabaseConfig', 'renderCalendar', 'loadAllData'];
+    const required = ['getSupabaseConfig', 'renderCalendar', 'loadAllData'];
     return new Promise((resolve, reject) => {
       const start = Date.now();
       (function check() {

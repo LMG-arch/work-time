@@ -1,14 +1,14 @@
 {
-  "version": "3.17.41",
-  "versionCode": 78,
+  "version": "3.17.42",
+  "versionCode": 79,
   "releaseDate": "2026-09-11",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.41/work-calendar-v3.17.41.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.42/work-calendar-v3.17.42.apk",
   "changelog": [
-    "重构阶段3b/4a · 新增 Vue 侧数据刷新唯一入口 src/lib/dataService.js（拉取四类数据 → 写入 Pinia store → 触发纯重渲染 → 过渡期发布 window 镜像）",
-    "重构阶段3b/4a · calendarStore 不再从 window.allData 灌数据（syncFromWindow 改为从原生桥重新拉取）",
-    "重构阶段3b/4a · 日历/统计刷新钩子改为纯重渲染（不再隐式读取 window 镜像，保存后 store 自身状态已最新）",
-    "重构阶段3b/4a · 设置页 6 处 window.refreshAllData 改走 dataService（含同步/下载/导入/恢复路径）",
-    "重构阶段3b/4a · 新增诊断出口 window.__dataService（手动全量刷新，排查同步后不刷新类问题）"
+    "重构阶段4 · 经典层下线：删除 .app 死壳与 .toolbar（index.html 341→143 行）",
+    "重构阶段4 · renderer.js 精简为启动引导（689→190 行），DOM 事件绑定 60 处→0",
+    "重构阶段4 · shims.js 收窄 148→65 绑定（按真实消费者逐条裁剪）",
+    "重构阶段4 · calendar.js 裁剪为数据函数（getHolidayInfo/loadAllData/loadHolidays）；todos.js 裁剪为数据内核；删除 settings.js",
+    "重构阶段4 · window.refreshAllData 改绑 dataService（消费方零改动）"
   ],
   "forceUpdate": false
 }
