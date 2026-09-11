@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="zh-CN" data-page-node-id="Pphd60yExSw4lC2WryQYkY">
+<head data-page-node-id="BeSx1qukqGy17LG7b0qnmO">
+<meta charset="UTF-8" data-page-node-id="d4lkXPX3MViDHv33CWTVBm">
+<meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="R39xxuQgpchIykjYtv3ZTY">
 <title>上班日历 · 两区域融合与全项目一致性审查报告</title>
 <style>
   :root{--bg:#f5f0e8;--card:#fffdfa;--ink:#29251f;--muted:#746d63;--line:#ded5c8;--accent:#b65f42;--ok:#477358;--warn:#a57c45;--bad:#b44d43;}
@@ -29,119 +29,119 @@
   .muted{color:var(--muted)}
 </style>
 </head>
-<body>
-<div class="wrap">
+<body data-page-node-id="c81Eco5f9aJghDWHa373Of">
+<div class="wrap" data-page-node-id="1Hneco16fUvHEjMI7cQWYs">
 
-<h1>上班日历 · 两区域融合与全项目一致性审查报告</h1>
-<div class="sub">版本 v3.17.37 · 2026-09-11 · 范围：<code>D:\ai\上班日历</code> 全量源码（src/**、index.html、构建脚本）</div>
+<h1 data-page-node-id="VMZhzbbVtwVEWnLwojmnpL">上班日历 · 两区域融合与全项目一致性审查报告</h1>
+<div class="sub" data-page-node-id="mvOt5AXu1LQjYNNQ6FgS7f">版本 v3.17.37 · 2026-09-11 · 范围：<code data-page-node-id="ATWP0iLdzuT7ZAC2cQpWOr">D:\ai\上班日历</code> 全量源码（src/**、index.html、构建脚本）</div>
 
-<h2>一、结论摘要</h2>
-<div class="card">
-  <h3 style="margin-top:0">「两个区域」的界定</h3>
-  <div class="kv">
-    <b>区域 A · 工作模块</b><span>上班日历 5 页（日历/打卡/好友/统计/设置）：<code>src/pages/*.vue</code> + <code>src/components/*</code> + 经典脚本 <code>src/utils.js</code>、<code>src/renderer.js</code>、<code>src/calendar/calendar.js</code>、<code>src/reminders/reminders.js</code>、<code>src/social/social.js</code>、<code>src/settings/settings.js</code>、<code>src/todos/todos.js</code>（经 <code>src/shims.js</code> 挂 <code>window.*</code>）</span>
-    <b>区域 B · 生活工作台</b><span>8 大生活模块：<code>src/life/markup.html</code> + <code>src/life/lifeEngine.js</code> + <code>src/life/life.css</code>，由 <code>LifeWorkbench.vue</code> 以 <code>v-html</code> 注入，工作模块 5 页 Teleport 进 <code>#work-embed</code></span>
-    <b>融合前的关系</b><span>两区域对<b>同类能力各有一套实现</b>：提示、主题令牌、喝水数据、日历渲染、导航入口。表现为「同一功能两套代码、两套数据、两套外观」</span>
+<h2 data-page-node-id="49J4u2D53a3wx9LMsqFo3J">一、结论摘要</h2>
+<div class="card" data-page-node-id="FXEQbKmGcubkowUMs81Jlb">
+  <h3 style="margin-top:0" data-page-node-id="Pwhby3q9JivMos3XrgPDBq">「两个区域」的界定</h3>
+  <div class="kv" data-page-node-id="Ka5qGFq55ePkWTZk3iWZM3">
+    <b data-page-node-id="p6NuNlSJKFiTIXZ1WdqUD5">区域 A · 工作模块</b><span data-page-node-id="xCpRMDnyS58JOQcaM4j0eB">上班日历 5 页（日历/打卡/好友/统计/设置）：<code data-page-node-id="vQrUZFJqjnrAnu1jfAranx">src/pages/*.vue</code> + <code data-page-node-id="sb13BZFkKGgIy6GvAhTHpo">src/components/*</code> + 经典脚本 <code data-page-node-id="4Tx5wmQ9KPKqdwzAqyHDj6">src/utils.js</code>、<code data-page-node-id="GoYGiTa2UQhFeRGqEpENHw">src/renderer.js</code>、<code data-page-node-id="s5TvuLo8amlrDFTJAGZHsd">src/calendar/calendar.js</code>、<code data-page-node-id="gTbnOQzKZiJTuIE15OAc6o">src/reminders/reminders.js</code>、<code data-page-node-id="cZ5P9f7cMbyn4uR35EDupg">src/social/social.js</code>、<code data-page-node-id="cY1uMtlsVKJmOvLRpBx84f">src/settings/settings.js</code>、<code data-page-node-id="6DFHphFd2Yc9HL1W8Swk3s">src/todos/todos.js</code>（经 <code data-page-node-id="dNk3wKEmft6T5yVaazL1d0">src/shims.js</code> 挂 <code data-page-node-id="PAP9RYCyQHRJosfGOdykAq">window.*</code>）</span>
+    <b data-page-node-id="NFW389Et57f0CFl2CMNF3M">区域 B · 生活工作台</b><span data-page-node-id="pYdGcXXWWT8EFqigSQ30oL">8 大生活模块：<code data-page-node-id="l1i4BqSo4FiQ9GJd02gKDo">src/life/markup.html</code> + <code data-page-node-id="qDB9HlXBqDwHvySBCubdgD">src/life/lifeEngine.js</code> + <code data-page-node-id="KIhEpM3xce8mws7tldua1R">src/life/life.css</code>，由 <code data-page-node-id="Wcg16f2At7Uk1y6KqooLA7">LifeWorkbench.vue</code> 以 <code data-page-node-id="P1zbn0DjTWYNTWXJMommEr">v-html</code> 注入，工作模块 5 页 Teleport 进 <code data-page-node-id="4ffpLHHcztSjiK6OGw24Wo">#work-embed</code></span>
+    <b data-page-node-id="43tyVvozQPPpZkdogwycOu">融合前的关系</b><span data-page-node-id="LtxY0zqkDd7QidALI9mgON">两区域对<b data-page-node-id="mqby8dYPyNUnpiXQEe37my">同类能力各有一套实现</b>：提示、主题令牌、喝水数据、日历渲染、导航入口。表现为「同一功能两套代码、两套数据、两套外观」</span>
   </div>
-  <div class="ok"><b>本轮已完成 5 项实质融合</b>（详见第三节），两区域现已共用<b>同一套提示、同一套主题令牌、同一份数据源</b>，且不再互相反向调用对方的渲染器。</div>
-  <div class="note"><b>仍需调整 12 项</b>：其中 <span class="tag p0">P0</span> 3 项（死壳 DOM 与无保护 DOM 写入，属本次崩溃同类风险）、<span class="tag p1">P1</span> 5 项（一致性/双写）、<span class="tag p2">P2</span> 4 项（清理）。见第四节与第五节。</div>
+  <div class="ok" data-page-node-id="9XEOQ5CJpjudhyCNZPBZME"><b data-page-node-id="QLCy0WmRccQqafm5mNdRDl">本轮已完成 5 项实质融合</b>（详见第三节），两区域现已共用<b data-page-node-id="qaHZBTT27SApnIBD8olSlC">同一套提示、同一套主题令牌、同一份数据源</b>，且不再互相反向调用对方的渲染器。</div>
+  <div class="note" data-page-node-id="CGSsnZTUmJ0mQh6HlK7EOt"><b data-page-node-id="CmtrW48pCCdBdAJYH9A8jK">仍需调整 12 项</b>：其中 <span class="tag p0" data-page-node-id="YqK9yoSD55l7jNXDpsgbjS">P0</span> 3 项（死壳 DOM 与无保护 DOM 写入，属本次崩溃同类风险）、<span class="tag p1" data-page-node-id="rIiy933Hjzjh6OwuHUR0LV">P1</span> 5 项（一致性/双写）、<span class="tag p2" data-page-node-id="JX2wLb9eXCNwPuQRMZ2qb4">P2</span> 4 项（清理）。见第四节与第五节。</div>
 </div>
 
-<h2>二、融合前的重复面（取证）</h2>
-<table>
-  <thead><tr><th>能力</th><th>区域 A 实现</th><th>区域 B 实现</th><th>差异性质</th></tr></thead>
-  <tbody>
-    <tr><td>提示 toast</td><td><code>utils.js:16</code> <code>showToast()</code>，自建元素；样式 <code>styles.css:1432</code>（<code>--toast-bg</code> 随主题，bottom 70px，1800ms）</td><td><code>lifeEngine.js:614</code> <code>toast()</code>，宿主 <code>#toast</code>；样式 <code>life.css:384</code>（固定深色 <code>var(--ink)</code>，bottom 28px，2400ms）</td><td><b>真不一致</b>：两套实现、两个宿主、配色/位置/时长均不同；v3.17.36 崩溃即由此产生</td></tr>
-    <tr><td>主题令牌</td><td><code>styles.css:3-292</code> 15 套 <code>[data-theme]</code>：<code>--bg/--card/--text/--text2/--text3/--border/--hover/--accent/--work/--trip/--danger</code></td><td><code>life.css:2</code> <code>.life-app</code> 固定暖纸调色板：<code>--paper/--life-card/--ink/--muted/--tint-1..11/--plum/--terra/--sage/--sand</code></td><td><b>真不一致</b>：仅 dark/cosmic 在 <code>styles.css:2831</code> 被重映射，其余 13 套主题下区域 B 不随主题变化</td></tr>
-    <tr><td>喝水记录</td><td><code>reminders.js</code> 渲染 <code>#water-tracker</code> 并读写 <code>water-records</code></td><td><code>reminderStore.js:61-79</code> 同逻辑读写同键；模板只留空容器（<code>ClockinPage.vue:76/83</code>）</td><td><b>真不一致</b>：Vue 页面依赖经典脚本填充自己的 DOM，且同一存储键两个写入者</td></tr>
-    <tr><td>日历渲染</td><td><code>calendar.js:29</code> <code>renderCalendar()</code> 写 <code>#calendar-grid</code>（经典，已隐藏）</td><td><code>CalendarView.vue</code> 自渲染 <code>.calendar-view .calendar-grid</code></td><td><b>真不一致</b>：9 个 Vue 组件反向调用经典渲染器，重复渲染死 DOM</td></tr>
-    <tr><td>外壳 DOM</td><td><code>index.html:121-338</code> 经典 <code>.app</code>（218 行，<code>display:none</code>，<code>switchView</code> 已无路径可达）</td><td>Vue <code>#app</code> → <code>LifeWorkbench</code> 统一外壳</td><td><b>真不一致（遗留死代码）</b>：日历/详情/设置/好友均有双重 DOM 实现</td></tr>
-    <tr><td>存储真值</td><td><code>calendar-theme</code>（<code>settings.js:40</code>）、<code>calendar-nav-items</code>（<code>renderer.js:457</code>）</td><td><code>calendar-theme</code>（<code>appStore.js:39</code>）、<code>calendar-nav-items</code>（<code>LifeWorkbench.vue:48</code>、<code>SettingsPage.vue:479</code>）</td><td><b>真不一致（双写）</b>：同键多写入者</td></tr>
+<h2 data-page-node-id="xYAmc0WH5PZ8lMc3zZ0hmm">二、融合前的重复面（取证）</h2>
+<table data-page-node-id="BUVUo4vhpZucEq5ERB3VuJ">
+  <thead data-page-node-id="H0ljeJyJ8CKwAeBpt9H4Nx"><tr data-page-node-id="tQEgPZqRCN2UKT5JBRY00W"><th data-page-node-id="EUsovzPSG1AwvYdqjZ5HVV">能力</th><th data-page-node-id="wfaQsbk1bZ0FgWmhobzkc6">区域 A 实现</th><th data-page-node-id="LRKzLm08FLE6CfWjFBVkSE">区域 B 实现</th><th data-page-node-id="xB86v4UDt8sJhA6GColSZz">差异性质</th></tr></thead>
+  <tbody data-page-node-id="zshCwNn7fTe4wnRUiMmoHE">
+    <tr data-page-node-id="Y0r1lsMw0CAGA2htJdcxaf"><td data-page-node-id="mxka8F10TWlrZAGJUeJcBb">提示 toast</td><td data-page-node-id="cdRQm1vZftBaUiwpNFR8vD"><code data-page-node-id="6spZMYeyAFeJs9aKCZHIAj">utils.js:16</code> <code data-page-node-id="ZizG9RfD8lAqAGjINnuopY">showToast()</code>，自建元素；样式 <code data-page-node-id="En5bAfmwGQVsHbhfXxh0uK">styles.css:1432</code>（<code data-page-node-id="NYin7comLppgFGtbOAp1ec">--toast-bg</code> 随主题，bottom 70px，1800ms）</td><td data-page-node-id="CqizQLzJT2mYFNTpGjfhid"><code data-page-node-id="JFS4Gz4OPEwNb4APyWLqY5">lifeEngine.js:614</code> <code data-page-node-id="QVM17t3sLO4F8FxB6grDuD">toast()</code>，宿主 <code data-page-node-id="lQWrN0qgRumUwZ2lsognBO">#toast</code>；样式 <code data-page-node-id="cHvwwDJVG7Ag8L3oPz4P0F">life.css:384</code>（固定深色 <code data-page-node-id="3xUqPMHPzNGesoINewgWoC">var(--ink)</code>，bottom 28px，2400ms）</td><td data-page-node-id="bGjU2SRHvpthF8dYHTGPsR"><b data-page-node-id="7kd2YhqB61U2yduTwnCoTs">真不一致</b>：两套实现、两个宿主、配色/位置/时长均不同；v3.17.36 崩溃即由此产生</td></tr>
+    <tr data-page-node-id="9RoZpE7nf5wVgicH9WziOT"><td data-page-node-id="oD1uNJeD2EnFczs12Fj0tv">主题令牌</td><td data-page-node-id="GuSgHvyykySnaL3ALwVshE"><code data-page-node-id="t4kb26VOdfh6Bx1cvZv7D7">styles.css:3-292</code> 15 套 <code data-page-node-id="q8L2me1YyrHixwXVNrgYnA">[data-theme]</code>：<code data-page-node-id="q5LrwABvM6Psn7EiD5njAx">--bg/--card/--text/--text2/--text3/--border/--hover/--accent/--work/--trip/--danger</code></td><td data-page-node-id="FMsTaLASz7slBt7lY8TZdp"><code data-page-node-id="pyDIzkvuIdYo8p2ovqSv89">life.css:2</code> <code data-page-node-id="tdlrRioMufaFQE9iwwWRAs">.life-app</code> 固定暖纸调色板：<code data-page-node-id="YwMHNGRvISB1WrcdvU0gK8">--paper/--life-card/--ink/--muted/--tint-1..11/--plum/--terra/--sage/--sand</code></td><td data-page-node-id="PLM5gMDv71rtGopAY6G37n"><b data-page-node-id="yUc9dGLQWAWXE3cmgqLNUy">真不一致</b>：仅 dark/cosmic 在 <code data-page-node-id="W4gGbh2BsDDiaEijDBAgXj">styles.css:2831</code> 被重映射，其余 13 套主题下区域 B 不随主题变化</td></tr>
+    <tr data-page-node-id="jjGOfkaGbsipz1YqZGV9gX"><td data-page-node-id="kW8aejMSccB4EsCXlwrrGr">喝水记录</td><td data-page-node-id="mHxUa9BOcucM8AKaEI5lvU"><code data-page-node-id="xsaqpIW926yghVtYz5lUcZ">reminders.js</code> 渲染 <code data-page-node-id="vRPQAX45ZvllNVFcH8e2rd">#water-tracker</code> 并读写 <code data-page-node-id="yDGnHrnBmttlG429ooFQd3">water-records</code></td><td data-page-node-id="lhrq5M5hTcYJ95RNHMN3Ph"><code data-page-node-id="XP3sBS8M5nLQV1pt5Pe6L7">reminderStore.js:61-79</code> 同逻辑读写同键；模板只留空容器（<code data-page-node-id="i9pUbTjupdoD35m7DVHyRW">ClockinPage.vue:76/83</code>）</td><td data-page-node-id="obVUXbUCDD9WivtQ8KyAqU"><b data-page-node-id="hLNfRaFHZSl1jAwrJpsgQg">真不一致</b>：Vue 页面依赖经典脚本填充自己的 DOM，且同一存储键两个写入者</td></tr>
+    <tr data-page-node-id="QSS1fvnBUjFNH1UwmLTuUG"><td data-page-node-id="UCn8onZq817rgegfryRCM2">日历渲染</td><td data-page-node-id="AR4fyRXh7CVm6plRx0uhdV"><code data-page-node-id="udOByX9URU4SOdDIOvrNpq">calendar.js:29</code> <code data-page-node-id="qsxbdBvkBx7xm2LKHVUf7I">renderCalendar()</code> 写 <code data-page-node-id="AguDeEJGu2tBHm0yCwMddr">#calendar-grid</code>（经典，已隐藏）</td><td data-page-node-id="fVNB1iM9cGhiajmlR1zBlL"><code data-page-node-id="cybz3q0SAIXRuYCB4FlFA3">CalendarView.vue</code> 自渲染 <code data-page-node-id="weFfAyCoB9Oabaa5Wjahgx">.calendar-view .calendar-grid</code></td><td data-page-node-id="UfleWv5yJcsWng929dC5wU"><b data-page-node-id="l5K7aEoCZkCHwSVwkCYuVl">真不一致</b>：9 个 Vue 组件反向调用经典渲染器，重复渲染死 DOM</td></tr>
+    <tr data-page-node-id="TlAwdwT8MKUonhZP9aeRi5"><td data-page-node-id="jU8ecfckorJ9KOAyKF9GA4">外壳 DOM</td><td data-page-node-id="s5Hi51QKslZ1YrdF1gyo8C"><code data-page-node-id="y1re0nJzu9SWOb47LZV3wJ">index.html:121-338</code> 经典 <code data-page-node-id="edLoPERgDWDQBDsjn7MF1I">.app</code>（218 行，<code data-page-node-id="hXscrqkVLFazYJdOVph0zD">display:none</code>，<code data-page-node-id="TVJiNX6otoVF3J1ghpLgSv">switchView</code> 已无路径可达）</td><td data-page-node-id="CMiNoPEQYIzHM353Xrco7Q">Vue <code data-page-node-id="YmauiaGucVriChLvKxDVKO">#app</code> → <code data-page-node-id="kq04FX129TkHxpxZKSveBe">LifeWorkbench</code> 统一外壳</td><td data-page-node-id="onkOYjEQjVm20NaS4Ta05w"><b data-page-node-id="e2xgn8TrFpIwwhduDXFoWh">真不一致（遗留死代码）</b>：日历/详情/设置/好友均有双重 DOM 实现</td></tr>
+    <tr data-page-node-id="K1nzb0G41vNZAaIO5hvYS6"><td data-page-node-id="L2JvaQFCW3srDGTWR9ov26">存储真值</td><td data-page-node-id="1HcBJ91NRrgShxDRyxJ0mo"><code data-page-node-id="QZOn1BMWb7gsU1bcswqTfF">calendar-theme</code>（<code data-page-node-id="3MHiTiu1eQIadGQu01VXpI">settings.js:40</code>）、<code data-page-node-id="xQj8uIpORsH2rDKlKGCMxq">calendar-nav-items</code>（<code data-page-node-id="JtqGS59L5EHHoNI60SSNaS">renderer.js:457</code>）</td><td data-page-node-id="PfaY8E6l5PKfgdFouROiSB"><code data-page-node-id="YFLL0ukGf7MSa2Muti4Qmr">calendar-theme</code>（<code data-page-node-id="J3g1setJzEM2EZU71QM96u">appStore.js:39</code>）、<code data-page-node-id="L1KBueAZWcvDbKUZRPiypD">calendar-nav-items</code>（<code data-page-node-id="AOLHylsKcvqqci7A420pQ3">LifeWorkbench.vue:48</code>、<code data-page-node-id="tt03WSzORqO0gIqgb1lRoH">SettingsPage.vue:479</code>）</td><td data-page-node-id="VE4UAudBoM3ohA29HCMKs2"><b data-page-node-id="KleEumFD1138U7tfHVz4bj">真不一致（双写）</b>：同键多写入者</td></tr>
   </tbody>
 </table>
 
-<h2>三、本轮已完成的融合</h2>
-<table>
-  <thead><tr><th>#</th><th>融合项</th><th>融合前</th><th>融合后</th><th>验证</th></tr></thead>
-  <tbody>
-    <tr><td>1</td><td>提示机制合并为一套</td><td>两套实现 + 两个宿主（<code>#toast</code> / <code>#legacy-toast</code>）；配色/位置/时长各异</td><td>唯一实现 + 唯一宿主 <code>#toast</code>；<code>utils.showToast</code> 委托 <code>window.__lifeToast</code>，未就绪时按同一行为兜底；统一样式（<code>styles.css</code> 全局 <code>.toast</code>，<code>--toast-bg</code> 随主题，bottom 92px，2400ms）</td><td>实测 <code>showToast()</code> 渲染于 <code>#toast</code>、<code>#legacy-toast</code> 不再产生、bg=主题色 <code>rgb(46,125,50)</code>、两区域同一样式；<code>ripple.js</code> 的成功涟漪包装不受影响</td></tr>
-    <tr><td>2</td><td>主题令牌打通</td><td>区域 B 固定暖纸色；仅 dark/cosmic 被覆盖</td><td><code>.life-app</code> 全量令牌改为从主题令牌派生（<code>--paper:var(--bg)</code>、<code>--life-card:var(--card)</code>、<code>--ink:var(--text)</code>、<code>--tint-*</code> 由 <code>--text/--card/--hover/--work/--trip</code> 混合），15 套主题全部生效；dark/cosmic 保留更精细对比度覆盖</td><td>探针：green 主题下区域 A <code>--accent=#2e9e4f</code> 与区域 B <code>--plum=#2e9e4f</code> 完全一致；cosmic 下 <code>--paper=#14121e</code> 无回归；截图确认生活区随主题变绿</td></tr>
-    <tr><td>3</td><td>喝水记录收口到 Vue</td><td>Vue 页面留空容器，经典 <code>renderClockinView/renderWaterTracker</code> 注入并直写 <code>window.__storage</code></td><td><code>ClockinPage.vue</code> 自行响应式渲染（8 杯进度、−/+、点击杯位），数据唯一来源 <code>reminderStore</code>；删除经典 4 个函数 + <code>shims.js</code> 4 处桥接</td><td>实测：8 杯渲染、点 + 后「1/8 杯」且 <code>water-records</code> 落库为 1、0 错误</td></tr>
-    <tr><td>4</td><td>停止反向调用经典渲染器</td><td>9 处 Vue 组件调用 <code>window.renderCalendar?.()</code>（写已隐藏的经典 DOM）</td><td>全部移除，统一走 Vue 自身 <code>__refreshCalendarGrid?.()</code></td><td>实测：日历页 35 格正常渲染；标记「上班」后 store 落 <code>status:'work'</code>、格子 <code>data-status=work</code>、显示「班」；0 错误</td></tr>
-    <tr><td>5</td><td>失效调用清理</td><td>删除经典函数后遗留 5 处 <code>renderClockinView()</code> 调用（会抛 ReferenceError）</td><td>改为调用 Vue 刷新钩子 <code>__refreshReminderList/__refreshReminderHistory</code>（<code>renderer.js</code> ×3、<code>reminders.js</code>、<code>calendar.js</code>）</td><td>全局检索 <code>renderClockinView</code> 仅剩 1 处历史注释；构建通过、冒烟 0 错误</td></tr>
+<h2 data-page-node-id="W1DkJpm2SJBnBHpWrsEhWE">三、本轮已完成的融合</h2>
+<table data-page-node-id="rEZwKgCtZZH9vnrS4Atei9">
+  <thead data-page-node-id="HDnVm9Axw4tOqQWR00KjD7"><tr data-page-node-id="fshFBehlp0OAlXHVH73Ji4"><th data-page-node-id="SSwS6dVezYxGj7Ji3C0FXT">#</th><th data-page-node-id="ebfG8Khr5u0M1WrwlCIwMA">融合项</th><th data-page-node-id="sYN1GgFvKOMStlHDv5bc09">融合前</th><th data-page-node-id="VlDWE2uOHP0ClO6CtBsxUN">融合后</th><th data-page-node-id="lHGKueFqP1afu41xuDuyYG">验证</th></tr></thead>
+  <tbody data-page-node-id="w5Wwwf0VNHWK6V5mH2kT3U">
+    <tr data-page-node-id="K2S1OOWALHqKzj6h7NAOT2"><td data-page-node-id="QcLzbz8yFvPIdUiKLf6AvA">1</td><td data-page-node-id="stbwKb2Mz7W8dGRNYkOgBB">提示机制合并为一套</td><td data-page-node-id="vrL2gRqSouI4m2GRNJZuUf">两套实现 + 两个宿主（<code data-page-node-id="5PPQaA3mIVJ0CbfAMS1tR4">#toast</code> / <code data-page-node-id="vPMV2oK6vGj6GmVvc4NwYz">#legacy-toast</code>）；配色/位置/时长各异</td><td data-page-node-id="QIJ7EVL7P4hN58IJbkwBM8">唯一实现 + 唯一宿主 <code data-page-node-id="weQbV9vDiYK6kFAm2Z4jSw">#toast</code>；<code data-page-node-id="p4b3P4Gjkq9VDVQooETVnj">utils.showToast</code> 委托 <code data-page-node-id="Z6PpqACpcmMOA3jF5E0Y6r">window.__lifeToast</code>，未就绪时按同一行为兜底；统一样式（<code data-page-node-id="CHbDwtfYmICqAUae35ImUL">styles.css</code> 全局 <code data-page-node-id="X00J7fAWovMdkLznMiFXWZ">.toast</code>，<code data-page-node-id="G7t2CD2GVKhk4M4iXm3LwI">--toast-bg</code> 随主题，bottom 92px，2400ms）</td><td data-page-node-id="tsSDXTRs5MvuC1Nyv4Ocmp">实测 <code data-page-node-id="PfAmPPVlAIEZc5l8Emohk5">showToast()</code> 渲染于 <code data-page-node-id="NRBotaQTTwkf712VQweOcb">#toast</code>、<code data-page-node-id="G5EK7WpJvPCdadfCHt9L8j">#legacy-toast</code> 不再产生、bg=主题色 <code data-page-node-id="A80VRrATiG5Tvf5Dszyay3">rgb(46,125,50)</code>、两区域同一样式；<code data-page-node-id="hcpJBKheQ9yfqS7Xr9SQVD">ripple.js</code> 的成功涟漪包装不受影响</td></tr>
+    <tr data-page-node-id="DVeuYOPlFYvVrp0OH6trl5"><td data-page-node-id="HNKOrT5AQHICboUmeaoVZ1">2</td><td data-page-node-id="KTFIgRB8TDn9WxKg5X5n0e">主题令牌打通</td><td data-page-node-id="lHd8ni0u53fL0KSJc6uZAz">区域 B 固定暖纸色；仅 dark/cosmic 被覆盖</td><td data-page-node-id="O37hxAzIA7KrukCZj0s3ld"><code data-page-node-id="IGHMJ8xQ5ObDDR7ZOTj5TW">.life-app</code> 全量令牌改为从主题令牌派生（<code data-page-node-id="9Ow2wrwtnvvivvttizoFEB">--paper:var(--bg)</code>、<code data-page-node-id="EXzjnMOOoHmCeYzIvEiXk5">--life-card:var(--card)</code>、<code data-page-node-id="i3Dw0q7ISZj1AxMFMbQnY1">--ink:var(--text)</code>、<code data-page-node-id="btbf5mjBroRMpK5OqY0hfV">--tint-*</code> 由 <code data-page-node-id="XxFlpvDei4W40fix98iB8i">--text/--card/--hover/--work/--trip</code> 混合），15 套主题全部生效；dark/cosmic 保留更精细对比度覆盖</td><td data-page-node-id="8nbLxYnMyEWX7Z7y2BMfx3">探针：green 主题下区域 A <code data-page-node-id="NT2KwZIBQp8KGVOuediBNX">--accent=#2e9e4f</code> 与区域 B <code data-page-node-id="gYovSCb2HApqHO0JoCYGDE">--plum=#2e9e4f</code> 完全一致；cosmic 下 <code data-page-node-id="vEthBzDNl4Oj0kMRTEEPXH">--paper=#14121e</code> 无回归；截图确认生活区随主题变绿</td></tr>
+    <tr data-page-node-id="AG99zNWchFRkRS9Te0XVQn"><td data-page-node-id="JT3IH9xbDlnBUIzhKZdpiE">3</td><td data-page-node-id="sTYMNBlDjdyZRvxuDJGrHW">喝水记录收口到 Vue</td><td data-page-node-id="P18udlsCZ1qRvBbBfwqQQH">Vue 页面留空容器，经典 <code data-page-node-id="hVEtMl9uF2xnFg1tKWDALE">renderClockinView/renderWaterTracker</code> 注入并直写 <code data-page-node-id="V6MgtPXNxDXkV95FwuTVAW">window.__storage</code></td><td data-page-node-id="tDvBjCzAx5xNtgiaNSCRPS"><code data-page-node-id="e3dViJXWJf9R1C2FaXXtml">ClockinPage.vue</code> 自行响应式渲染（8 杯进度、−/+、点击杯位），数据唯一来源 <code data-page-node-id="VjHgEnQTcNfmXsXTFPAPo1">reminderStore</code>；删除经典 4 个函数 + <code data-page-node-id="lSymA1Sk4hceJ945BaigBB">shims.js</code> 4 处桥接</td><td data-page-node-id="bQzNt93IHJDrCrZwMxWD5v">实测：8 杯渲染、点 + 后「1/8 杯」且 <code data-page-node-id="KFFAHdI9L37AkGDFfJdxFu">water-records</code> 落库为 1、0 错误</td></tr>
+    <tr data-page-node-id="UIEGqrZD2r4PMTLy1hibu7"><td data-page-node-id="eGS26HOWNOQwnUdPxri7t0">4</td><td data-page-node-id="oFtMQggVll13E5HsLZWXED">停止反向调用经典渲染器</td><td data-page-node-id="hVJADJF5raYVUg5uKHQwXQ">9 处 Vue 组件调用 <code data-page-node-id="VLEJ0UrkZLpZENwMrojzpW">window.renderCalendar?.()</code>（写已隐藏的经典 DOM）</td><td data-page-node-id="PNLFgSsiX52lHHD2d9A3hV">全部移除，统一走 Vue 自身 <code data-page-node-id="mnBddwzz5btiO6yseAcs18">__refreshCalendarGrid?.()</code></td><td data-page-node-id="zZZXTO1882EZqsh9I34Cqp">实测：日历页 35 格正常渲染；标记「上班」后 store 落 <code data-page-node-id="HoGomCIMHjt4UUar6qdlbo">status:'work'</code>、格子 <code data-page-node-id="GT1C6e4kmTMOymg3n806e4">data-status=work</code>、显示「班」；0 错误</td></tr>
+    <tr data-page-node-id="9jdG7XWD8prSiyJRPmUJqT"><td data-page-node-id="cnqSmf3sq2fjtqkGBolKNS">5</td><td data-page-node-id="jHMsQgPaCuVGv6cDbb7IQo">失效调用清理</td><td data-page-node-id="WadpqtYD8zMXN5qDIGPwnt">删除经典函数后遗留 5 处 <code data-page-node-id="6SlQQbtvhngCObRMoch0Lr">renderClockinView()</code> 调用（会抛 ReferenceError）</td><td data-page-node-id="wGsb7oqQ5CUj4YYxTNAyiN">改为调用 Vue 刷新钩子 <code data-page-node-id="kD3BeTCRc0TI5wFy5Ox2KD">__refreshReminderList/__refreshReminderHistory</code>（<code data-page-node-id="63XQxTZn90ZQKv6tMEFItO">renderer.js</code> ×3、<code data-page-node-id="kuM8XbB3msaAkDIsFmQMjg">reminders.js</code>、<code data-page-node-id="ddmGEr1mQN2sNJhvzfeeQK">calendar.js</code>）</td><td data-page-node-id="R4Si4r1x4L595HWACTGalw">全局检索 <code data-page-node-id="VoM4DJlPzMSsmfyeYnPJM2">renderClockinView</code> 仅剩 1 处历史注释；构建通过、冒烟 0 错误</td></tr>
   </tbody>
 </table>
 
-<h2>四、全项目审查发现</h2>
+<h2 data-page-node-id="7laphmifHrpjfiV3GtRrq7">四、全项目审查发现</h2>
 
-<h3><span class="tag p0">P0</span> 必须优先调整（与本次崩溃同类风险）</h3>
-<table>
-  <thead><tr><th>#</th><th>问题</th><th>证据</th><th>影响</th><th>建议调整</th></tr></thead>
-  <tbody>
-    <tr>
-      <td>P0-1</td>
-      <td>经典 <code>.app</code> 死壳仍在 DOM 中（218 行），其专属渲染函数与事件绑定仍被加载执行</td>
-      <td><code>index.html:121-338</code>；<code>renderer.js:34</code>（VUE_PAGES 已覆盖全部页，<code>.app</code> 分支不可达）；<code>renderer.js:563</code> <code>setupEventListeners()</code> 仍绑定其按钮</td>
-      <td>每次启动解析/绑定无用 DOM；存在无保护写入崩溃风险；调试时 <code>querySelector</code> 常命中隐藏节点（本次冒烟即误点经典状态按钮）</td>
-      <td>分三步删除：① 先给 <code>setupEventListeners</code> 等绑定加元素存在守卫并解耦 <code>window.renderCalendar/loadTheme</code> 依赖；② 删除 <code>index.html:121-338</code>；③ 清理 <code>calendar.js</code>/<code>social.js</code>/<code>settings.js</code>/<code>todos.js</code> 中仅服务该壳的函数</td>
+<h3 data-page-node-id="WluVVFyUK0E09R4h2xYsRc"><span class="tag p0" data-page-node-id="8hBM4dpV2X1hOcTubDTVLc">P0</span> 必须优先调整（与本次崩溃同类风险）</h3>
+<table data-page-node-id="eao5TR1a83Xlaioj0fiyzP">
+  <thead data-page-node-id="cuwimD40cX8ExbBVPRRjCG"><tr data-page-node-id="KGAdVVY40NRbAhwG29lhqp"><th data-page-node-id="C4UX2BGTHOyhKdx4TOk6y1">#</th><th data-page-node-id="si8stACAMhupnGpoDywpGk">问题</th><th data-page-node-id="JnAthBeoXF5FlCTNpS1SI9">证据</th><th data-page-node-id="PwXtCHlV36XGUwSK8XtVWa">影响</th><th data-page-node-id="GNrcgG0BWYAC73rAKuPFXH">建议调整</th></tr></thead>
+  <tbody data-page-node-id="CEolB2vBa8iZnKDG871sH8">
+    <tr data-page-node-id="p7tk0dTaEgNv4tkojyFd3N">
+      <td data-page-node-id="lnd8KyEefZGyBugb0uP7eZ">P0-1</td>
+      <td data-page-node-id="GrpT1gEjq3giYtHwjPuZky">经典 <code data-page-node-id="maq8CL1eX0cy18n92sriUv">.app</code> 死壳仍在 DOM 中（218 行），其专属渲染函数与事件绑定仍被加载执行</td>
+      <td data-page-node-id="ikpbwxK55dBo4E5BOODBvr"><code data-page-node-id="ZGNyT5w2Rh9zb7aNcNT4Jx">index.html:121-338</code>；<code data-page-node-id="MXGjRdXCrK7LyWpNGrYnsI">renderer.js:34</code>（VUE_PAGES 已覆盖全部页，<code data-page-node-id="7waNGQQr9lRwOAjQ4hMMQq">.app</code> 分支不可达）；<code data-page-node-id="sZLFXQ2IaUnUg1PV7EVNEG">renderer.js:563</code> <code data-page-node-id="zOFUdMsILGSZEtulTNv0zi">setupEventListeners()</code> 仍绑定其按钮</td>
+      <td data-page-node-id="rAOpYZHHO4jL1akj0xELDi">每次启动解析/绑定无用 DOM；存在无保护写入崩溃风险；调试时 <code data-page-node-id="zRYG0jdUs3LpoPNVIluwQS">querySelector</code> 常命中隐藏节点（本次冒烟即误点经典状态按钮）</td>
+      <td data-page-node-id="vlAOueocVHSfUlfWip9Stv">分三步删除：① 先给 <code data-page-node-id="9OD3wFFWQVTgfB2vP9iSBA">setupEventListeners</code> 等绑定加元素存在守卫并解耦 <code data-page-node-id="iaw8e1ok9RAoJWBQemcPzM">window.renderCalendar/loadTheme</code> 依赖；② 删除 <code data-page-node-id="yduZwlgKDkPBWdDyFJvzJJ">index.html:121-338</code>；③ 清理 <code data-page-node-id="s7Z9x7EfAyiMBP1jgiCtBJ">calendar.js</code>/<code data-page-node-id="sCx46o9iwa8DLC3S7tkPA9">social.js</code>/<code data-page-node-id="NwaAoUlPMVOJRaCAU5xlgs">settings.js</code>/<code data-page-node-id="k2gz65RgrP8lOH46EsndQQ">todos.js</code> 中仅服务该壳的函数</td>
     </tr>
-    <tr>
-      <td>P0-2</td>
-      <td>lifeEngine 大量无空值守卫的 DOM 直写（约 98 处），仅 <code>#toast/#confetti</code> 已加固</td>
-      <td><code>lifeEngine.js:603/608/734-745</code> 等（<code>document.getElementById('x').textContent=…</code>）</td>
-      <td>一旦 markup 未就绪/被替换，即抛 <code>Cannot set properties of null</code> 并弹致命浮层（v3.17.32→v3.17.35 两轮崩溃均属此类）</td>
-      <td>引入统一写入助手（<code>setText/setHtml(id,v)</code> 内部判空）+ 关键渲染函数包 <code>try/catch</code>；或分批加守卫并加 <code>initWhenReady</code> 门控（已就位）</td>
+    <tr data-page-node-id="G57uh0VYsTSMOQdVwIrNw1">
+      <td data-page-node-id="F03wslMUxAtwS3GS5RXYkU">P0-2</td>
+      <td data-page-node-id="51M1ZlAwiqihT0cJKb0ipf">lifeEngine 大量无空值守卫的 DOM 直写（约 98 处），仅 <code data-page-node-id="zsTfOfSRHcOoJvvKyYivNz">#toast/#confetti</code> 已加固</td>
+      <td data-page-node-id="3zOeRLBhwYBQclqWFBYsuo"><code data-page-node-id="65CgX1pZgtUKRg9oAxNbY1">lifeEngine.js:603/608/734-745</code> 等（<code data-page-node-id="QKWKkzsp5Op5gmpT4xJEKZ">document.getElementById('x').textContent=…</code>）</td>
+      <td data-page-node-id="M4aQ8Ulido2KTqzU7H6C8B">一旦 markup 未就绪/被替换，即抛 <code data-page-node-id="RRDYqletxayskl8oBA2MZi">Cannot set properties of null</code> 并弹致命浮层（v3.17.32→v3.17.35 两轮崩溃均属此类）</td>
+      <td data-page-node-id="izvZTAdbQOUKHsY41WT53o">引入统一写入助手（<code data-page-node-id="V37udspi08fsTrevhQ3ERD">setText/setHtml(id,v)</code> 内部判空）+ 关键渲染函数包 <code data-page-node-id="FQQeEQjvEVlKwQpyp0ml3i">try/catch</code>；或分批加守卫并加 <code data-page-node-id="XQrhdBR8ciVFrOvxbp4SFx">initWhenReady</code> 门控（已就位）</td>
     </tr>
-    <tr>
-      <td>P0-3</td>
-      <td>经典层与 Vue 层仍存在双向耦合，阻碍死壳下线</td>
-      <td>Vue 侧：<code>renderer.js:546</code> <code>window.loadTheme()</code>、<code>renderer.js:593</code> <code>window.renderCalendar()</code>、<code>todos.js:47</code>；经典侧读 <code>window.allData/allTodos/currentView</code>（<code>calendar.js:3</code> 注释列明）</td>
-      <td>直接删经典层会断链（<code>shims.js:717</code> 明确校验 <code>loadTheme/renderCalendar/loadAllData</code> 存在）</td>
-      <td>先将 Vue 启动路径改为纯 store 驱动（主题走 <code>appStore</code>、日历走 store），再把 <code>shims.js</code> 收窄为「仅导出仍被引用的少量 API」</td>
+    <tr data-page-node-id="Y7ChmPXDF5jooA2ZaZyOcl">
+      <td data-page-node-id="XSsFTUFg700HETGa68wL81">P0-3</td>
+      <td data-page-node-id="AbWQAvlKBPd33tmzXknn50">经典层与 Vue 层仍存在双向耦合，阻碍死壳下线</td>
+      <td data-page-node-id="gpTanm8nHwhSdL3sGrzFL0">Vue 侧：<code data-page-node-id="ZaVYnZMXvB3w8wV5NmDRHj">renderer.js:546</code> <code data-page-node-id="2otLUDOtIMPxJKvfXAfHW3">window.loadTheme()</code>、<code data-page-node-id="5urbbMlwU7Qjijfzj1Z2cA">renderer.js:593</code> <code data-page-node-id="7F2Np2qFuI9GITOo8dojHq">window.renderCalendar()</code>、<code data-page-node-id="iOYXHooCGvRfCQtQBQDbTR">todos.js:47</code>；经典侧读 <code data-page-node-id="ZB02EFeoRjFV9SMaIEAcOX">window.allData/allTodos/currentView</code>（<code data-page-node-id="gaEVatFIYqr9YAcnMdAUto">calendar.js:3</code> 注释列明）</td>
+      <td data-page-node-id="iSCdsf69s0VPyrZVrjBwJ2">直接删经典层会断链（<code data-page-node-id="bI5kytw4xsepSMR2X59kow">shims.js:717</code> 明确校验 <code data-page-node-id="HYRbBCOSRFQeNtqq8LztSy">loadTheme/renderCalendar/loadAllData</code> 存在）</td>
+      <td data-page-node-id="dXset8OxFfwxdZL6ua2l9Y">先将 Vue 启动路径改为纯 store 驱动（主题走 <code data-page-node-id="VzzGD7OXh85kgxZgcOB07m">appStore</code>、日历走 store），再把 <code data-page-node-id="CklYUclwg4yYLGUpfM6wAX">shims.js</code> 收窄为「仅导出仍被引用的少量 API」</td>
     </tr>
   </tbody>
 </table>
 
-<h3><span class="tag p1">P1</span> 一致性调整</h3>
-<table>
-  <thead><tr><th>#</th><th>问题</th><th>证据</th><th>建议调整</th></tr></thead>
-  <tbody>
-    <tr><td>P1-1</td><td>双日历网格并存：DOM 中 70 个 <code>.day-cell</code>，其中 35 个属隐藏经典网格</td><td>浏览器实测 <code>all=70 / inView=35 / invisible=35</code>；<code>index.html</code> 经典 <code>#calendar-grid</code></td><td>随 P0-1 一并删除；删除前禁止用裸 <code>document.querySelector('.day-cell')</code> 做自动化操作</td></tr>
-    <tr><td>P1-2</td><td><code>calendar-theme</code> 双写入者</td><td><code>settings.js:40</code> 与 <code>appStore.js:39</code></td><td>删除经典 <code>setTheme</code>/<code>loadTheme</code>（<code>settings.js:38-46</code>）与 <code>shims.js:190-191</code>，主题唯一真值收敛到 <code>appStore</code></td></tr>
-    <tr><td>P1-3</td><td><code>calendar-nav-items</code> 三处写入者</td><td><code>renderer.js:457-475</code>、<code>LifeWorkbench.vue:48</code>、<code>SettingsPage.vue:479</code></td><td>删除 <code>renderer.js</code> 的导航设置 IIFE（其按钮全在死壳内）</td></tr>
-    <tr><td>P1-4</td><td><code>lifeEngine</code> 存储读写 API 不配对</td><td>写 <code>window.__storage.set(KEY,state)</code>（<code>:601</code>）读 <code>getRaw(KEY)</code>（<code>:590</code>）</td><td>统一为 <code>.set/.get</code>（读取保持 <code>getRaw</code> 兼容回退，避免既有数据丢失）</td></tr>
-    <tr><td>P1-5</td><td>图表配色不随主题</td><td><code>lifeEngine.js:446</code> <code>CATEGORY_COLORS</code> 固定 8 色，饼图/占比条直接使用</td><td>属有意设计（保证分类色稳定可辨），建议保留并在文档标注；如需主题协调，改为 <code>color-mix</code> 与 <code>--accent</code> 混合的派生色</td></tr>
+<h3 data-page-node-id="e07xRcYOQcpzFMtKr8kFi9"><span class="tag p1" data-page-node-id="J1YupmF0H3D8yOfXy56tZb">P1</span> 一致性调整</h3>
+<table data-page-node-id="KyAi1rsIMo9mpuAoFBlRCF">
+  <thead data-page-node-id="N7oX4iz22wnMaNRjqnpBg5"><tr data-page-node-id="Kux1aBaEbAHjbS1b4NsnUv"><th data-page-node-id="DEW9cmJdOGATEpTLeVf7tS">#</th><th data-page-node-id="WyWttJHGlnc9OBaPL0fvZj">问题</th><th data-page-node-id="LtAHYCtddbmlesGtoeLuFK">证据</th><th data-page-node-id="IxpFHVWR3zk4xemIun3VIZ">建议调整</th></tr></thead>
+  <tbody data-page-node-id="yd8OT37NQUgiVtYPACFRVu">
+    <tr data-page-node-id="GJUaGdCCPoJh87eXNSlafH"><td data-page-node-id="ehdSLawDV1tKnFtRyhgHBx">P1-1</td><td data-page-node-id="LcTGSoZG9iMsiNDpGiffUv">双日历网格并存：DOM 中 70 个 <code data-page-node-id="bs1AFMaNRQdMhKKPDZ3bIY">.day-cell</code>，其中 35 个属隐藏经典网格</td><td data-page-node-id="2I1Eey4LTK19ZPXhUG1BlM">浏览器实测 <code data-page-node-id="MNjB9zJInIjtHdA6CUGVAf">all=70 / inView=35 / invisible=35</code>；<code data-page-node-id="FsZtZZjZqon4xzvZrQoa77">index.html</code> 经典 <code data-page-node-id="QolTzqyVMlDfa73UqClSSd">#calendar-grid</code></td><td data-page-node-id="2Bd9V5Go9BYY82NRUMQyPN">随 P0-1 一并删除；删除前禁止用裸 <code data-page-node-id="bz2TAp8V8w4U2s1Ajt68CX">document.querySelector('.day-cell')</code> 做自动化操作</td></tr>
+    <tr data-page-node-id="bAbWFSSlZNYx8aYQIDxGkO"><td data-page-node-id="FDGCnCaMxcdwic4pdZ4gSn">P1-2</td><td data-page-node-id="Vo7sFhUJJ7mkWGfjuDF717"><code data-page-node-id="aRsYzP57l2bkxkgVMFJnyk">calendar-theme</code> 双写入者</td><td data-page-node-id="EBD9Ie16tf5kWCkeqScS7a"><code data-page-node-id="qAFXO05sOD91kpePB4NwtV">settings.js:40</code> 与 <code data-page-node-id="DaBExYErngckfmzsWjgHGa">appStore.js:39</code></td><td data-page-node-id="MYENdgUAqph5B6l6eq4Qto">删除经典 <code data-page-node-id="uAtpaHa7prJtDqST6woy53">setTheme</code>/<code data-page-node-id="hq6bTtYaBlqwt4Ru4O34x3">loadTheme</code>（<code data-page-node-id="RXwaiZrRO5rQ2HvmIIticM">settings.js:38-46</code>）与 <code data-page-node-id="ebHTA3EbhJEEKinCU77AmH">shims.js:190-191</code>，主题唯一真值收敛到 <code data-page-node-id="c7R0MDvcVheDxf7GqIFxbq">appStore</code></td></tr>
+    <tr data-page-node-id="OJMTUPNH6pFqOvt8FlCvBD"><td data-page-node-id="kxH0IPCJ4Z0sCgGmXW1M6K">P1-3</td><td data-page-node-id="dBLVsxgHqGbZDZlSHfuvLI"><code data-page-node-id="4wUfwO5TjBKApyDUYmSSvH">calendar-nav-items</code> 三处写入者</td><td data-page-node-id="7bgXWRBaBVMoXzdcukOI2q"><code data-page-node-id="VmJh265iiGldSY756cMVHE">renderer.js:457-475</code>、<code data-page-node-id="Q5OdIiXDPOtQtFQzeIGttD">LifeWorkbench.vue:48</code>、<code data-page-node-id="uDtmbO4gIlv4fOB2XBaEAV">SettingsPage.vue:479</code></td><td data-page-node-id="elMFBNBbZGkgPdmLNTSyvB">删除 <code data-page-node-id="1Epes1wErng6BDeFTxhaqR">renderer.js</code> 的导航设置 IIFE（其按钮全在死壳内）</td></tr>
+    <tr data-page-node-id="tMdOttAvX2aypZM1ufSCJv"><td data-page-node-id="m8izWYv4qXHvVyDspnf4DH">P1-4</td><td data-page-node-id="hR33CBGaxnLr0mzeF8JSAJ"><code data-page-node-id="CZLnRIvv9InYRJREqdMcUE">lifeEngine</code> 存储读写 API 不配对</td><td data-page-node-id="Rhf3m67rzo1PzFfJQG4GKc">写 <code data-page-node-id="UVzpVRYED2j71BH1qLUXHU">window.__storage.set(KEY,state)</code>（<code data-page-node-id="x7w3HyM3Okv0PDIcT4tnfk">:601</code>）读 <code data-page-node-id="bMPBriYFBIg2xVesYGFSil">getRaw(KEY)</code>（<code data-page-node-id="Uyon9Xb1hUls1sCFpp8jyQ">:590</code>）</td><td data-page-node-id="XFIeJriWfPLU0EVLTE3BzT">统一为 <code data-page-node-id="BaavTs0JnA6Nx30yKsZYty">.set/.get</code>（读取保持 <code data-page-node-id="3HxJwuQBAkn4AI2RJyBoT2">getRaw</code> 兼容回退，避免既有数据丢失）</td></tr>
+    <tr data-page-node-id="AelKgvAChL67sE8osjehi8"><td data-page-node-id="AfUo83njA2mUyhMkeAq9D2">P1-5</td><td data-page-node-id="Nsb7wrKD7SUsHuLxrQicEZ">图表配色不随主题</td><td data-page-node-id="c0CLdkXnbhmrGMa4hX8xM7"><code data-page-node-id="aW6v5s9wy7PV3xGZE6GAfg">lifeEngine.js:446</code> <code data-page-node-id="qWkrKah8nIrfEdci4HOPfg">CATEGORY_COLORS</code> 固定 8 色，饼图/占比条直接使用</td><td data-page-node-id="dOU9gdQTMDRaxsh4gp0s5G">属有意设计（保证分类色稳定可辨），建议保留并在文档标注；如需主题协调，改为 <code data-page-node-id="XErGjCDjTGiehDav5MDoMt">color-mix</code> 与 <code data-page-node-id="dBVsP4njWMHUElSftCeAkU">--accent</code> 混合的派生色</td></tr>
   </tbody>
 </table>
 
-<h3><span class="tag p2">P2</span> 清理与规范</h3>
-<table>
-  <thead><tr><th>#</th><th>问题</th><th>证据</th><th>建议调整</th></tr></thead>
-  <tbody>
-    <tr><td>P2-1</td><td>经典层无保护 DOM 写入点（死壳内元素缺失即崩）</td><td><code>calendar.js:165</code>(<code>detail-date</code>)、<code>:181</code>(<code>note-input</code>)；<code>social.js:78/139/554/557/614/619/620</code>；<code>reminders.js</code> 内 <code>clockin-today-label</code> 等</td><td>随经典层整体下线（P0-1）；下线前保持不动</td></tr>
-    <tr><td>P2-2</td><td>残留死函数与注释</td><td><code>calendar.js</code> <code>updateMonthLabel</code>（仅写死壳）、<code>social.js</code> 全部 DOM 函数、<code>todos.js:103</code> 空壳、<code>calendar.js:3</code> 注释仍列 <code>renderClockinView</code></td><td>P0-1 之后统一清理</td></tr>
-    <tr><td>P2-3</td><td><code>reminders.js</code> 使用裸 <code>showToast(...)</code> 依赖全局垫片</td><td><code>reminders.js:418</code></td><td>改为显式 <code>window.showToast?.()</code>，或在经典层下线时一并移除</td></tr>
-    <tr><td>P2-4</td><td>样式双份遗留：<code>.water-*</code> 与 toast 增强块</td><td><code>styles.css:1480-1529</code>（现由 Vue 使用，保留）、<code>styles.css:1915</code> toast 增强</td><td>保留 <code>.water-*</code>（Vue 复用同一 <code>styles.css</code>）；toast 增强块与新统一规则合并</td></tr>
+<h3 data-page-node-id="gXLLBC4kaARyGNHK8zh1Ut"><span class="tag p2" data-page-node-id="1wF5QTlmw7KNcL4IGb41JI">P2</span> 清理与规范</h3>
+<table data-page-node-id="ALHb2HMNm7Ro24FWgTn0Ir">
+  <thead data-page-node-id="VWbGOm1aEwf23CbxDCC68z"><tr data-page-node-id="5lUCyGxJkWAaCH1NYOG2GW"><th data-page-node-id="6OSffNTYuW8Lfi0jW49LJZ">#</th><th data-page-node-id="H7vagES9W6Ij6ABXrQBI0m">问题</th><th data-page-node-id="KmELwtwn4nx3rmFWOF9DfB">证据</th><th data-page-node-id="NePmoIg9lDDv3SynpYCpDp">建议调整</th></tr></thead>
+  <tbody data-page-node-id="QxreTBF4S4gKTpoPnuuAX1">
+    <tr data-page-node-id="gErGZG2TIzkkvuPwGNSeA4"><td data-page-node-id="IsZ1naaCuVY3c7t4rKHZCx">P2-1</td><td data-page-node-id="FEt4BdKmTGD5rJ9bfQjset">经典层无保护 DOM 写入点（死壳内元素缺失即崩）</td><td data-page-node-id="HoBsgvm3EOZCzN16tF2T0k"><code data-page-node-id="2b5bCTDaqGbVmgEA89krqa">calendar.js:165</code>(<code data-page-node-id="VEgUFld5EqDSN5zBtMNcz0">detail-date</code>)、<code data-page-node-id="lBEVffYVioa8FCU7eXn5cZ">:181</code>(<code data-page-node-id="JlBJnQTk9JNGMBEc17Dr4f">note-input</code>)；<code data-page-node-id="exheA6BB39qEZqjbwtRl0K">social.js:78/139/554/557/614/619/620</code>；<code data-page-node-id="EjjgjFzUDF6S8rmCUiDWLJ">reminders.js</code> 内 <code data-page-node-id="OwMb3lzu1rmuphwn7sfk3x">clockin-today-label</code> 等</td><td data-page-node-id="XM4oENYjskJS81AieHdyjm">随经典层整体下线（P0-1）；下线前保持不动</td></tr>
+    <tr data-page-node-id="c9u1X4bzLjA5aRtGVe6Htf"><td data-page-node-id="4NY85CMBNDinI3XSfzuOd8">P2-2</td><td data-page-node-id="Orz6QLHearzkGw19zIT66t">残留死函数与注释</td><td data-page-node-id="PAd2tRsn66aYgflcmP6fpe"><code data-page-node-id="R3JNDxJ6zjvRAeDZtLBIBm">calendar.js</code> <code data-page-node-id="BJfAd4i9rR8UwBOl5I4G7H">updateMonthLabel</code>（仅写死壳）、<code data-page-node-id="gH6un1pLiYwXHSF84an3id">social.js</code> 全部 DOM 函数、<code data-page-node-id="ZuFRHWZE8MzwJCBWE18iaT">todos.js:103</code> 空壳、<code data-page-node-id="RCbFa8c6ZwPntIGBckpcLA">calendar.js:3</code> 注释仍列 <code data-page-node-id="B1aqFLyGarpNaXUkuBgnQv">renderClockinView</code></td><td data-page-node-id="Sz7AeoSNH1EJq3H6TpcOiF">P0-1 之后统一清理</td></tr>
+    <tr data-page-node-id="hVxr361gE8waCevDay6EMn"><td data-page-node-id="TGBBJfZeB2uC5TVSRuOKoB">P2-3</td><td data-page-node-id="zFfLREVIW5DaClAJPWzxNp"><code data-page-node-id="tB4Vz8gTsR7dIu1byG6VDD">reminders.js</code> 使用裸 <code data-page-node-id="1xDlCMpNzE1ATP9gBvqJk0">showToast(...)</code> 依赖全局垫片</td><td data-page-node-id="26asiEX68exRAsJ9lrdTfe"><code data-page-node-id="VoYdA9tn3Okr6HLbcBjuHJ">reminders.js:418</code></td><td data-page-node-id="LkeAI7CJubfHWGHQLrW6hD">改为显式 <code data-page-node-id="vmAVrIi2p5nYNaXbuKqQdk">window.showToast?.()</code>，或在经典层下线时一并移除</td></tr>
+    <tr data-page-node-id="SHaw2R7vTGcGggtQ0nVBZ7"><td data-page-node-id="pfWjh0nXLIV4I5F3dH4Uax">P2-4</td><td data-page-node-id="44R4vM6wJYB7dQX3W2Bj9e">样式双份遗留：<code data-page-node-id="ezEVx8sGyYWChkAAaBPhjS">.water-*</code> 与 toast 增强块</td><td data-page-node-id="JGNOtKGRyRnBaTiocfUn91"><code data-page-node-id="QpGFx0hNwGJznu7zHSNC95">styles.css:1480-1529</code>（现由 Vue 使用，保留）、<code data-page-node-id="bGUb0tJHUT509BUDKiQpgV">styles.css:1915</code> toast 增强</td><td data-page-node-id="QfuqdO7tP77CRjSGCSnxkD">保留 <code data-page-node-id="KncBM2m8LXCWBipdVjDBtv">.water-*</code>（Vue 复用同一 <code data-page-node-id="5g8bpKwTp9QABhsfrZMOq8">styles.css</code>）；toast 增强块与新统一规则合并</td></tr>
   </tbody>
 </table>
 
-<h2>五、需要调整的部分 · 建议顺序</h2>
-<ol>
-  <li><b>阶段 1（低风险，可立即做）</b>：P1-2 / P1-3 / P1-4 / P2-3 —— 存储与 API 收敛、删死壳内的导航写入 IIFE。验证：主题切换、导航显隐、生活工作台数据往返。</li>
-  <li><b>阶段 2（中风险）</b>：P0-2 —— lifeEngine 统一写入助手 + 关键渲染函数异常隔离。验证：断网/空数据/切页往返 + 强制移除宿主元素不崩。</li>
-  <li><b>阶段 3（较高风险，需专项）</b>：P0-1 + P0-3 + P1-1 + P2-1 + P2-2 —— 经典层下线：先解耦 Vue 对 <code>window.renderCalendar/loadTheme/loadAllData</code> 的依赖，再删 <code>index.html:121-338</code>，最后清理经典脚本与 <code>shims.js</code> 收窄。验证：日历/打卡/好友/统计/设置 5 页全流程 + 通知调度 + 数据持久化 + 三主题截图回归。</li>
+<h2 data-page-node-id="znmRKGmZNzlppldCr4EJx8">五、需要调整的部分 · 建议顺序</h2>
+<ol data-page-node-id="uTFxsFAy26GQ2qwqD8iuAv">
+  <li data-page-node-id="kEhF5cuU3HkzD2UIwK07hf"><b data-page-node-id="bnNxJycOxOtXlx7RwHl17u">阶段 1（低风险，可立即做）</b>：P1-2 / P1-3 / P1-4 / P2-3 —— 存储与 API 收敛、删死壳内的导航写入 IIFE。验证：主题切换、导航显隐、生活工作台数据往返。</li>
+  <li data-page-node-id="YplLsm9HkyokxkPwnwqB4G"><b data-page-node-id="zHIzkhi6GgpJ4HHscx8oh4">阶段 2（中风险）</b>：P0-2 —— lifeEngine 统一写入助手 + 关键渲染函数异常隔离。验证：断网/空数据/切页往返 + 强制移除宿主元素不崩。</li>
+  <li data-page-node-id="ksZGaE8reGbuhCmjwmgXd1"><b data-page-node-id="epWAa5dks2V7NeKTAvljeH">阶段 3（较高风险，需专项）</b>：P0-1 + P0-3 + P1-1 + P2-1 + P2-2 —— 经典层下线：先解耦 Vue 对 <code data-page-node-id="7aMDAXqzTB3T08l2lthkH8">window.renderCalendar/loadTheme/loadAllData</code> 的依赖，再删 <code data-page-node-id="8N83FMdH8g0L9fhAsELhZn">index.html:121-338</code>，最后清理经典脚本与 <code data-page-node-id="mkG0HQXsR22zSXmcHdnYL3">shims.js</code> 收窄。验证：日历/打卡/好友/统计/设置 5 页全流程 + 通知调度 + 数据持久化 + 三主题截图回归。</li>
 </ol>
-<div class="note"><b>风险提示</b>：阶段 3 必须整体推进、分步验证。经典层虽不可见，但其脚本仍在初始化并写入 <code>window.allData</code> 等共享状态，直接删除将引发断链（<code>shims.js:717</code> 的 API 断言即为此设）。</div>
+<div class="note" data-page-node-id="AqqUtuMnVNYInnbIWzUPFH"><b data-page-node-id="vXYVHilMUVJnJyG2qOBUdd">风险提示</b>：阶段 3 必须整体推进、分步验证。经典层虽不可见，但其脚本仍在初始化并写入 <code data-page-node-id="WMkAJPJqwSAk6YKuL121GF">window.allData</code> 等共享状态，直接删除将引发断链（<code data-page-node-id="df1574cFYbAlRpWdIgz5r7">shims.js:717</code> 的 API 断言即为此设）。</div>
 
-<h2>六、本轮验证记录</h2>
-<div class="card">
-  <ul>
-    <li><b>构建</b>：<code>vite build</code> ✓（14.4s）；<code>capacitor sync android</code> ✓</li>
-    <li><b>提示统一</b>：<code>window.showToast('工作模块提示')</code> → 宿主 <code>#toast</code>、无 <code>#legacy-toast</code>、<code>bottom:92px / radius:20px / z-index:1200</code>、背景 = 主题 <code>--toast-bg</code></li>
-    <li><b>主题融合</b>：green 主题 → 区域 A <code>--accent #2e9e4f</code> = 区域 B <code>--plum #2e9e4f</code>、<code>--life-card</code> = <code>--card</code>；cosmic 无回归</li>
-    <li><b>喝水模块</b>：8 杯渲染、点 + → 1/8 杯、<code>water-records[今天]=1</code>、0 错误</li>
-    <li><b>日历回归</b>：35 格渲染、标记「上班」→ <code>status:'work'</code>、<code>data-status=work</code>、显示「班」、0 错误</li>
-    <li><b>错误监控</b>：全流程 <code>window.onerror</code> 捕获 0 条；无致命浮层</li>
+<h2 data-page-node-id="Rt6tqzkjWEaxFyUjYynZgh">六、本轮验证记录</h2>
+<div class="card" data-page-node-id="JJHnPdnaahogD6RD4om173">
+  <ul data-page-node-id="S2p3BSY2qChk6MGk8GiyvT">
+    <li data-page-node-id="kXRvH309OSOKR01JL2N3Az"><b data-page-node-id="qBp3TNuaQmpAIARE9So7yw">构建</b>：<code data-page-node-id="sUIosjfDY1CK4Cvh2l6wAc">vite build</code> ✓（14.4s）；<code data-page-node-id="moyiChiaJHu6nShMYoXAHv">capacitor sync android</code> ✓</li>
+    <li data-page-node-id="ldQggZQiTpx9EM9M2peXcB"><b data-page-node-id="G0MLZHGajM2ca2c6MSAQcp">提示统一</b>：<code data-page-node-id="ztj7PoD35VZlVcYrMTYCvi">window.showToast('工作模块提示')</code> → 宿主 <code data-page-node-id="17HuSSJlLlpGRTpXgAOtLO">#toast</code>、无 <code data-page-node-id="A5dDSzUgkhBKZsoyaMzARf">#legacy-toast</code>、<code data-page-node-id="lD962QpoJqsjYuWgFjF02H">bottom:92px / radius:20px / z-index:1200</code>、背景 = 主题 <code data-page-node-id="n9fEEQTjH3eNXCfTRsu0jU">--toast-bg</code></li>
+    <li data-page-node-id="e2lZCRn8bIizcsaK8lROXU"><b data-page-node-id="85F8DfEBsOJnQaAj1TCa5T">主题融合</b>：green 主题 → 区域 A <code data-page-node-id="iszs4bx7yU3MhcKjsPdWBF">--accent #2e9e4f</code> = 区域 B <code data-page-node-id="vkC1uah6XZIYaahkZAcYFv">--plum #2e9e4f</code>、<code data-page-node-id="sVfa21Fr6hLGQMn5UZH1TO">--life-card</code> = <code data-page-node-id="3BPc02genS6Pveow5WL8qW">--card</code>；cosmic 无回归</li>
+    <li data-page-node-id="th9fPnGCh38yMK6TfEZ6Nk"><b data-page-node-id="nGsbdHOpBUsoxceHJktCOd">喝水模块</b>：8 杯渲染、点 + → 1/8 杯、<code data-page-node-id="nKInBatFkL4RQgaphu1ffD">water-records[今天]=1</code>、0 错误</li>
+    <li data-page-node-id="vb4DRCremFc4nvkrQSxuOc"><b data-page-node-id="LlAyy2L4DNv8xi1S8wjBob">日历回归</b>：35 格渲染、标记「上班」→ <code data-page-node-id="Nsy43JHSmYGTuPhpGHasRT">status:'work'</code>、<code data-page-node-id="PdE4jg11qdxQLf31SZb1XW">data-status=work</code>、显示「班」、0 错误</li>
+    <li data-page-node-id="SFE2Cx1YRGW1W4PP9rm9yO"><b data-page-node-id="quSAjJVP0yjrAgqu9j9JlC">错误监控</b>：全流程 <code data-page-node-id="C7Xtv2iDJE7XGICXx1mC7s">window.onerror</code> 捕获 0 条；无致命浮层</li>
   </ul>
 </div>
 

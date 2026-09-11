@@ -13,6 +13,9 @@ export const useAppStore = defineStore('app', () => {
   // 主题统一以 calendar-theme 为单一真值（经典 CSS 驱动键，写在 document.body.dataset.theme）。
   // 早期版本曾用独立 `theme` 键，造成与经典路径分裂、切换需重启；现统一到此键。
   const theme = ref(window.__storage.getRaw('calendar-theme') || 'cosmic')
+  // v3.17.38 存储单真值：冷启动即应用主题（原由经典 renderer.js 调 window.loadTheme 完成，
+  // 该路径已随经典层收敛删除）。主题唯一真值 = calendar-theme，唯一写入者 = 本 store。
+  if (typeof document !== 'undefined') document.body.dataset.theme = theme.value
   const navSettings = ref(window.__storage.get('navSettings') || {})
   // 同步开关统一委托 sync.js 的单一真值（键 calendar-sync-enabled）。
   // 原先此处读独立键 'syncEnabled'，与 sync.js 分裂，导致 store 里的开关状态与真实开关不一致。

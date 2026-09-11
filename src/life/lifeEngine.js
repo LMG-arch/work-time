@@ -587,6 +587,9 @@ import * as XLSX from 'xlsx';
   let dataCorrupted=false;
   function loadState(){
     try{window.__storage.remove('richangji-state-v0');}catch(e){}
+    // v3.17.38 读写配对：优先 __storage.get（与 saveState 的 set 成对），旧数据/接口差异则回退 getRaw → localStorage
+    let parsedState=null;try{parsedState=window.__storage.get(STORAGE_KEY);}catch(e){}
+    if(parsedState&&typeof parsedState==='object') return normalizeState(parsedState);
     const raw=window.__storage.getRaw(STORAGE_KEY)||localStorage.getItem(STORAGE_KEY);
     if(!raw) return makeInitialState();
     try{return normalizeState(JSON.parse(raw));}

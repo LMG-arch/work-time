@@ -413,7 +413,7 @@ export async function scheduleReminderNotifications() {
             }
             if (!allReminderRecords[extra.date]) allReminderRecords[extra.date] = {};
             allReminderRecords[extra.date][extra.reminderId] = { confirmed: true, at: new Date().toISOString() };
-            showToast('打卡成功 ✓');
+            window.showToast?.('打卡成功 ✓');
             if (typeof currentView !== 'undefined' && currentView === 'clockin') { window.__refreshReminderList?.(); window.__refreshReminderHistory?.(); }
             if (typeof renderCalendar === 'function') renderCalendar();
           }

@@ -451,61 +451,8 @@ export function setupEventListeners() {
     arrow.classList.toggle('open', !isOpen);
   });
 
-  // ===== Nav Bar Settings =====
-  (function() {
-    const NAV_ITEMS_KEY = 'calendar-nav-items';
-    const allNavItems = [
-      { id: 'home', label: '日历', always: true },
-      { id: 'clockin', label: '打卡' },
-      { id: 'social', label: '好友' },
-      { id: 'stats', label: '统计' },
-      { id: 'settings', label: '设置', always: true }
-    ];
-
-    function getNavItems() {
-      try { const val = window.__storage.get(NAV_ITEMS_KEY); if (val) return val; } catch (e) { console.warn('[Settings] Failed to parse nav items:', e.message); }
-      return allNavItems.map(n => n.id);
-    }
-    function saveNavItems(items) { window.__storage.set(NAV_ITEMS_KEY, items); }
-    function applyNavItems() {
-      const enabled = getNavItems();
-      allNavItems.forEach(item => {
-        const btn = document.getElementById(item.id + '-btn');
-        if (btn) btn.style.display = enabled.includes(item.id) ? '' : 'none';
-      });
-      moveToolbarIndicator();
-    }
-
-    document.getElementById('nav-toggle').addEventListener('click', () => {
-      const content = document.getElementById('nav-settings-content');
-      const arrow = document.querySelector('#nav-toggle .collapse-arrow');
-      const isOpen = content.style.display !== 'none';
-      content.style.display = isOpen ? 'none' : '';
-      arrow.classList.toggle('open', !isOpen);
-    });
-
-    const list = document.getElementById('nav-items-list');
-    const enabled = getNavItems();
-    allNavItems.forEach(item => {
-      const row = document.createElement('div');
-      row.className = 'nav-item-row';
-      const label = document.createElement('span');
-      label.className = 'nav-item-label';
-      label.textContent = item.label;
-      if (item.always) { label.textContent += '（固定）'; label.style.color = 'var(--text3)'; }
-      const toggle = document.createElement('button');
-      toggle.className = 'nav-item-toggle' + (enabled.includes(item.id) ? ' on' : '');
-      if (item.always) { toggle.disabled = true; toggle.style.opacity = '0.5'; }
-      toggle.addEventListener('click', () => {
-        let items = getNavItems();
-        if (items.includes(item.id)) { items = items.filter(i => i !== item.id); toggle.classList.remove('on'); }
-        else { items.push(item.id); toggle.classList.add('on'); }
-        saveNavItems(items); applyNavItems();
-      });
-      row.appendChild(label); row.appendChild(toggle); list.appendChild(row);
-    });
-    applyNavItems();
-  })();
+  // v3.17.38 导航设置收敛：经典导航设置 IIFE 已删除（唯一真值 = calendar-nav-items，
+  // 由 LifeWorkbench.vue / SettingsPage.vue 管理；原 IIFE 的目标按钮位于经典死壳内）。
 
   // Close modals on backdrop click
   document.querySelectorAll('.modal').forEach(modal => {
@@ -541,13 +488,9 @@ export function setupEventListeners() {
 
 async function initApp() {
   window.__bootLog && window.__bootLog('DOMContentLoaded fired');
-  try {
-    window.loadTheme();
-    window.__bootLog && window.__bootLog('theme loaded');
-  } catch (e) {
-    console.error('[Init] loadTheme failed:', e.message);
-    window.__bootLog && window.__bootLog('loadTheme ERROR: ' + e.message);
-  }
+
+  // v3.17.38 主题由 appStore 在创建时应用（键 calendar-theme 单一真值），此处不再调用经典 loadTheme
+
 
   const today = new Date();
   currentYear = today.getFullYear();

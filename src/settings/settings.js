@@ -35,15 +35,7 @@ export function renderSettingsView() {
   checkAndroidPermissions();
 }
 
-export function setTheme(themeId) {
-  document.body.dataset.theme = themeId;
-  window.__storage.setRaw('calendar-theme', themeId);
-}
-
-export function loadTheme() {
-  const saved = window.__storage.getRaw('calendar-theme') || 'cosmic';
-  document.body.dataset.theme = saved;
-}
+// v3.17.38 主题收敛：setTheme/loadTheme 已删除（唯一真值 = appStore.theme，键 calendar-theme）
 
 export async function updateAutoLaunchBtn() {
   const enabled = await window.calendarAPI.getAutoLaunch();

@@ -183,9 +183,7 @@ if (typeof window !== 'undefined') {
 
   // ===== settings/settings.js =====
   window.renderSettingsView = settings.renderSettingsView
-  window.setTheme = settings.setTheme
-  window.loadTheme = settings.loadTheme
-  window.updateAutoLaunchBtn = settings.updateAutoLaunchBtn
+      window.updateAutoLaunchBtn = settings.updateAutoLaunchBtn
   window.checkAndroidPermissions = settings.checkAndroidPermissions
   window.updatePermStatus = settings.updatePermStatus
 
