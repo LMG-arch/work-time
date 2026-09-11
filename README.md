@@ -686,6 +686,14 @@ MIT
 
 ## 更新日志
 
+### v3.17.36 (2026-09-11) — 根治：showToast 误删生活工作台 #toast 宿主
+- **完整根因**：生活工作台的提示宿主是 `<div class="toast" id="toast">`；工作模块（待办/提醒/好友/设置/备注）走 `utils.showToast()`，其原实现用 `document.querySelector('.toast')` 清理上一条提示 → **命中并 remove() 了 life 的 `#toast`**，而自建元素不带 id、2.1 秒后自删。于是工作模块弹过任意提示后，`#toast` 从 DOM 彻底消失，此后生活工作台任何带提示的操作（删除记录等）执行 `getElementById('toast').textContent` 即抛 `Cannot set properties of null` 并弹致命浮层
+- **逐帧核对**：报错栈 `nM`(toast) ← `sM`(deleteRecord) ← `HTMLDocument`(文档级 click 委托 `a==='delete'&&sM(i)`)，从 v3.17.32 的 APK 中解出 bundle 按行列切片确认
+- **修复**：`utils.showToast()` 改为只清理自建的 `#legacy-toast`（自建元素补上 id），不再触碰其他 toast 宿主
+- 配合 v3.17.35 的 `ensureOverlayHost` 自愈、委托 `try/catch` 异常隔离、`initWhenReady` 就绪检查，该类崩溃彻底消除
+- 实测：`showToast()` 后 life `#toast` 完好；复现原路径（工作模块提示 → 生活工作台删除记录）提示正常、0 未捕获错误、无浮层
+- **版本**：3.17.35 → 3.17.36（versionCode 72 → 73）
+
 ### v3.17.35 (2026-09-11) — 崩溃修复：删除记录时 textContent of null
 - **根因**：`deleteRecord()` 末尾的 `toast('记录已删除')` 无空值保护，`#toast` 取不到时直接写 `el.textContent` 抛 `Cannot set properties of null`，被全局错误处理器渲染成致命浮层（安卓端实测于 v3.17.32）
 - **修复**：新增 `ensureOverlayHost()`——`#toast`/`#confetti` 缺失时动态重建（挂 `.life-app`，无 `.life-app` 时挂 body 并注入内联样式）；`toast()`/`celebrate()` 全部改走该助手，建不出宿主时降级为 `console.warn` 不再崩溃
