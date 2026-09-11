@@ -686,6 +686,15 @@ MIT
 
 ## 更新日志
 
+### v3.17.41 (2026-09-11) — 重构阶段 3b/4a · 数据服务迁移
+- **新增 `src/lib/dataService.js`**：Vue 侧数据刷新唯一入口（拉取日历/待办/提醒/记账 → 写 Pinia store → 触发纯重渲染 → 过渡期发布 window 镜像）
+- **`calendarStore`** 不再从 `window.allData` 灌数据；`syncFromWindow()` 改为直接从原生桥重新拉取
+- **刷新钩子纯重渲染**：`__refreshCalendarGrid` / `__refreshStats` 不再隐式读 window 镜像（保存后 store 自身状态已最新）
+- **设置页** 6 处 `window.refreshAllData` 改走 `dataService.refreshAllData()`（同步/下载/导入/恢复路径全覆盖）
+- **诊断出口** `window.__dataService.refreshAllData()`（排查"同步后不刷新"类问题）
+- 实测：冷启动 daysData 正常、打卡保存链路 store/界面同步、`refreshAllData()` 端到端 0 错误
+- **死壳审计**：`.app` 59 个 id 中 48 个仍被经典脚本引用 → 删除 DOM 必须与经典渲染层同批（阶段 4 策略已记入计划 §9）
+
 ### v3.17.40 (2026-09-11) — 重构阶段 3（第一批）· Vue 去 window 数据镜像
 - **S3.1a `todoStore`**：初始状态不再取 `window.allTodos`（改 `ref([])`，数据由 `loadTodos()` 经原生桥加载）；`isDone()` 改查自身状态；`deleteTodo()`/`updateTodo()` 先更新自身状态再**发布**到 window（过渡期兼容，阶段 4 移除）
 - **S3.1b `reminderStore`**：`reminders`/`reminderRecords` 初始为空；`refreshFromWindow()`/`refreshReminderList()`/`refreshReminderHistory()` 增加类型守卫，不再把 window 当数据源
