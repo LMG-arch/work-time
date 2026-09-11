@@ -686,6 +686,14 @@ MIT
 
 ## 更新日志
 
+### v3.17.35 (2026-09-11) — 崩溃修复：删除记录时 textContent of null
+- **根因**：`deleteRecord()` 末尾的 `toast('记录已删除')` 无空值保护，`#toast` 取不到时直接写 `el.textContent` 抛 `Cannot set properties of null`，被全局错误处理器渲染成致命浮层（安卓端实测于 v3.17.32）
+- **修复**：新增 `ensureOverlayHost()`——`#toast`/`#confetti` 缺失时动态重建（挂 `.life-app`，无 `.life-app` 时挂 body 并注入内联样式）；`toast()`/`celebrate()` 全部改走该助手，建不出宿主时降级为 `console.warn` 不再崩溃
+- **交互异常隔离**：文档级 click 委托整体包 `try/catch`，单个动作失败仅告警（`[life] action failed: …`），不再升级为未捕获错误与致命浮层
+- **markup 就绪检查**：`initLife()` 改为 `initWhenReady()` 有限重试（8×120ms），界面未就绪时不再因 `getElementById` 返回 null 崩溃
+- 实测：移除 `#toast` 后删除记录仍正常提示、0 未捕获错误；移除 `#confetti` 后庆祝路径正常；无 `.life-app` 降级路径 toast 挂 body 仍可见
+- **版本**：3.17.34 → 3.17.35（versionCode 71 → 72）
+
 ### v3.17.34 (2026-09-10) — 记账理财·消费结构占比条
 - **饼图下方新增横向堆叠占比条**：与「月度预算」进度条同风格（10px 高、20px 圆角、主题轨道色），各消费分类按占比分段着色，与饼图扇区一一对应；最后一段自动吸收四舍五入误差（总长恒 100%）；无支出时整体隐藏，饼图显示「暂无支出」占位，无布局错乱
 - **图例恢复百分比**：v3.17.31 移除后图例只剩「色点+分类名」，本次恢复行尾百分比（图例 grid 第三列样式一直保留，正好补上）
