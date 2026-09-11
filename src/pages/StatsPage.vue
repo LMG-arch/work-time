@@ -18,8 +18,7 @@ const currentMonth = ref(new Date().getMonth())
 
 const refreshCount = ref(0)
 window.__refreshStats = () => {
-  // 修复数据新鲜度：先把 window.allData 灌回 calendarStore，再触发重渲染
-  calendarStore.syncFromWindow()
+  // v3.17.41 纯重渲染：数据刷新走 src/lib/dataService.js（显式动作）
   refreshCount.value++
 }
 

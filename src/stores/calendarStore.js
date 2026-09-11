@@ -42,10 +42,11 @@ export const useCalendarStore = defineStore('calendar', () => {
     window.__refreshTodoView?.()
   }
 
-  // 从 window.* 同步（零 IPC）：renderer.refreshAllData 已把最新数据写入 window.allData，
-  // 这里直接灌回 Pinia，避免同步/导入后日历网格仍显示陈旧数据。
+  // v3.17.41 去 window 镜像：不再从 window.allData 灌数据，改为从原生桥重新拉取。
+  // 数据刷新统一入口为 src/lib/dataService.js（显式动作）；本函数保留供旧调用点使用，
+  // 语义已由"采纳 window 镜像"变为"重新拉取"，调用方应 await。
   function syncFromWindow() {
-    daysData.value = window.allData || {}
+    return loadData()
   }
 
   // 获取特定日期的数据

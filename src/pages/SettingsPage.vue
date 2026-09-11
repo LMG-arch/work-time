@@ -2,6 +2,8 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import SettingsSection from '../components/SettingsSection.vue'
 import { isCapacitorPlatform, sanitizeUrl } from '../utils.js'
+// v3.17.41 数据刷新改走 Vue 侧唯一入口（不再经经典 window.refreshAllData）
+import { refreshAllData } from '../lib/dataService.js'
 import { useAppStore } from '../stores/appStore.js'
 
 // ===== 全局依赖（通过 window 访问现有模块函数）=====
@@ -130,7 +132,7 @@ async function handleLogin() {
       regUsername.value = ''
       regPassword.value = ''
       await updateAccountUI()
-      try { await syncCalendarData(); await window.refreshAllData?.() } catch (e) { console.warn('[Sync] Post-login sync failed:', e.message) }
+      try { await syncCalendarData(); await refreshAllData() } catch (e) { console.warn('[Sync] Post-login sync failed:', e.message) }
     }
   } finally {
     isSubmitting.value = false
@@ -244,7 +246,7 @@ async function toggleSync() {
     isSyncing.value = true
     const r = await syncCalendarData()
     if (r.error) showToast('同步失败: ' + r.error)
-    else { showToast('同步完成 ✓'); await window.refreshAllData?.() }
+    else { showToast('同步完成 ✓'); await refreshAllData() }
     isSyncing.value = false
   }
 }
@@ -254,7 +256,7 @@ async function syncNow() {
   try {
     const r = await syncCalendarData()
     if (r.error) showToast('同步失败: ' + r.error)
-    else { showToast('同步完成 ✓'); await window.refreshAllData?.() }
+    else { showToast('同步完成 ✓'); await refreshAllData() }
   } finally { isSyncing.value = false }
 }
 
@@ -274,7 +276,7 @@ async function pullFromCloudHandler() {
   try {
     const r = await pullFromCloud()
     if (r.error) showToast('下载失败: ' + r.error)
-    else { showToast('云端数据已下载到本地 ✓'); await window.refreshAllData?.() }
+    else { showToast('云端数据已下载到本地 ✓'); await refreshAllData() }
   } finally { isSyncing.value = false }
 }
 
@@ -326,7 +328,7 @@ async function restoreData() {
   showToast('正在恢复...')
   const r = await restoreSelected(getSelectedTables())
   if (r.error) showToast('恢复失败: ' + r.error)
-  else { showToast('数据已恢复 ✓'); await window.refreshAllData?.(); await updateTrashStats() }
+  else { showToast('数据已恢复 ✓'); await refreshAllData(); await updateTrashStats() }
 }
 
 async function emptyTrash() {
@@ -525,7 +527,7 @@ async function exportData() {
 async function importData() {
   const result = await window.calendarAPI.importData()
   if (result.success) {
-    await window.refreshAllData?.()
+    await refreshAllData()
     showToast('数据已导入')
   } else if (result.error) {
     showToast('导入失败: ' + result.error)

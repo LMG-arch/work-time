@@ -1,12 +1,14 @@
 {
-  "version": "3.17.40",
-  "versionCode": 77,
+  "version": "3.17.41",
+  "versionCode": 78,
   "releaseDate": "2026-09-11",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.40/work-calendar-v3.17.40.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.41/work-calendar-v3.17.41.apk",
   "changelog": [
-    "重构阶段3(第一批) · Vue 去 window 数据镜像：todoStore 不再读 window.allTodos（初始为空，经原生桥 loadTodos 加载；isDone/删除/更新改用自身状态），reminderStore 不再读 window.allReminders/allReminderRecords",
-    "重构阶段3(第一批) · 过渡期发布保留：store 仍在加载后写入 window 镜像供经典层消费，阶段 4 一并移除",
-    "重构阶段3(第一批) · 能力直连：TodoModal 农历换算改为 import utils.lunarToSolar（并修复与本地同名包装函数造成的自递归隐患）"
+    "重构阶段3b/4a · 新增 Vue 侧数据刷新唯一入口 src/lib/dataService.js（拉取四类数据 → 写入 Pinia store → 触发纯重渲染 → 过渡期发布 window 镜像）",
+    "重构阶段3b/4a · calendarStore 不再从 window.allData 灌数据（syncFromWindow 改为从原生桥重新拉取）",
+    "重构阶段3b/4a · 日历/统计刷新钩子改为纯重渲染（不再隐式读取 window 镜像，保存后 store 自身状态已最新）",
+    "重构阶段3b/4a · 设置页 6 处 window.refreshAllData 改走 dataService（含同步/下载/导入/恢复路径）",
+    "重构阶段3b/4a · 新增诊断出口 window.__dataService（手动全量刷新，排查同步后不刷新类问题）"
   ],
   "forceUpdate": false
 }
