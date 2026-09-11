@@ -686,6 +686,16 @@ MIT
 
 ## 更新日志
 
+### v3.17.38 (2026-09-11) — 重构阶段 1 · 存储与 API 单真值
+依据 `docs/重构计划-2026-09-11.md` 阶段 1 执行（全程 5 阶段，用户已确认）：
+- **S1.1 主题单一真值**：`appStore` 在创建时即应用主题（接管原先由经典 `renderer.js` 调 `window.loadTheme()` 的冷启动职责）；删除经典 `settings.js` 的 `setTheme`/`loadTheme`、`shims.js` 两处桥接及 `renderer.js` 的调用块。主题唯一真值 = `calendar-theme`，唯一写入者 = `appStore`
+- **S1.2 导航设置单一真值**：删除 `renderer.js` 中 55 行经典导航设置 IIFE（其目标按钮位于经典死壳内），唯一真值 = `calendar-nav-items`（由 `LifeWorkbench.vue` / `SettingsPage.vue` 管理）
+- **S1.3 存储读写配对**：`lifeEngine.loadState` 改为优先 `__storage.get`（与 `saveState` 的 `set` 成对），旧数据回退 `getRaw` → `localStorage`，键名与结构不变、数据不迁移
+- **S1.4 消除裸全局调用**：`reminders.js` 的 `showToast(...)` → `window.showToast?.(...)`
+- 新增 `docs/重构回归清单.md`（R1–R12 用例、通用探针、冒烟铁律与阶段 0 基线快照）；打基线标签 `refactor-base`
+- 实测：冷启动主题应用（purple → `body.dataset.theme=purple`，A `--accent` = B `--plum` = `#7e57c2`）、主题持久化、生活数据 24 条记录正常加载、导航显隐同步、记账占比条回归、全流程 0 未捕获错误
+- **版本**：3.17.37 → 3.17.38（versionCode 74 → 75）
+
 ### v3.17.37 (2026-09-11) — 两区域融合：提示 / 主题 / 数据 / 渲染统一
 把「工作模块（上班日历）」与「生活工作台」从"各有一套"合并为"共用一套"，消除二者之间的重复实现与区别对待：
 - **提示机制合一**：原先两套实现、两个宿主（`utils.showToast` 自建元素 / `lifeEngine.toast` 用 `#toast`），配色、位置（70px vs 28px）、时长（1800ms vs 2400ms）均不同。现统一为唯一实现 + 唯一宿主 `#toast`：`utils.showToast` 委托 `window.__lifeToast`（未就绪时按同一行为兜底），样式统一走 `styles.css` 全局 `.toast`（`--toast-bg` 随主题 / bottom 92px / 20px 圆角 / 2400ms），`ripple.js` 的成功涟漪包装不受影响
