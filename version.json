@@ -1,12 +1,13 @@
 {
-  "version": "3.17.34",
-  "versionCode": 71,
-  "releaseDate": "2026-09-10",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.34/work-calendar-v3.17.34.apk",
+  "version": "3.17.35",
+  "versionCode": 72,
+  "releaseDate": "2026-09-11",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.35/work-calendar-v3.17.35.apk",
   "changelog": [
-    "fix: 记账理财·消费结构——饼图下方新增横向堆叠占比条（与预算进度条同风格），各消费分类占比一目了然；无支出时自动隐藏不占位",
-    "fix: 恢复图例分类百分比显示（v3.17.31 移除后仅剩分类名）",
-    "fix: 修复考勤图例伪元素全局命中 .legend-item 导致生活工作台图例色点/名称/百分比错位换行的问题（作用域收窄到 .ratio-legend）"
+    "fix: 修复删除记录时偶发崩溃——#toast 提示宿主缺失时直接写 textContent 抛错（Cannot set properties of null），现改为宿主缺失自动重建，提示照常显示",
+    "fix: 交互事件异常隔离——单个动作失败不再升级为未捕获错误与致命错误浮层，仅记录告警",
+    "fix: markup 就绪检查——生活工作台界面未就绪时不再因 getElementById 返回 null 崩溃，改为有限重试并给出明确提示",
+    "fix: 庆祝彩带（#confetti）宿主缺失同样自动重建"
   ],
   "forceUpdate": false
 }

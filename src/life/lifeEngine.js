@@ -611,8 +611,10 @@ import * as XLSX from 'xlsx';
     }
   }
   function pulseSaved(){const el=document.querySelector('.save-state');if(!el)return;el.animate?.([{opacity:.5},{opacity:1}],{duration:350});}
-  function toast(message){const el=document.getElementById('toast');el.textContent=translateText(message);el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2400);}
-  function celebrate(){const box=document.getElementById('confetti');box.innerHTML=Array.from({length:16},(_,i)=>`<i style="--x:${45+Math.random()*10}%;--dx:${(Math.random()-.5)*240}px;--dy:${-70-Math.random()*170}px;--c:${['#b65f42','#627a67','#a57c45','#7d5b75'][i%4]}"></i>`).join('');setTimeout(()=>box.innerHTML='',900);}
+  // v3.17.35 空值加固：安卓 WebView 在「进程恢复 / 页面重挂载 / 数据恢复」等场景下，生活工作台 markup 可能尚未就绪或被整体替换，此时 #toast / #confetti 取不到；原实现直接 el.textContent 会抛 "Cannot set properties of null" 并弹出致命错误浮层。现改为：宿主缺失时动态创建（提示仍可见），彻底消除该崩溃。
+  function ensureOverlayHost(id,className,fallbackStyle){let el=document.getElementById(id);if(el)return el;try{el=document.createElement('div');el.id=id;el.className=className;if(id==='toast'){el.setAttribute('role','status');el.setAttribute('aria-live','polite');}else{el.setAttribute('aria-hidden','true');}const host=document.querySelector('.life-app')||document.body;if(!host)return null;if(host===document.body&&fallbackStyle)el.style.cssText=fallbackStyle;host.appendChild(el);}catch(e){console.warn('[life] overlay host create failed:',e&&e.message);return null;}return el;}
+  function toast(message){const text=translateText(message),el=ensureOverlayHost('toast','toast','position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:9999;padding:10px 18px;border-radius:999px;background:#29251f;color:#fff;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;transition:opacity .25s');if(!el){console.warn('[life] toast skipped:',text);return;}el.textContent=text;el.classList.add('show');if(el.style.cssText)el.style.opacity='1';clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.classList.remove('show');if(el.style.cssText)el.style.opacity='0';},2400);}
+  function celebrate(){const box=ensureOverlayHost('confetti','confetti','position:fixed;inset:0;pointer-events:none;z-index:9998');if(!box)return;box.innerHTML=Array.from({length:16},(_,i)=>`<i style="--x:${45+Math.random()*10}%;--dx:${(Math.random()-.5)*240}px;--dy:${-70-Math.random()*170}px;--c:${['#b65f42','#627a67','#a57c45','#7d5b75'][i%4]}"></i>`).join('');setTimeout(()=>{box.innerHTML='';},900);}
 
   function sortedRecords(type,ascending=false){return state.records.filter(r=>!type||r.type===type).sort((a,b)=>(ascending?1:-1)*(a.date.localeCompare(b.date)||(a.createdAt||0)-(b.createdAt||0)));}
   // 上班数据：复用上班日历本地同步/服务器推送的 window.allData（{日期: {status,note,...}}），
@@ -1055,7 +1057,8 @@ import * as XLSX from 'xlsx';
     document.getElementById('planSettings').addEventListener('click',event=>{if(event.target.id==='planSettings')closePlanSettings();});
     document.getElementById('fitnessProfileSettings').addEventListener('click',event=>{if(event.target.id==='fitnessProfileSettings')closeFitnessProfile();});
     document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeBrandSettings();closeHabitSettings();closePlanSettings();closeFitnessProfile();}});
-    document.addEventListener('click',event=>{
+    // v3.17.35 异常隔离：单个动作失败不应升级为未捕获错误（致命浮层）
+    document.addEventListener('click',event=>{try{
       const nav=event.target.closest('[data-nav]');if(nav){const sub=nav.dataset.workSub;if(sub){switchView('work');if(typeof window.__workSubActivate==='function')window.__workSubActivate(sub);}else{switchView(nav.dataset.nav);}return;}
       const quick=event.target.closest('[data-quick]');if(quick){switchView(quick.dataset.quick);setTimeout(()=>document.querySelector(`#view-${quick.dataset.quick} input:not([type="radio"])`)?.focus(),200);}
       const action=event.target.closest('[data-action]');if(!action)return;const id=action.dataset.id,type=action.dataset.action;
@@ -1068,6 +1071,7 @@ import * as XLSX from 'xlsx';
       if(type==='delete-media'){const item=state.mediaItems.find(media=>media.id===id);if(item&&confirm(LANG==='en'?`Remove “${item.name}” from the list?`:`确定从清单中删除“${item.name}”吗？`)){if(item.remoteId)deleteRemoteMedia(item.remoteId);state.mediaItems=state.mediaItems.filter(media=>media.id!==id);const saved=saveState();renderMedia();if(saved)toast('已从书影音清单移除');}}
       if(type==='open-habit-settings')openHabitSettings();if(type==='close-habit-settings')closeHabitSettings();if(type==='open-plan-settings')openPlanSettings();if(type==='close-plan-settings')closePlanSettings();if(type==='open-fitness-profile')openFitnessProfile();if(type==='close-fitness-profile')closeFitnessProfile();
       if(type==='export-money')exportExcel('money');if(type==='export-fitness')exportExcel('fitness');if(type==='import-money'){const input=document.getElementById('importMoneyInput');if(input)input.click();}if(type==='close-brand')closeBrandSettings();if(type==='reset-brand'){state.settings.brand={name:'日常集',avatar:'日',tagline:'生活有迹可循',theme:'plum'};saveState();applyBrand();openBrandSettings();toast('已恢复默认外观');}
+      }catch(err){console.warn('[life] action failed:',err&&err.message);}
     });
     document.addEventListener('change',event=>{if(event.target.dataset.action==='habit-number')updateHabit(event.target.dataset.id,'number',event.target.value);});
     document.getElementById('budgetInput').addEventListener('change',e=>{state.settings.budget=Math.max(0,Number(e.target.value||0));const saved=saveState();renderAll();if(saved)toast('月度预算已更新');});
@@ -1133,9 +1137,16 @@ import * as XLSX from 'xlsx';
 
 
   function init(){subscribeUpdates();setSyncState('syncing', LANG==='en' ? 'Syncing…' : '同步中…');const now=new Date(),weekdays=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];document.getElementById('todayLabel').textContent=LANG==='en'?new Intl.DateTimeFormat('en-US',{month:'long',day:'numeric',weekday:'long'}).format(now):`${now.getMonth()+1} 月 ${now.getDate()} 日 · ${weekdays[now.getDay()]}`;setDateDefaults();updateMoneyCategories();restoreDrafts();bindForms();bindEvents();initFormPanelToggles();renderAll();switchView(document.getElementById(`view-${location.hash.slice(1)}`)?location.hash.slice(1):'dashboard');if(!dataCorrupted)saveState();pullAllRemote(function(ok){ if(ok){ saveState(); renderAll(); } });}
+  // v3.17.35 markup 就绪检查：WebView 恢复 / 二次挂载等场景下，markup 可能晚于 initLife 就绪；
+  // 原实现会因 getElementById 返回 null 抛错并弹出致命浮层。此处改为有限重试 + 明确告警。
   function initLife(){
     startI18n();
-    init();
+    initWhenReady(0);
+  }
+  function initWhenReady(attempt){
+    if(document.getElementById('todayLabel')){init();return;}
+    if(attempt>=8){console.warn("[life] 生活工作台 markup 未就绪，初始化已跳过（请重新打开应用）");return;}
+    setTimeout(()=>initWhenReady(attempt+1),120);
   }
   if (typeof window !== 'undefined') {
     // 供上班日历侧（App.vue / renderer.js）反向调用，切到生活工作台的某个模块视图
