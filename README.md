@@ -686,6 +686,16 @@ MIT
 
 ## 更新日志
 
+### v3.17.37 (2026-09-11) — 两区域融合：提示 / 主题 / 数据 / 渲染统一
+把「工作模块（上班日历）」与「生活工作台」从"各有一套"合并为"共用一套"，消除二者之间的重复实现与区别对待：
+- **提示机制合一**：原先两套实现、两个宿主（`utils.showToast` 自建元素 / `lifeEngine.toast` 用 `#toast`），配色、位置（70px vs 28px）、时长（1800ms vs 2400ms）均不同。现统一为唯一实现 + 唯一宿主 `#toast`：`utils.showToast` 委托 `window.__lifeToast`（未就绪时按同一行为兜底），样式统一走 `styles.css` 全局 `.toast`（`--toast-bg` 随主题 / bottom 92px / 20px 圆角 / 2400ms），`ripple.js` 的成功涟漪包装不受影响
+- **主题令牌打通**：生活工作台原先使用固定暖纸调色板，仅 dark/cosmic 在 `styles.css` 被重映射，其余 13 套主题下区域 A 随主题变色而区域 B 不变。现 `.life-app` 全部令牌改为锚定主题令牌派生（`--paper:var(--bg)`、`--life-card:var(--card)`、`--ink:var(--text)`、`--tint-*` 由 `--text/--card/--hover/--work/--trip` 混合），15 套主题下两区域同色系同步联动；dark/cosmic 保留更精细的对比度覆盖
+- **喝水记录收口到 Vue**：原先 Vue 模板只留空容器（`ClockinPage.vue:76/83`），由经典 `reminders.js` 注入并直写 `water-records`（与 `reminderStore` 双写入者）。现 `ClockinPage.vue` 响应式自渲染（8 杯进度、−/+、点击杯位），`reminderStore` 为唯一写入者；删除经典 4 个函数与 `shims.js` 4 处 `window.*` 桥接
+- **停止反向调用经典渲染器**：9 处 Vue 组件（CalendarView/ColorPicker/NoteEditor/ReminderList/StatusButtons/TagEditor/TodoItem×2/TodoModal）原先调用 `window.renderCalendar?.()` 重复渲染已隐藏的经典 DOM，现统一走 Vue 自身的 `__refreshCalendarGrid?.()`
+- **失效调用清理**：经典函数删除后遗留 5 处 `renderClockinView()` 调用（会抛 ReferenceError），改为调用 Vue 刷新钩子
+- 新增审查报告 `docs/融合与一致性审查报告-2026-09-11.html`：P0 3 项（经典死壳 DOM、lifeEngine 约 98 处无守卫写入、经典-Vue 双向耦合）、P1 5 项、P2 4 项，含三阶段调整顺序
+- **版本**：3.17.36 → 3.17.37（versionCode 73 → 74）
+
 ### v3.17.36 (2026-09-11) — 根治：showToast 误删生活工作台 #toast 宿主
 - **完整根因**：生活工作台的提示宿主是 `<div class="toast" id="toast">`；工作模块（待办/提醒/好友/设置/备注）走 `utils.showToast()`，其原实现用 `document.querySelector('.toast')` 清理上一条提示 → **命中并 remove() 了 life 的 `#toast`**，而自建元素不带 id、2.1 秒后自删。于是工作模块弹过任意提示后，`#toast` 从 DOM 彻底消失，此后生活工作台任何带提示的操作（删除记录等）执行 `getElementById('toast').textContent` 即抛 `Cannot set properties of null` 并弹致命浮层
 - **逐帧核对**：报错栈 `nM`(toast) ← `sM`(deleteRecord) ← `HTMLDocument`(文档级 click 委托 `a==='delete'&&sM(i)`)，从 v3.17.32 的 APK 中解出 bundle 按行列切片确认
