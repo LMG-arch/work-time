@@ -686,6 +686,22 @@ MIT
 
 ## 更新日志
 
+### v3.17.40 (2026-09-11) — 重构阶段 3（第一批）· Vue 去 window 数据镜像
+- **S3.1a `todoStore`**：初始状态不再取 `window.allTodos`（改 `ref([])`，数据由 `loadTodos()` 经原生桥加载）；`isDone()` 改查自身状态；`deleteTodo()`/`updateTodo()` 先更新自身状态再**发布**到 window（过渡期兼容，阶段 4 移除）
+- **S3.1b `reminderStore`**：`reminders`/`reminderRecords` 初始为空；`refreshFromWindow()`/`refreshReminderList()`/`refreshReminderHistory()` 增加类型守卫，不再把 window 当数据源
+- **S3.2a `TodoModal`**：农历换算改为 `import { lunarToSolar } from '../utils.js'`；并修复隐患——文件内原有同名本地包装函数，直接 import 同名会造成自我递归，改为 import 原名 + 本地薄封装 `lunarDateToSolar`
+- 原则：Vue 不再**读** window 镜像；仍保留**写**（经典层未下线，属过渡期兼容）
+- 实测：`window.allReminders` 仍被 store 发布（4 条）；打卡页喝水 8 杯 + 提醒 24 元素 + 待办 4 行；日历 Vue 网格 35 格；记账占比条 4 段；总览时间线 5 行；**0 未捕获错误**
+- **顺序修订**：执行中发现 S3.1c 反向依赖 S4.1（`window.allData` 由经典层 `loadAllData()` 产出），故与数据服务迁移合并推进（详见 `docs/重构计划-2026-09-11.md` §9）
+- **版本**：3.17.39 → 3.17.40（versionCode 76 → 77）
+
+### v3.17.39 (2026-09-11) — 重构阶段 2 · lifeEngine 稳健化
+- **S2.1 统一 DOM 写入助手**：新增 `needEl/$el/setText/setHtml/setProp/setStyle/classOp/focusFormField`——宿主缺失时**只告警一次**（`[life] 缺少元素 #id（写入已跳过）`），绝不抛错
+- **S2.2 裸写全量替换**：69 处 → 0（属性 66 / style 2 / classList 1）。教训：首版正则被**箭头函数体内的 `;`** 截断导致构建 PARSE_ERROR，改用**括号/字符串深度感知扫描器**；并改用 `.mjs` 做模块级语法校验（`node --check` 不够严格）
+- **S2.3 失败隔离**：`renderAll` 10 个渲染函数各自 `try/catch`（单模块异常不再中断整条渲染链）；`init` 绑定阶段同样隔离；弹层聚焦改走 `focusFormField()`
+- 实测：7 个生活视图遍历 0 错误 0 告警；**注入移除 4 个容器** → 4 条精确告警 + 0 未捕获错误 + 其余模块照常渲染（改动前会抛错并弹致命浮层）
+- **版本**：3.17.38 → 3.17.39（versionCode 75 → 76）
+
 ### v3.17.38 (2026-09-11) — 重构阶段 1 · 存储与 API 单真值
 依据 `docs/重构计划-2026-09-11.md` 阶段 1 执行（全程 5 阶段，用户已确认）：
 - **S1.1 主题单一真值**：`appStore` 在创建时即应用主题（接管原先由经典 `renderer.js` 调 `window.loadTheme()` 的冷启动职责）；删除经典 `settings.js` 的 `setTheme`/`loadTheme`、`shims.js` 两处桥接及 `renderer.js` 的调用块。主题唯一真值 = `calendar-theme`，唯一写入者 = `appStore`
