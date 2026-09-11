@@ -14,9 +14,15 @@ export function sanitizeUrl(url) {
 }
 
 export function showToast(msg) {
-  const existing = document.querySelector('.toast');
+  // v3.17.36 修复：原实现用 document.querySelector('.toast') 清理上一条提示，会误删
+  // 生活工作台的 #toast 宿主（其 class 同为 "toast"，见 life/markup.html），
+  // 且自建元素不带 id —— 宿主被删后再调用 lifeEngine 的 toast() 就会因
+  // getElementById('toast') 为 null 抛出 "Cannot set properties of null (setting 'textContent')"。
+  // 现改为只清理本模块自建的 #legacy-toast，绝不触碰其他 toast 宿主。
+  const existing = document.getElementById('legacy-toast');
   if (existing) existing.remove();
   const toast = document.createElement('div');
+  toast.id = 'legacy-toast';
   toast.className = 'toast';
   toast.textContent = msg;
   document.body.appendChild(toast);

@@ -1,13 +1,12 @@
 {
-  "version": "3.17.35",
-  "versionCode": 72,
+  "version": "3.17.36",
+  "versionCode": 73,
   "releaseDate": "2026-09-11",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.35/work-calendar-v3.17.35.apk",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.36/work-calendar-v3.17.36.apk",
   "changelog": [
-    "fix: 修复删除记录时偶发崩溃——#toast 提示宿主缺失时直接写 textContent 抛错（Cannot set properties of null），现改为宿主缺失自动重建，提示照常显示",
-    "fix: 交互事件异常隔离——单个动作失败不再升级为未捕获错误与致命错误浮层，仅记录告警",
-    "fix: markup 就绪检查——生活工作台界面未就绪时不再因 getElementById 返回 null 崩溃，改为有限重试并给出明确提示",
-    "fix: 庆祝彩带（#confetti）宿主缺失同样自动重建"
+    "fix: 根治删除记录崩溃——工作模块的 showToast 用 querySelector('.toast') 清理旧提示，会误删生活工作台的 #toast 宿主，导致其后 life 侧提示抛 Cannot set properties of null；现只清理自建的 #legacy-toast",
+    "fix: 提示宿主缺失自动重建（toast/confetti），不会再弹出致命错误浮层",
+    "fix: 交互事件异常隔离 + 生活工作台界面就绪检查（有限重试）"
   ],
   "forceUpdate": false
 }
