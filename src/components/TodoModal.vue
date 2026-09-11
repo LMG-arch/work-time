@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
+// v3.17.40 能力直连：农历换算不再经 window.lunarToSolar 垫片
+import { lunarToSolar } from '../utils.js'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from 'reka-ui'
 import { useTodoStore } from '../stores/todoStore.js'
 import { useCalendarStore } from '../stores/calendarStore.js'
@@ -72,23 +74,9 @@ const lunarHint = computed(() => {
   return lunar ? lunar.full : ''
 })
 
-function lunarToSolar(lunarM, lunarD) {
-  if (typeof window.lunarToSolar === 'function') {
-    return window.lunarToSolar(new Date().getFullYear(), lunarM, lunarD);
-  }
-  const year = new Date().getFullYear()
-  for (const y of [year - 1, year, year + 1]) {
-    for (let m = 0; m < 12; m++) {
-      const dim = new Date(y, m + 1, 0).getDate()
-      for (let d = 1; d <= dim; d++) {
-        const lunar = Lunar.solar2lunar(y, m, d)
-        if (lunar.lunarMonth === lunarM && lunar.lunarDay === lunarD && !lunar.isLeap) {
-          return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-        }
-      }
-    }
-  }
-  return null
+// v3.17.40 本地 lunarToSolar 包装已移除：统一使用 utils.js 的实现（能力直连，不再经 window 垫片）
+function lunarDateToSolar(lunarM, lunarD) {
+  return lunarToSolar(new Date().getFullYear(), lunarM, lunarD)
 }
 
 function toggleWd(wd) {
@@ -103,7 +91,7 @@ async function confirm() {
 
   if (type.value === 'once') {
     if (calType.value === 'lunar') {
-      const dateStr = lunarToSolar(lunarMonth.value, lunarDay.value)
+      const dateStr = lunarDateToSolar(lunarMonth.value, lunarDay.value)
       if (!dateStr) { window.showToast?.('找不到对应的公历日期'); return }
       updates.date = dateStr
       updates.lunarMonth = lunarMonth.value

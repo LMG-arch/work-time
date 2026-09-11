@@ -2,7 +2,9 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 export const useTodoStore = defineStore('todo', () => {
-  const todos = ref(window.allTodos || [])
+  // v3.17.40 去 window 镜像：初始为空，数据由 loadTodos() 经原生桥加载；
+  // window.allTodos 仅作为对经典层的过渡期发布（写入），不再被读取。
+  const todos = ref([])
   const filter = ref('all')
   const editingTodo = ref(null)
 
@@ -33,14 +35,16 @@ export const useTodoStore = defineStore('todo', () => {
   function isDone(todo, dateStr) {
     if (todo.type === 'once') return !!todo.done
     if (todo.type === 'weekly') {
-      return window.allTodos?.find(t => t.id === todo.id)?.weeklyDone?.[dateStr] || false
+      return todos.value.find(t => t.id === todo.id)?.weeklyDone?.[dateStr] || false
     }
     return false
   }
 
   // Actions
+  // 过渡期兼容桥：经典层仍会直接改 window.allTodos，此处按旧约定采纳其值。
+  // 待阶段 4 经典层下线后，本函数与 window.allTodos 发布一并移除。
   function refreshFromWindow() {
-    todos.value = window.allTodos || []
+    if (Array.isArray(window.allTodos)) todos.value = window.allTodos
   }
 
   async function loadTodos() {
@@ -60,8 +64,8 @@ export const useTodoStore = defineStore('todo', () => {
   async function deleteTodo(id) {
     if (window.calendarAPI?.deleteTodo) {
       await window.calendarAPI.deleteTodo(id)
-      window.allTodos = window.allTodos.filter(t => t.id !== id)
-      refreshFromWindow()
+      todos.value = todos.value.filter(t => t.id !== id)
+      window.allTodos = todos.value // 过渡期发布（经典层消费）
       window.__refreshCalendarGrid?.()
       window.__refreshTodoView?.()
     }
@@ -70,8 +74,8 @@ export const useTodoStore = defineStore('todo', () => {
   async function updateTodo(id, updates) {
     if (window.calendarAPI?.updateTodo) {
       await window.calendarAPI.updateTodo(id, updates)
-      window.allTodos = await window.calendarAPI.getTodos()
-      refreshFromWindow()
+      todos.value = await window.calendarAPI.getTodos()
+      window.allTodos = todos.value // 过渡期发布（经典层消费）
       window.__refreshTodoView?.()
     }
   }

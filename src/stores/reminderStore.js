@@ -2,8 +2,10 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 export const useReminderStore = defineStore('reminder', () => {
-  const reminders = ref(window.allReminders || [])
-  const reminderRecords = ref(window.allReminderRecords || {})
+  // v3.17.40 去 window 镜像：初始为空，数据由 loadReminders()/loadRecords() 经原生桥加载；
+  // window.allReminders / window.allReminderRecords 仅作过渡期发布（经典层消费）。
+  const reminders = ref([])
+  const reminderRecords = ref({})
   const waterCount = ref(0)
 
   const todayStr = computed(() => {
@@ -17,17 +19,23 @@ export const useReminderStore = defineStore('reminder', () => {
     return reminderRecords.value[dateStr] || {}
   }
 
+  // 过渡期兼容桥：经典层（renderer.js 通知确认回调等）会直接写 window 镜像后调用本函数，
+  // 此处按旧约定采纳其值。待阶段 4 经典层下线后整体移除。
   function refreshFromWindow() {
-    reminders.value = window.allReminders || []
-    reminderRecords.value = window.allReminderRecords || {}
+    if (Array.isArray(window.allReminders)) reminders.value = window.allReminders
+    if (window.allReminderRecords && typeof window.allReminderRecords === 'object') {
+      reminderRecords.value = window.allReminderRecords
+    }
   }
 
   function refreshReminderList() {
-    reminders.value = window.allReminders || []
+    if (Array.isArray(window.allReminders)) reminders.value = window.allReminders
   }
 
   function refreshReminderHistory() {
-    reminderRecords.value = window.allReminderRecords || {}
+    if (window.allReminderRecords && typeof window.allReminderRecords === 'object') {
+      reminderRecords.value = window.allReminderRecords
+    }
   }
 
   async function loadReminders() {
