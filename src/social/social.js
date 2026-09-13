@@ -1,4 +1,7 @@
 // Social UI - 好友圈
+// v3.17.43：显式导入（v3.17.42 精简 shims 后，裸名 ensureSession/restoreAccount/sanitizeUrl 会 ReferenceError）
+import { sanitizeUrl } from '../utils.js'
+import { ensureSession, restoreExpiredSession, restoreAccount } from '../supabase/client.js'
 let socialTab = 'feed'; // feed | friends | profile
 let feedPosts = [];
 let feedOffset = 0;
@@ -6,7 +9,7 @@ let friendsList = [];
 let friendRequests = [];
 
 export async function renderSocialView() {
-  updateMonthLabel();
+  // v3.17.43：经典 updateMonthLabel 已随 .app 死壳下线（Vue 负责月份标题）
   const container = document.getElementById('social-content');
 
   // Check if Supabase is configured

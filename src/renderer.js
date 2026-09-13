@@ -9,6 +9,9 @@
 // 数据刷新唯一入口 = src/lib/dataService.js（refreshAllData/refreshCalendarData）。
 // UI 渲染唯一外壳 = Vue（App.vue → LifeWorkbench 统一外壳）。
 
+// 通知调度：显式导入（不再依赖 shims 的 window.* 垫片，避免垫片精简后裸名 ReferenceError）
+import { scheduleReminderNotifications, scheduleTodoReminders } from './lib/notifications.js'
+
 // ===== 过渡期桥 =====
 
 // 同步桥接：通知 Vue 日历组件当前年月与选中日期
@@ -150,7 +153,8 @@ function scheduleInit() {
 
   // 防御 3：等 window.* 全局函数填充完毕
   function whenGlobalsReady() {
-    const required = ['getSupabaseConfig', 'renderCalendar', 'loadAllData'];
+    // v3.17.43：renderCalendar 已随经典层下线（v3.17.42 遗留于此 → 每次启动空等 5s 才 initApp）
+    const required = ['getSupabaseConfig', 'loadAllData', 'scheduleReminderNotifications'];
     return new Promise((resolve, reject) => {
       const start = Date.now();
       (function check() {

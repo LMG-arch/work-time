@@ -1,5 +1,7 @@
 // stats.js — Monthly statistics view
 
+import { isCapacitorPlatform } from '../utils.js'
+
 // 导出统计为图片
 export async function exportStatsAsImage(stats, viewYear, viewMonth) {
   const year = (viewYear != null) ? viewYear : (window.currentYear || new Date().getFullYear())

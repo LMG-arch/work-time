@@ -686,6 +686,21 @@ MIT
 
 ## 更新日志
 
+### v3.17.43 (2026-09-13) — 紧急修复 v3.17.42 崩溃 + 通知调度迁移（S4.2）
+- **修复线上崩溃**：v3.17.42 精简 shims 删除了 `window.isCapacitorPlatform` 等绑定，但多个模块仍以**裸名**调用 → 真机「未处理的 Promise 拒绝: isCapacitorPlatform is not defined」。受影响的链路：通知调度、会话恢复、统计导出、更新检查。
+- **全模块显式 import**：`notifications.js` / `stats.js` / `updater.js` / `social.js` / `renderer.js` 补齐显式导入（`supabase/client.js` 对 `getProfile` 用动态 import 破循环依赖），彻底摆脱 window 垫片。
+- **S4.2 通知调度迁移**：新增 `src/lib/notifications.js`（调度算法零改动）；`reminders.js` 733→48 行，只留数据函数。
+- **修复启动延迟**：`renderer.js` 就绪门仍在等待已删除的 `renderCalendar` → v3.17.42 每次启动空等 5 秒才加载数据。
+- **修复通知交互**：点击通知跳转 / 确认打卡后刷新 的死引用 `switchView`、`renderCalendar` 改用 Vue 钩子。
+- **审计工具**：新增 `barename-audit.cjs`（垫片绑定差集 × 裸名调用），后续裁剪垫片必须零残留。
+- 实测：构建通过；`scheduleReminderNotifications()` / `scheduleTodoReminders()` 回归 ok、0 错误；calendar/clockin/social/stats/settings 遍历 0 错误
+
+### v3.17.42 (2026-09-11) — 重构阶段 4 · 经典层下线
+- **S4.3 死壳删除**：`index.html` 341→143 行（删除 `.app` 界面壳与 `.toolbar`；`body.life-mode` 下 toolbar 本就永久隐藏，Vue 侧边栏为唯一导航）
+- **S4.4 渲染层退役**：`calendar.js` 260→37 行 / `todos.js` 106→41 行 / 删除 `settings.js`（190 行）/ `renderer.js` 689→190 行，仅保留启动引导
+- **S4.5 shims 收窄**：148→65 绑定；`window.refreshAllData` 改绑 dataService
+- ⚠️ 该版本因垫片裁剪漏检「裸名调用」导致通知链路崩溃，请直接使用 v3.17.43
+
 ### v3.17.41 (2026-09-11) — 重构阶段 3b/4a · 数据服务迁移
 - **新增 `src/lib/dataService.js`**：Vue 侧数据刷新唯一入口（拉取日历/待办/提醒/记账 → 写 Pinia store → 触发纯重渲染 → 过渡期发布 window 镜像）
 - **`calendarStore`** 不再从 `window.allData` 灌数据；`syncFromWindow()` 改为直接从原生桥重新拉取

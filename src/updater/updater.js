@@ -1,5 +1,8 @@
 // updater.js — 应用内版本检查与更新提示 (ESM 模块)
 
+// v3.17.43：显式导入，勿依赖 shims 的 window.* 垫片（v3.17.42 精简后裸名会 ReferenceError）
+import { isCapacitorPlatform, sanitizeUrl } from '../utils.js'
+
 const UPDATE_CHECK_URL = 'https://raw.githubusercontent.com/LMG-arch/work-time/main/version.json';
 const UPDATE_CHECK_INTERVAL = 12 * 60 * 60 * 1000; // 12小时检查一次// 获取本地版本号
 export async function getLocalVersion() {

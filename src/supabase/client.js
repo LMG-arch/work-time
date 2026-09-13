@@ -288,6 +288,8 @@ async function restoreAccount() {
   // Check if already logged in with correct user
   const currentUser = await getCurrentUser();
   if (currentUser) {
+    // v3.17.43：getProfile 属 supabase/social.js（该模块静态 import 本模块 → 反向依赖用动态 import 避免循环）
+    const { getProfile } = await import('./social.js');
     const profile = await getProfile(currentUser.id);
     if (profile && profile.username === username) {
       // Already logged in as the right user

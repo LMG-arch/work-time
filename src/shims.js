@@ -19,6 +19,7 @@ import * as todos from './todos/todos.js'
 import * as stats from './stats/stats.js'
 import * as social from './social/social.js'
 import * as reminders from './reminders/reminders.js'
+import * as notifications from './lib/notifications.js' // S4.2：通知调度核心（原在 reminders.js）
 import * as updater from './updater/updater.js'
 // renderer.js：启动引导（副作用 import——其 scheduleInit() 在模块求值时触发）
 import './renderer.js'
@@ -100,13 +101,16 @@ if (typeof window !== 'undefined') {
   window.getCurrentUserId = social.getCurrentUserId
   window.initSocial = social.initSocial
 
-  // ===== reminders/reminders.js =====
+  // ===== reminders/reminders.js（数据层）=====
   window.loadReminders = reminders.loadReminders
   window.loadReminderRecords = reminders.loadReminderRecords
-  window.sendTestNotification = reminders.sendTestNotification
-  window.diagnoseNotifications = reminders.diagnoseNotifications
-  window.scheduleReminderNotifications = reminders.scheduleReminderNotifications
-  window.scheduleTodoReminders = reminders.scheduleTodoReminders
+
+  // ===== lib/notifications.js（S4.2 调度核心，调度算法零改动）=====
+  // 消费方 ReminderSettings.vue / SettingsPage.vue / renderer.js 仍按 window.* 调用
+  window.sendTestNotification = notifications.sendTestNotification
+  window.diagnoseNotifications = notifications.diagnoseNotifications
+  window.scheduleReminderNotifications = notifications.scheduleReminderNotifications
+  window.scheduleTodoReminders = notifications.scheduleTodoReminders
 
   // ===== updater/updater.js =====
   window.autoCheckUpdate = updater.autoCheckUpdate

@@ -1,14 +1,14 @@
 {
-  "version": "3.17.42",
-  "versionCode": 79,
-  "releaseDate": "2026-09-11",
-  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.42/work-calendar-v3.17.42.apk",
+  "version": "3.17.43",
+  "versionCode": 80,
+  "releaseDate": "2026-09-13",
+  "downloadUrl": "https://github.com/LMG-arch/work-time/releases/download/v3.17.43/work-calendar-v3.17.43.apk",
   "changelog": [
-    "重构阶段4 · 经典层下线：删除 .app 死壳与 .toolbar（index.html 341→143 行）",
-    "重构阶段4 · renderer.js 精简为启动引导（689→190 行），DOM 事件绑定 60 处→0",
-    "重构阶段4 · shims.js 收窄 148→65 绑定（按真实消费者逐条裁剪）",
-    "重构阶段4 · calendar.js 裁剪为数据函数（getHolidayInfo/loadAllData/loadHolidays）；todos.js 裁剪为数据内核；删除 settings.js",
-    "重构阶段4 · window.refreshAllData 改绑 dataService（消费方零改动）"
+    "紧急修复 v3.17.42 崩溃：shims 精简后裸名 isCapacitorPlatform 未定义（通知调度/会话恢复/统计导出/更新检查全链路受影响）",
+    "S4.2 通知调度迁移：新建 src/lib/notifications.js（调度算法零改动）；reminders.js 精简为纯数据层",
+    "各模块改为显式 import（utils / supabase-client），不再依赖 window.* 垫片解析裸名",
+    "修复启动延迟：renderer.js 就绪门残留已删除的 renderCalendar → 每次启动空等 5 秒",
+    "修复通知交互：死引用 renderCalendar / switchView 改用 Vue 钩子（确认打卡后刷新、点击跳转）"
   ],
   "forceUpdate": false
 }
